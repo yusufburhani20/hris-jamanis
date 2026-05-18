@@ -1,0 +1,10 @@
+#perintah setelah selesai koding 
+git add .
+git commit -m "Selesai menambahkan modul baru"
+git push origin main
+
+#perintah untuk narik update di git di aapanel
+git pull origin main
+# Jika ada perubahan CSS/JS, jangan lupa:
+npm run build
+git pull origin main && chown -R www:www . && chmod -R 775 storage bootstrap/cache
