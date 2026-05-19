@@ -54,6 +54,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/payrolls', [PayrollController::class, 'index'])->name('payrolls.index');
     Route::get('/payrolls/{payroll}/download', [PayrollController::class, 'downloadPdf'])->name('payrolls.download');
 
+    // --- SHIPMENT TRACKING ROUTES ---
+    Route::get('/shipments/track/{trackingNumber?}', [\App\Http\Controllers\ShipmentController::class, 'trackPage'])->name('shipments.track');
+    Route::get('/shipments/courier/{trackingNumber}', [\App\Http\Controllers\ShipmentController::class, 'courierScanner'])->name('shipments.courier-scanner');
+    Route::post('/shipments/{shipment}/update-gps', [\App\Http\Controllers\ShipmentController::class, 'updateGPS'])->name('shipments.update-gps');
+
+    // --- COURIER SHIPMENTS DASHBOARD ROUTES ---
+    Route::get('/courier/shipments', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'index'])->name('courier.shipments.index');
+    Route::get('/courier/shipments/{shipment}', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'show'])->name('courier.shipments.show');
+    Route::post('/courier/shipments/{shipment}/deliver', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'deliver'])->name('courier.shipments.deliver');
+
     // --- ADMIN GEOLOCATION HRIS MANAGEMENT ---
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {
         // Geofences CRUD
@@ -90,6 +100,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/payrolls/{payroll}/pay', [AdminPayrollController::class, 'pay'])->name('payrolls.pay');
         Route::post('/payrolls/pay-bulk', [AdminPayrollController::class, 'payBulk'])->name('payrolls.payBulk');
         Route::delete('/payrolls/{payroll}', [AdminPayrollController::class, 'destroy'])->name('payrolls.destroy');
+
+        // Admin Shipment CRUD & Tracking Controls
+        Route::resource('shipments', \App\Http\Controllers\Admin\ShipmentController::class);
+        Route::post('/shipments/{shipment}/status', [\App\Http\Controllers\Admin\ShipmentController::class, 'updateStatus'])->name('shipments.update-status');
+        Route::post('/shipments/{shipment}/log', [\App\Http\Controllers\Admin\ShipmentController::class, 'addLog'])->name('shipments.add-log');
+        Route::post('/shipments/{shipment}/coords', [\App\Http\Controllers\Admin\ShipmentController::class, 'updateCourierCoords'])->name('shipments.coords');
     });
 });
 

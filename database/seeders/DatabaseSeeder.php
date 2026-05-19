@@ -53,5 +53,59 @@ class DatabaseSeeder extends Seeder
                 'work_end_time' => '17:00:00',
             ]
         );
+
+        // 4. Seed Default Branch Shipment (KIR Style)
+        $employee = User::where('role', 'employee')->first();
+        if ($employee) {
+            $shipment = \App\Models\Shipment::updateOrCreate(
+                ['tracking_number' => 'KIR-20260519-001'],
+                [
+                    'title' => 'Distribusi Pengisian 150 Pcs Gamis & Baju Koko Lebaran',
+                    'origin_name' => 'Gudang Pusat Jakarta (Monas)',
+                    'destination_name' => 'Cabang Yogyakarta (Malioboro)',
+                    'origin_lat' => -6.175392,
+                    'origin_lng' => 106.827153,
+                    'destination_lat' => -7.795580,
+                    'destination_lng' => 110.369490,
+                    'courier_id' => $employee->id,
+                    'courier_name' => $employee->name,
+                    'courier_lat' => -6.966667, // Currently transit in Semarang!
+                    'courier_lng' => 110.416664,
+                    'status' => 'in_transit',
+                    'notes' => 'Gamis model terbaru. Harap letakkan di tempat kering.',
+                ]
+            );
+
+            // Seed logs for this shipment
+            \App\Models\ShipmentLog::updateOrCreate(
+                ['shipment_id' => $shipment->id, 'status' => 'packing'],
+                [
+                    'title' => 'Paket sedang disiapkan di gudang asal',
+                    'description' => 'Barang sedang dikemas di Gudang Pusat Jakarta (Monas) oleh staf logistik.',
+                    'latitude' => -6.175392,
+                    'longitude' => 106.827153,
+                ]
+            );
+
+            \App\Models\ShipmentLog::updateOrCreate(
+                ['shipment_id' => $shipment->id, 'status' => 'picked_up'],
+                [
+                    'title' => 'Paket diserahkan ke kurir logistik',
+                    'description' => 'Kurir ' . $employee->name . ' telah memuat paket ke mobil box pengiriman dari Gudang Pusat Jakarta dan siap diberangkatkan.',
+                    'latitude' => -6.175392,
+                    'longitude' => 106.827153,
+                ]
+            );
+
+            \App\Models\ShipmentLog::updateOrCreate(
+                ['shipment_id' => $shipment->id, 'status' => 'in_transit'],
+                [
+                    'title' => 'Paket transit di HUB Semarang',
+                    'description' => 'Paket telah sampai di Hub Logistik Semarang. Sedang proses pengecekan dokumen sebelum dikirim ke Yogyakarta via jalur darat.',
+                    'latitude' => -6.966667,
+                    'longitude' => 110.416664,
+                ]
+            );
+        }
     }
 }

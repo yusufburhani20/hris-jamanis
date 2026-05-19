@@ -135,6 +135,33 @@ export default function Authenticated({
                 },
             ],
         },
+        {
+            group: 'Distribusi Logistik',
+            show: true,
+            items: [
+                {
+                    label: 'Tugas Pengiriman Saya',
+                    href: route('courier.shipments.index'),
+                    active: route().current('courier.shipments.*'),
+                    show: true,
+                    icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>),
+                },
+                {
+                    label: 'Pelacakan Paket',
+                    href: route('shipments.track'),
+                    active: route().current('shipments.track') || route().current('shipments.courier-scanner'),
+                    show: true,
+                    icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>),
+                },
+                {
+                    label: 'Kelola Pengiriman',
+                    href: route('admin.shipments.index'),
+                    active: route().current('admin.shipments.*'),
+                    show: isAdmin,
+                    icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20" /></svg>),
+                },
+            ],
+        },
     ];
 
     return (
