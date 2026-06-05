@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use App\Enums\UserStatus;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -56,7 +57,13 @@ class UserController extends Controller
                 }
             ],
             'basic_salary' => 'nullable|numeric|min:0',
+            'avatar' => 'nullable|image|max:2048',
         ]);
+
+        $avatarPath = null;
+        if ($request->hasFile('avatar')) {
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+        }
 
         User::create([
             'name' => $request->name,
@@ -67,6 +74,7 @@ class UserController extends Controller
             'status' => $request->status,
             'role' => $request->role,
             'basic_salary' => $request->basic_salary ?: 4500000,
+            'avatar' => $avatarPath,
         ]);
 
         return back()->with('success', 'Karyawan/User berhasil dibuat dengan password default "password".');
@@ -94,9 +102,10 @@ class UserController extends Controller
                 }
             ],
             'basic_salary' => 'nullable|numeric|min:0',
+            'avatar' => 'nullable|image|max:2048',
         ]);
 
-        $user->update([
+        $updateData = [
             'name' => $request->name,
             'email' => $request->email,
             'nip' => $request->nip,
@@ -104,7 +113,16 @@ class UserController extends Controller
             'status' => $request->status,
             'role' => $request->role,
             'basic_salary' => $request->basic_salary ?: 4500000,
-        ]);
+        ];
+
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $updateData['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        }
+
+        $user->update($updateData);
         
         if ($request->reset_password_default) {
             $user->update(['password' => Hash::make('password')]);

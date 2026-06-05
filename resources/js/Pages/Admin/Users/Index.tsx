@@ -1,6 +1,6 @@
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import React, { useState } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon, UserCircleIcon, KeyIcon } from '@heroicons/react/24/outline';
 
@@ -12,6 +12,7 @@ interface User {
     phone: string | null;
     status: string;
     role: string;
+    avatar: string | null;
     basic_salary?: number | string;
 }
 
@@ -28,6 +29,7 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
         role: 'employee',
         reset_password_default: false,
         basic_salary: '4500000',
+        avatar: null as File | null | string,
     });
 
     const openDialog = (user?: User) => {
@@ -42,6 +44,7 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                 role: user.role,
                 reset_password_default: false,
                 basic_salary: String(user.basic_salary || '4500000'),
+                avatar: user.avatar || '',
             });
         } else {
             setEditingUser(null);
@@ -54,6 +57,7 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                 role: 'employee',
                 reset_password_default: false,
                 basic_salary: '4500000',
+                avatar: null,
             });
         }
         setIsDialogOpen(true);
@@ -67,7 +71,18 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         if (editingUser) {
-            put(route('admin.users.update', editingUser.id), {
+            router.post(route('admin.users.update', editingUser.id), {
+                _method: 'PUT',
+                name: data.name,
+                email: data.email,
+                nip: data.nip,
+                phone: data.phone,
+                status: data.status,
+                role: data.role,
+                basic_salary: data.basic_salary,
+                reset_password_default: data.reset_password_default,
+                avatar: data.avatar,
+            }, {
                 onSuccess: () => closeDialog(),
             });
         } else {
@@ -122,9 +137,17 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                                         <tr key={userRecord.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/10 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center space-x-3">
-                                                    <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 shrink-0">
-                                                        <UserCircleIcon className="w-6 h-6" />
-                                                    </div>
+                                                    {userRecord.avatar ? (
+                                                        <img 
+                                                            src={userRecord.avatar.startsWith('http') ? userRecord.avatar : `/storage/${userRecord.avatar}`} 
+                                                            alt="Avatar" 
+                                                            className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700" 
+                                                        />
+                                                    ) : (
+                                                        <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 shrink-0">
+                                                            <UserCircleIcon className="w-6 h-6" />
+                                                        </div>
+                                                    )}
                                                     <div>
                                                         <p className="font-bold text-slate-800 dark:text-slate-200">{userRecord.name}</p>
                                                         <p className="text-[10px] text-slate-400">{userRecord.email}</p>
@@ -205,6 +228,42 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                                     <p className="text-xs text-slate-400 mt-1">Lengkapi data pribadi dan peran kerja pegawai.</p>
                                 </div>
                                 <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                                    {/* Avatar Upload */}
+                                    <div className="flex items-center space-x-4 p-4 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                                        <div className="relative">
+                                            {data.avatar ? (
+                                                <img 
+                                                    src={typeof data.avatar === 'string' 
+                                                        ? (data.avatar.startsWith('http') ? data.avatar : `/storage/${data.avatar}`)
+                                                        : URL.createObjectURL(data.avatar)
+                                                    } 
+                                                    alt="Preview Avatar" 
+                                                    className="w-16 h-16 rounded-full object-cover border-2 border-indigo-500" 
+                                                />
+                                            ) : (
+                                                <div className="w-16 h-16 rounded-full bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500 border-2 border-indigo-200 dark:border-indigo-500/30 font-black text-xl">
+                                                    {data.name ? data.name.charAt(0).toUpperCase() : '?'}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Foto Karyawan</label>
+                                            <input 
+                                                type="file" 
+                                                accept="image/*"
+                                                onChange={e => setData('avatar', e.target.files ? e.target.files[0] : null)}
+                                                className="mt-1 block w-full text-xs text-slate-500
+                                                    file:mr-4 file:py-2 file:px-4
+                                                    file:rounded-xl file:border-0
+                                                    file:text-xs file:font-semibold
+                                                    file:bg-indigo-50 file:text-indigo-700
+                                                    hover:file:bg-indigo-100 dark:file:bg-indigo-500/10 dark:file:text-indigo-400" 
+                                            />
+                                            <p className="text-[10px] text-slate-400 mt-1">Format: JPG, JPEG, PNG. Maksimal 2MB.</p>
+                                            {errors.avatar && <p className="text-red-500 text-[10px] mt-1">{errors.avatar}</p>}
+                                        </div>
+                                    </div>
+
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Nama Lengkap</label>

@@ -85,6 +85,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Employee Management (CRUD)
         Route::resource('users', UserController::class)->except(['show']);
 
+        // Settings Management
+        Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
+        Route::post('/settings/deploy', [\App\Http\Controllers\Admin\SettingController::class, 'systemUpdate'])->name('settings.deploy');
+        Route::get('/settings/logs', [\App\Http\Controllers\Admin\SettingController::class, 'updateLogs'])->name('settings.logs');
+
         // Admin Leave Approval Desk
         Route::post('/leaves/{leave}/approve', [LeaveController::class, 'approve'])->name('leaves.approve');
         Route::post('/leaves/{leave}/reject', [LeaveController::class, 'reject'])->name('leaves.reject');
