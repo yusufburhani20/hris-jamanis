@@ -1,7 +1,7 @@
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
     TruckIcon, 
     PlusIcon, 
@@ -72,6 +72,255 @@ export default function ShipmentsIndex({ auth, shipments, couriers }: PageProps<
         courier_id: '',
         notes: '',
     });
+
+    const mapContainerRef = useRef<HTMLDivElement>(null);
+    const mapRef = useRef<any>(null);
+    const originMarkerRef = useRef<any>(null);
+    const destinationMarkerRef = useRef<any>(null);
+    const polylineRef = useRef<any>(null);
+    const [mapTarget, setMapTarget] = useState<'origin' | 'destination'>('origin');
+
+    const [searchMapQuery, setSearchMapQuery] = useState('');
+    const [searchLoading, setSearchLoading] = useState(false);
+
+    const handleMapSearch = async () => {
+        if (!searchMapQuery.trim()) return;
+
+        setSearchLoading(true);
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchMapQuery)}&limit=1`);
+            const dataResults = await response.json();
+
+            if (dataResults && dataResults.length > 0) {
+                const result = dataResults[0];
+                const lat = parseFloat(result.lat);
+                const lng = parseFloat(result.lon);
+                const displayName = result.display_name;
+
+                const map = mapRef.current;
+                if (map) {
+                    map.setView([lat, lng], 15);
+
+                    if (mapTarget === 'origin') {
+                        if (originMarkerRef.current) {
+                            originMarkerRef.current.setLatLng([lat, lng]);
+                        }
+                        setData(prev => ({
+                            ...prev,
+                            origin_name: displayName.split(',')[0] || displayName,
+                            origin_lat: String(lat.toFixed(6)),
+                            origin_lng: String(lng.toFixed(6))
+                        }));
+                    } else {
+                        if (destinationMarkerRef.current) {
+                            destinationMarkerRef.current.setLatLng([lat, lng]);
+                        }
+                        setData(prev => ({
+                            ...prev,
+                            destination_name: displayName.split(',')[0] || displayName,
+                            destination_lat: String(lat.toFixed(6)),
+                            destination_lng: String(lng.toFixed(6))
+                        }));
+                    }
+                }
+            } else {
+                alert("Lokasi tidak ditemukan. Harap coba kata kunci pencarian lainnya.");
+            }
+        } catch (err) {
+            console.error("Gagal melakukan pencarian:", err);
+            alert("Terjadi kesalahan saat mencari lokasi. Harap periksa koneksi internet Anda.");
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    // Haversine Distance helper
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        const R = 6371000; // meters
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    };
+
+    // Map in Modal initialization
+    useEffect(() => {
+        if (!isDialogOpen || typeof window === 'undefined' || !mapContainerRef.current) return;
+
+        const L = (window as any).L;
+        if (!L) return;
+
+        // Clean up previous map instance
+        if (mapRef.current) {
+            mapRef.current.remove();
+            mapRef.current = null;
+        }
+
+        const defaultOriginLat = parseFloat(data.origin_lat) || -6.175392;
+        const defaultOriginLng = parseFloat(data.origin_lng) || 106.827153;
+        const defaultDestLat = parseFloat(data.destination_lat) || -7.795580;
+        const defaultDestLng = parseFloat(data.destination_lng) || 110.369490;
+
+        // Setup custom divIcons
+        const warehouseIcon = L.divIcon({
+            html: `<div class="p-2 bg-blue-600 text-white rounded-full border-2 border-white shadow-lg animate-bounce"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg></div>`,
+            className: '',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        });
+
+        const destinationIcon = L.divIcon({
+            html: `<div class="p-2 bg-emerald-600 text-white rounded-full border-2 border-white shadow-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></div>`,
+            className: '',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        });
+
+        const map = L.map(mapContainerRef.current).setView([defaultOriginLat, defaultOriginLng], 7);
+        mapRef.current = map;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        // Origin marker
+        const originMarker = L.marker([defaultOriginLat, defaultOriginLng], { icon: warehouseIcon, draggable: true })
+            .addTo(map)
+            .bindPopup("<b>Gudang Asal</b><br>Seret untuk memindahkan.");
+        originMarkerRef.current = originMarker;
+
+        // Destination marker
+        const destMarker = L.marker([defaultDestLat, defaultDestLng], { icon: destinationIcon, draggable: true })
+            .addTo(map)
+            .bindPopup("<b>Cabang Tujuan</b><br>Seret untuk memindahkan.");
+        destinationMarkerRef.current = destMarker;
+
+        // Polyline connecting them
+        const polyline = L.polyline([[defaultOriginLat, defaultOriginLng], [defaultDestLat, defaultDestLng]], {
+            color: '#6366f1',
+            weight: 3,
+            dashArray: '5, 5'
+        }).addTo(map);
+        polylineRef.current = polyline;
+
+        // Origin Drag event
+        originMarker.on('drag', () => {
+            const pos = originMarker.getLatLng();
+            polyline.setLatLngs([[pos.lat, pos.lng], destMarker.getLatLng()]);
+        });
+        originMarker.on('dragend', () => {
+            const pos = originMarker.getLatLng();
+            setData(prev => ({
+                ...prev,
+                origin_lat: String(pos.lat.toFixed(6)),
+                origin_lng: String(pos.lng.toFixed(6))
+            }));
+        });
+
+        // Destination Drag event
+        destMarker.on('drag', () => {
+            const pos = destMarker.getLatLng();
+            polyline.setLatLngs([originMarker.getLatLng(), [pos.lat, pos.lng]]);
+        });
+        destMarker.on('dragend', () => {
+            const pos = destMarker.getLatLng();
+            setData(prev => ({
+                ...prev,
+                destination_lat: String(pos.lat.toFixed(6)),
+                destination_lng: String(pos.lng.toFixed(6))
+            }));
+        });
+
+        // Map Click event
+        map.on('click', (e: any) => {
+            const pos = e.latlng;
+            const clickLat = String(pos.lat.toFixed(6));
+            const clickLng = String(pos.lng.toFixed(6));
+
+            const target = (window as any)._mapTargetActive || 'origin';
+            if (target === 'origin') {
+                originMarker.setLatLng(pos);
+                polyline.setLatLngs([[pos.lat, pos.lng], destMarker.getLatLng()]);
+                setData(prev => ({
+                    ...prev,
+                    origin_lat: clickLat,
+                    origin_lng: clickLng
+                }));
+            } else {
+                destMarker.setLatLng(pos);
+                polyline.setLatLngs([originMarker.getLatLng(), [pos.lat, pos.lng]]);
+                setData(prev => ({
+                    ...prev,
+                    destination_lat: clickLat,
+                    destination_lng: clickLng
+                }));
+            }
+        });
+
+        // Fit bounds to show both markers
+        const group = new L.featureGroup([originMarker, destMarker]);
+        map.fitBounds(group.getBounds().pad(0.15));
+
+        return () => {
+            if (mapRef.current) {
+                mapRef.current.remove();
+                mapRef.current = null;
+            }
+            originMarkerRef.current = null;
+            destinationMarkerRef.current = null;
+            polylineRef.current = null;
+        };
+    }, [isDialogOpen]);
+
+    // Keep active target sync in window global
+    useEffect(() => {
+        (window as any)._mapTargetActive = mapTarget;
+    }, [mapTarget]);
+
+    // Update map markers when manual state input or presets change
+    useEffect(() => {
+        if (!isDialogOpen || !mapRef.current) return;
+
+        const oLat = parseFloat(data.origin_lat);
+        const oLng = parseFloat(data.origin_lng);
+        const dLat = parseFloat(data.destination_lat);
+        const dLng = parseFloat(data.destination_lng);
+
+        if (isNaN(oLat) || isNaN(oLng) || isNaN(dLat) || isNaN(dLng)) return;
+
+        const L = (window as any).L;
+        if (!L) return;
+
+        let changed = false;
+
+        if (originMarkerRef.current) {
+            const cur = originMarkerRef.current.getLatLng();
+            if (Math.abs(cur.lat - oLat) > 0.0001 || Math.abs(cur.lng - oLng) > 0.0001) {
+                originMarkerRef.current.setLatLng([oLat, oLng]);
+                changed = true;
+            }
+        }
+
+        if (destinationMarkerRef.current) {
+            const cur = destinationMarkerRef.current.getLatLng();
+            if (Math.abs(cur.lat - dLat) > 0.0001 || Math.abs(cur.lng - dLng) > 0.0001) {
+                destinationMarkerRef.current.setLatLng([dLat, dLng]);
+                changed = true;
+            }
+        }
+
+        if (polylineRef.current) {
+            polylineRef.current.setLatLngs([[oLat, oLng], [dLat, dLng]]);
+        }
+
+        if (changed) {
+            const group = new L.featureGroup([originMarkerRef.current, destinationMarkerRef.current]);
+            mapRef.current.fitBounds(group.getBounds().pad(0.15));
+        }
+    }, [data.origin_lat, data.origin_lng, data.destination_lat, data.destination_lng]);
 
     const openDialog = () => {
         reset();
@@ -350,7 +599,7 @@ export default function ShipmentsIndex({ auth, shipments, couriers }: PageProps<
                         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" aria-hidden="true" onClick={closeDialog}></div>
                         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
                         
-                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl w-full">
+                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl lg:max-w-5xl w-full">
                             <form onSubmit={submit}>
                                 <div className="bg-white dark:bg-slate-800 px-6 pt-6 pb-4">
                                     <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-700/60 mb-4">
@@ -358,131 +607,199 @@ export default function ShipmentsIndex({ auth, shipments, couriers }: PageProps<
                                         <button type="button" onClick={closeDialog} className="text-slate-400 hover:text-slate-600">&times;</button>
                                     </div>
                                     
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-xs font-black uppercase text-slate-400 tracking-wider">Nama Barang / Deskripsi Stok</label>
-                                            <input 
-                                                type="text" 
-                                                value={data.title} 
-                                                onChange={e => setData('title', e.target.value)} 
-                                                required 
-                                                className="mt-1.5 block w-full rounded-xl border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 dark:text-white text-sm focus:border-indigo-500 focus:ring-indigo-500" 
-                                                placeholder="Contoh: Pengisian 100 Pcs Baju Muslim Cabang Yogya" 
-                                            />
-                                            {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
-                                        </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                                        {/* LEFT COLUMN: FORM FIELDS (SPAN 5) */}
+                                        <div className="md:col-span-5 space-y-4">
+                                            <div>
+                                                <label className="block text-xs font-black uppercase text-slate-400 tracking-wider">Nama Barang / Deskripsi Stok</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={data.title} 
+                                                    onChange={e => setData('title', e.target.value)} 
+                                                    required 
+                                                    className="mt-1.5 block w-full rounded-xl border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 dark:text-white text-sm focus:border-indigo-500 focus:ring-indigo-500" 
+                                                    placeholder="Contoh: Pengisian 100 Pcs Baju" 
+                                                />
+                                                {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
+                                            </div>
 
-                                        {/* RUTE ASAL (Origin) */}
-                                        <div className="border border-slate-100 dark:border-slate-700/60 p-4 rounded-xl space-y-3 bg-slate-50/50 dark:bg-slate-900/30">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
-                                                    <MapPinIcon className="w-4 h-4 text-blue-500" />
-                                                    Warehouse / Cabang Asal
-                                                </span>
+                                            {/* RUTE ASAL (Origin) */}
+                                            <div className="border border-slate-100 dark:border-slate-700/60 p-4 rounded-xl space-y-3 bg-slate-50/50 dark:bg-slate-900/30">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                                                        <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block animate-ping"></span>
+                                                        Cabang Asal
+                                                    </span>
+                                                    <select 
+                                                        onChange={e => handlePresetSelect('origin', parseInt(e.target.value))}
+                                                        className="text-[10px] border-none bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-lg py-0.5 px-1.5 font-bold focus:ring-0 cursor-pointer animate-pulse"
+                                                    >
+                                                        <option value="">Cabang Preset</option>
+                                                        {PRESET_BRANCHES.map((b, i) => <option key={i} value={i}>{b.name.split(' ')[0]}</option>)}
+                                                    </select>
+                                                </div>
+                                                <input 
+                                                    type="text" 
+                                                    value={data.origin_name} 
+                                                    onChange={e => setData('origin_name', e.target.value)} 
+                                                    required 
+                                                    placeholder="Nama Gudang Asal"
+                                                    className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                                />
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <input 
+                                                        type="text" 
+                                                        value={data.origin_lat} 
+                                                        onChange={e => setData('origin_lat', e.target.value)} 
+                                                        required 
+                                                        placeholder="Latitude Asal"
+                                                        className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-xs focus:border-indigo-500 focus:ring-indigo-500 font-mono"
+                                                    />
+                                                    <input 
+                                                        type="text" 
+                                                        value={data.origin_lng} 
+                                                        onChange={e => setData('origin_lng', e.target.value)} 
+                                                        required 
+                                                        placeholder="Longitude Asal"
+                                                        className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-xs focus:border-indigo-500 focus:ring-indigo-500 font-mono"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* RUTE TUJUAN (Destination) */}
+                                            <div className="border border-slate-100 dark:border-slate-700/60 p-4 rounded-xl space-y-3 bg-slate-50/50 dark:bg-slate-900/30">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span>
+                                                        Cabang Tujuan
+                                                    </span>
+                                                    <select 
+                                                        onChange={e => handlePresetSelect('destination', parseInt(e.target.value))}
+                                                        className="text-[10px] border-none bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-lg py-0.5 px-1.5 font-bold focus:ring-0 cursor-pointer animate-pulse"
+                                                    >
+                                                        <option value="">Cabang Preset</option>
+                                                        {PRESET_BRANCHES.map((b, i) => <option key={i} value={i}>{b.name.split(' ')[0]}</option>)}
+                                                    </select>
+                                                </div>
+                                                <input 
+                                                    type="text" 
+                                                    value={data.destination_name} 
+                                                    onChange={e => setData('destination_name', e.target.value)} 
+                                                    required 
+                                                    placeholder="Nama Cabang Tujuan"
+                                                    className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                                />
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <input 
+                                                        type="text" 
+                                                        value={data.destination_lat} 
+                                                        onChange={e => setData('destination_lat', e.target.value)} 
+                                                        required 
+                                                        placeholder="Latitude Tujuan"
+                                                        className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-xs focus:border-indigo-500 focus:ring-indigo-500 font-mono"
+                                                    />
+                                                    <input 
+                                                        type="text" 
+                                                        value={data.destination_lng} 
+                                                        onChange={e => setData('destination_lng', e.target.value)} 
+                                                        required 
+                                                        placeholder="Longitude Tujuan"
+                                                        className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-xs focus:border-indigo-500 focus:ring-indigo-500 font-mono"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* TUGASKAN KURIR */}
+                                            <div>
+                                                <label className="block text-xs font-black uppercase text-slate-400 tracking-wider">Tugaskan Kurir Logistik</label>
                                                 <select 
-                                                    onChange={e => handlePresetSelect('origin', parseInt(e.target.value))}
-                                                    className="text-xs border-none bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-lg py-1 px-2 font-bold focus:ring-0 cursor-pointer"
+                                                    value={data.courier_id} 
+                                                    onChange={e => setData('courier_id', e.target.value)}
+                                                    className="mt-1.5 block w-full rounded-xl border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 dark:text-white text-sm focus:border-indigo-500 focus:ring-indigo-500 cursor-pointer"
                                                 >
-                                                    <option value="">Pilih Cabang Preset</option>
-                                                    {PRESET_BRANCHES.map((b, i) => <option key={i} value={i}>{b.name.split(' ')[0]}</option>)}
+                                                    <option value="">-- Pilih Kurir Aktif (Opsional) --</option>
+                                                    {couriers.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                                    ))}
                                                 </select>
                                             </div>
-                                            <input 
-                                                type="text" 
-                                                value={data.origin_name} 
-                                                onChange={e => setData('origin_name', e.target.value)} 
-                                                required 
-                                                placeholder="Nama Gudang Asal"
-                                                className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                            />
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <input 
-                                                    type="text" 
-                                                    value={data.origin_lat} 
-                                                    onChange={e => setData('origin_lat', e.target.value)} 
-                                                    required 
-                                                    placeholder="Latitude Asal"
-                                                    className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-xs focus:border-indigo-500 focus:ring-indigo-500"
-                                                />
-                                                <input 
-                                                    type="text" 
-                                                    value={data.origin_lng} 
-                                                    onChange={e => setData('origin_lng', e.target.value)} 
-                                                    required 
-                                                    placeholder="Longitude Asal"
-                                                    className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-xs focus:border-indigo-500 focus:ring-indigo-500"
+
+                                            {/* CATATAN TAMBAHAN */}
+                                            <div>
+                                                <label className="block text-xs font-black uppercase text-slate-400 tracking-wider">Catatan Pengiriman</label>
+                                                <textarea 
+                                                    value={data.notes} 
+                                                    onChange={e => setData('notes', e.target.value)} 
+                                                    rows={2}
+                                                    className="mt-1.5 block w-full rounded-xl border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 dark:text-white text-sm focus:border-indigo-500 focus:ring-indigo-500" 
+                                                    placeholder="Keterangan tambahan..." 
                                                 />
                                             </div>
                                         </div>
 
-                                        {/* RUTE TUJUAN (Destination) */}
-                                        <div className="border border-slate-100 dark:border-slate-700/60 p-4 rounded-xl space-y-3 bg-slate-50/50 dark:bg-slate-900/30">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
-                                                    <MapPinIcon className="w-4 h-4 text-emerald-500" />
-                                                    Cabang Tujuan
-                                                </span>
-                                                <select 
-                                                    onChange={e => handlePresetSelect('destination', parseInt(e.target.value))}
-                                                    className="text-xs border-none bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-lg py-1 px-2 font-bold focus:ring-0 cursor-pointer"
-                                                >
-                                                    <option value="">Pilih Cabang Preset</option>
-                                                    {PRESET_BRANCHES.map((b, i) => <option key={i} value={i}>{b.name.split(' ')[0]}</option>)}
-                                                </select>
+                                        {/* RIGHT COLUMN: INTERACTIVE MAP (SPAN 7) */}
+                                        <div className="md:col-span-7 flex flex-col space-y-3">
+                                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b dark:border-slate-700 pb-3">
+                                                <div>
+                                                    <span className="text-xs font-black uppercase text-slate-400 tracking-wider block">Peta Pemilih Rute</span>
+                                                    <span className="text-[10px] text-slate-400 block mt-0.5">Klik/seret penanda rute di peta.</span>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    {/* Target selector */}
+                                                    <div className="flex bg-slate-100 dark:bg-slate-900 rounded-xl p-0.5 font-bold text-[10px] border dark:border-slate-700">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setMapTarget('origin')}
+                                                            className={`px-2.5 py-1.5 rounded-lg transition-all ${mapTarget === 'origin' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                                        >
+                                                            Set Asal
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setMapTarget('destination')}
+                                                            className={`px-2.5 py-1.5 rounded-lg transition-all ${mapTarget === 'destination' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                                                        >
+                                                            Set Tujuan
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    {/* Search bar */}
+                                                    <div className="relative w-44">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Cari lokasi/jalan..."
+                                                            value={searchMapQuery}
+                                                            onChange={e => setSearchMapQuery(e.target.value)}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    handleMapSearch();
+                                                                }
+                                                            }}
+                                                            className="w-full pl-2 pr-7 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-[10px] focus:border-indigo-500 focus:ring-0 dark:text-white"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleMapSearch}
+                                                            disabled={searchLoading}
+                                                            className="absolute right-1.5 top-1.5 text-slate-450 hover:text-indigo-500"
+                                                        >
+                                                            {searchLoading ? (
+                                                                <div className="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                                            ) : (
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <input 
-                                                type="text" 
-                                                value={data.destination_name} 
-                                                onChange={e => setData('destination_name', e.target.value)} 
-                                                required 
-                                                placeholder="Nama Cabang Tujuan"
-                                                className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                            />
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <input 
-                                                    type="text" 
-                                                    value={data.destination_lat} 
-                                                    onChange={e => setData('destination_lat', e.target.value)} 
-                                                    required 
-                                                    placeholder="Latitude Tujuan"
-                                                    className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-xs focus:border-indigo-500 focus:ring-indigo-500"
-                                                />
-                                                <input 
-                                                    type="text" 
-                                                    value={data.destination_lng} 
-                                                    onChange={e => setData('destination_lng', e.target.value)} 
-                                                    required 
-                                                    placeholder="Longitude Tujuan"
-                                                    className="block w-full rounded-xl border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-white text-xs focus:border-indigo-500 focus:ring-indigo-500"
+
+                                            <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700/60 shadow-inner flex-1 h-[450px] md:h-[480px] min-h-[350px]">
+                                                <div 
+                                                    ref={mapContainerRef} 
+                                                    className="w-full h-full z-10 absolute inset-0 bg-slate-50 dark:bg-slate-900"
                                                 />
                                             </div>
-                                        </div>
-
-                                        {/* TUGASKAN KURIR */}
-                                        <div>
-                                            <label className="block text-xs font-black uppercase text-slate-400 tracking-wider">Tugaskan Kurir Logistik</label>
-                                            <select 
-                                                value={data.courier_id} 
-                                                onChange={e => setData('courier_id', e.target.value)}
-                                                className="mt-1.5 block w-full rounded-xl border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 dark:text-white text-sm focus:border-indigo-500 focus:ring-indigo-500 cursor-pointer"
-                                            >
-                                                <option value="">-- Pilih Kurir Aktif (Opsional) --</option>
-                                                {couriers.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        {/* CATATAN TAMBAHAN */}
-                                        <div>
-                                            <label className="block text-xs font-black uppercase text-slate-400 tracking-wider">Catatan Pengiriman</label>
-                                            <textarea 
-                                                value={data.notes} 
-                                                onChange={e => setData('notes', e.target.value)} 
-                                                rows={2}
-                                                className="mt-1.5 block w-full rounded-xl border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 dark:text-white text-sm focus:border-indigo-500 focus:ring-indigo-500" 
-                                                placeholder="Keterangan tambahan (misal: Baju warna merah harap ditaruh terpisah)" 
-                                            />
                                         </div>
                                     </div>
                                 </div>

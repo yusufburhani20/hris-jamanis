@@ -9,6 +9,11 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
     // Geofence validation state
     const [nearestGeofence, setNearestGeofence] = useState<{ name: string, distance: number, radius: number, valid: boolean } | null>(null);
     
+    const mapContainerRef = useRef<HTMLDivElement>(null);
+    const mapRef = useRef<any>(null);
+    const userMarkerRef = useRef<any>(null);
+    const circlesRef = useRef<any[]>([]);
+    
     // Haversine Distance helper
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
         const R = 6371000; // meters
@@ -62,6 +67,129 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
             setStream(null);
         }
     };
+
+    // Map Initialization Effect (runs once or when geofences load)
+    useEffect(() => {
+        if (typeof window === 'undefined' || !mapContainerRef.current) return;
+
+        const L = (window as any).L;
+        if (!L) return;
+
+        const defaultLat = geofences[0] ? parseFloat(geofences[0].latitude) : -6.200000;
+        const defaultLng = geofences[0] ? parseFloat(geofences[0].longitude) : 106.816666;
+
+        // Clean up previous map if exists
+        if (mapRef.current) {
+            mapRef.current.remove();
+            mapRef.current = null;
+        }
+        circlesRef.current = [];
+        userMarkerRef.current = null;
+
+        const map = L.map(mapContainerRef.current).setView([defaultLat, defaultLng], 14);
+        mapRef.current = map;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        // Draw geofence circles
+        geofences.forEach(gf => {
+            const circle = L.circle([parseFloat(gf.latitude), parseFloat(gf.longitude)], {
+                color: '#f43f5e', // Default red, turns green when inside
+                fillColor: '#f43f5e',
+                fillOpacity: 0.15,
+                radius: gf.radius
+            }).addTo(map).bindPopup(`<b>${gf.name}</b><br>Radius: ${gf.radius}m`);
+            circlesRef.current.push({ id: gf.id, circle });
+        });
+
+        // If location is already available on mount
+        if (location) {
+            map.setView([location.lat, location.lng], 16);
+            
+            const userIcon = L.divIcon({
+                html: `<div class="relative flex items-center justify-center">
+                    <div class="absolute w-4 h-4 bg-indigo-600 rounded-full border-2 border-white shadow-lg animate-ping"></div>
+                    <div class="relative w-4 h-4 bg-indigo-600 rounded-full border-2 border-white shadow-lg"></div>
+                </div>`,
+                className: '',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+
+            userMarkerRef.current = L.marker([location.lat, location.lng], { icon: userIcon })
+                .addTo(map)
+                .bindPopup("<b>Posisi Anda saat ini</b>");
+
+            circlesRef.current.forEach(({ id, circle }) => {
+                const gf = geofences.find(g => g.id === id);
+                if (gf) {
+                    const dist = calculateDistance(location.lat, location.lng, parseFloat(gf.latitude), parseFloat(gf.longitude));
+                    const isValid = dist <= gf.radius;
+                    circle.setStyle({
+                        color: isValid ? '#10b981' : '#f43f5e',
+                        fillColor: isValid ? '#10b981' : '#f43f5e'
+                    });
+                    circle.setPopupContent(`<b>${gf.name}</b><br>Radius: ${gf.radius}m<br>Jarak: ${Math.round(dist)}m`);
+                }
+            });
+        }
+
+        return () => {
+            if (mapRef.current) {
+                mapRef.current.remove();
+                mapRef.current = null;
+            }
+            circlesRef.current = [];
+            userMarkerRef.current = null;
+        };
+    }, [geofences]);
+
+    // Map Location Update Effect (updates marker and geofences style)
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !location) return;
+
+        const L = (window as any).L;
+        if (!L) return;
+
+        // Update/Create user marker
+        if (!userMarkerRef.current) {
+            const userIcon = L.divIcon({
+                html: `<div class="relative flex items-center justify-center">
+                    <div class="absolute w-4 h-4 bg-indigo-600 rounded-full border-2 border-white shadow-lg animate-ping"></div>
+                    <div class="relative w-4 h-4 bg-indigo-600 rounded-full border-2 border-white shadow-lg"></div>
+                </div>`,
+                className: '',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+
+            userMarkerRef.current = L.marker([location.lat, location.lng], { icon: userIcon })
+                .addTo(map)
+                .bindPopup("<b>Posisi Anda saat ini</b>");
+        } else {
+            userMarkerRef.current.setLatLng([location.lat, location.lng]);
+        }
+
+        // Center on user position
+        map.setView([location.lat, location.lng], 16);
+
+        // Update geofence circles
+        circlesRef.current.forEach(({ id, circle }) => {
+            const gf = geofences.find(g => g.id === id);
+            if (gf) {
+                const dist = calculateDistance(location.lat, location.lng, parseFloat(gf.latitude), parseFloat(gf.longitude));
+                const isValid = dist <= gf.radius;
+                circle.setStyle({
+                    color: isValid ? '#10b981' : '#f43f5e',
+                    fillColor: isValid ? '#10b981' : '#f43f5e'
+                });
+                circle.setPopupContent(`<b>${gf.name}</b><br>Radius: ${gf.radius}m<br>Jarak: ${Math.round(dist)}m`);
+            }
+        });
+    }, [location]);
 
     useEffect(() => {
         // Start geolocation
@@ -215,6 +343,25 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                         </div>
                     </div>
                 )}
+
+                {/* Leaflet Interactive Map */}
+                <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-inner z-10">
+                    <div 
+                        ref={mapContainerRef} 
+                        className="w-full h-[180px]"
+                        style={{ minHeight: '150px' }}
+                    />
+                    <div className="absolute top-2 right-2 z-[400] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded shadow-sm dark:text-white border dark:border-gray-700">
+                        Peta Lokasi & Geofence
+                    </div>
+                    {!location && (
+                        <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
+                            <span className="text-xs bg-slate-900/80 dark:bg-gray-800/90 text-white dark:text-gray-200 px-3 py-1.5 rounded-lg shadow-md font-medium text-center max-w-[80%]">
+                                GPS Memuat / Diblokir. Harap izinkan akses lokasi GPS.
+                            </span>
+                        </div>
+                    )}
+                </div>
 
                 {/* Location Status Badge (Only if no lock yet) */}
                 {!location && (

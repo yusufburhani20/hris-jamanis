@@ -25,7 +25,9 @@ class PayrollController extends Controller
             ->where('year', $year)
             ->get();
 
-        $employees = User::where('role', 'employee')->get();
+        $employees = User::where('role', 'LIKE', '%employee%')
+            ->orWhere('role', 'LIKE', '%driver%')
+            ->get();
 
         $settings = [
             'payroll_late_penalty' => \App\Models\Setting::get('payroll_late_penalty', '50000'),
@@ -76,7 +78,9 @@ class PayrollController extends Controller
         $month = $request->month;
         $year = $request->year;
 
-        $employees = User::where('role', 'employee')->get();
+        $employees = User::where('role', 'LIKE', '%employee%')
+            ->orWhere('role', 'LIKE', '%driver%')
+            ->get();
         if ($employees->isEmpty()) {
             return redirect()->back()->with('error', 'Tidak ada karyawan untuk dihitung.');
         }

@@ -10,6 +10,11 @@ use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\Admin\ShiftController;
 use App\Http\Controllers\Admin\PayrollController as AdminPayrollController;
 use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\Admin\Hpp\HppDashboardController;
+use App\Http\Controllers\Admin\Hpp\HppBusinessController;
+use App\Http\Controllers\Admin\Hpp\HppMaterialController;
+use App\Http\Controllers\Admin\Hpp\HppOverheadController;
+use App\Http\Controllers\Admin\Hpp\HppProductController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -39,6 +44,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::post('/attendances/check-in', [AttendanceController::class, 'checkIn'])->name('attendances.check-in');
     Route::post('/attendances/check-out', [AttendanceController::class, 'checkOut'])->name('attendances.check-out');
+    Route::get('/attendances/history', [AttendanceController::class, 'history'])->name('attendances.history');
 
     // --- LEAVE & PERMIT ROUTES ---
     Route::get('/leaves', [LeaveController::class, 'index'])->name('leaves.index');
@@ -54,15 +60,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/payrolls', [PayrollController::class, 'index'])->name('payrolls.index');
     Route::get('/payrolls/{payroll}/download', [PayrollController::class, 'downloadPdf'])->name('payrolls.download');
 
-    // --- SHIPMENT TRACKING ROUTES ---
-    Route::get('/shipments/track/{trackingNumber?}', [\App\Http\Controllers\ShipmentController::class, 'trackPage'])->name('shipments.track');
-    Route::get('/shipments/courier/{trackingNumber}', [\App\Http\Controllers\ShipmentController::class, 'courierScanner'])->name('shipments.courier-scanner');
-    Route::post('/shipments/{shipment}/update-gps', [\App\Http\Controllers\ShipmentController::class, 'updateGPS'])->name('shipments.update-gps');
+    // --- SHIPMENT & COURIER TRACKING ROUTES (Restricted to Admin & Driver) ---
+    Route::middleware(['role:admin,driver'])->group(function () {
+        Route::get('/shipments/track/{trackingNumber?}', [\App\Http\Controllers\ShipmentController::class, 'trackPage'])->name('shipments.track');
+        Route::get('/shipments/courier/{trackingNumber}', [\App\Http\Controllers\ShipmentController::class, 'courierScanner'])->name('shipments.courier-scanner');
+        Route::post('/shipments/{shipment}/update-gps', [\App\Http\Controllers\ShipmentController::class, 'updateGPS'])->name('shipments.update-gps');
 
-    // --- COURIER SHIPMENTS DASHBOARD ROUTES ---
-    Route::get('/courier/shipments', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'index'])->name('courier.shipments.index');
-    Route::get('/courier/shipments/{shipment}', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'show'])->name('courier.shipments.show');
-    Route::post('/courier/shipments/{shipment}/deliver', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'deliver'])->name('courier.shipments.deliver');
+        // --- COURIER SHIPMENTS DASHBOARD ROUTES ---
+        Route::get('/courier/shipments', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'index'])->name('courier.shipments.index');
+        Route::get('/courier/shipments/{shipment}', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'show'])->name('courier.shipments.show');
+        Route::post('/courier/shipments/{shipment}/deliver', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'deliver'])->name('courier.shipments.deliver');
+    });
 
     // --- ADMIN GEOLOCATION HRIS MANAGEMENT ---
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -106,6 +114,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/shipments/{shipment}/status', [\App\Http\Controllers\Admin\ShipmentController::class, 'updateStatus'])->name('shipments.update-status');
         Route::post('/shipments/{shipment}/log', [\App\Http\Controllers\Admin\ShipmentController::class, 'addLog'])->name('shipments.add-log');
         Route::post('/shipments/{shipment}/coords', [\App\Http\Controllers\Admin\ShipmentController::class, 'updateCourierCoords'])->name('shipments.coords');
+
+        // Admin HPP Calculation Module
+        Route::prefix('hpp')->name('hpp.')->group(function () {
+            Route::get('/dashboard', [HppDashboardController::class, 'index'])->name('dashboard');
+            Route::post('/business', [HppBusinessController::class, 'store'])->name('business.store');
+            Route::post('/products/simulate', [HppProductController::class, 'simulate'])->name('products.simulate');
+            
+            Route::resource('materials', HppMaterialController::class)->except(['show', 'create', 'edit']);
+            Route::resource('overheads', HppOverheadController::class)->except(['show', 'create', 'edit']);
+            Route::resource('products', HppProductController::class);
+        });
     });
 });
 

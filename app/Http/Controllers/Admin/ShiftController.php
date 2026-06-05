@@ -19,7 +19,8 @@ class ShiftController extends Controller
         $shifts = Shift::latest()->get();
         
         // Fetch employees with their assigned shifts
-        $employees = User::where('role', 'employee')
+        $employees = User::where('role', 'LIKE', '%employee%')
+            ->orWhere('role', 'LIKE', '%driver%')
             ->with(['shifts' => function($q) {
                 $q->latest('user_shifts.start_date');
             }])

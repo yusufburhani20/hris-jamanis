@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panduan Penggunaan Aplikasi HRIS & HPP UMKM Terintegrasi</title>
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- MathJax for rendering math formulas beautifully -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --primary: #4f46e5;
+            --primary-light: #e0e7ff;
+            --emerald: #10b981;
+            --emerald-light: #d1fae5;
+            --rose: #f43f5e;
+            --rose-light: #ffe4e6;
+            --amber: #f59e0b;
+            --amber-light: #fef3c7;
+            --sky: #0ea5e9;
+            --sky-light: #e0f2fe;
+            --border-color: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+            --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-main);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: #1e1b4b;
+        }
+
+        /* Container Layout */
+        .wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Hero Banner */
+        .hero {
+            background: linear-gradient(135deg, #e0e7ff 0%, #e0f2fe 100%);
+            border-radius: 32px;
+            padding: 56px 32px;
+            text-align: center;
+            margin-bottom: 40px;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero h1 {
+            font-size: 2.75rem;
+            color: #1e1b4b;
+            margin-bottom: 16px;
+            letter-spacing: -0.03em;
+        }
+
+        .hero p {
+            font-size: 1.15rem;
+            color: #312e81;
+            max-width: 800px;
+            margin: 0 auto;
+            font-weight: 500;
+        }
+
+        /* Navigation Links */
+        .nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-muted);
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        /* Sections Styling */
+        .content-section {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px;
+            margin-bottom: 40px;
+            box-shadow: var(--shadow);
+        }
+
+        .content-section h2 {
+            font-size: 1.85rem;
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Card Grid */
+        .grid-cards {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        @media (min-width: 768px) {
+            .grid-cards {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .role-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: var(--shadow);
+        }
+
+        .role-card h3 {
+            font-size: 1.35rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Unordered Lists */
+        ul.custom-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 12px;
+        }
+
+        ul.custom-list li {
+            position: relative;
+            padding-left: 28px;
+            font-size: 0.925rem;
+            color: var(--text-muted);
+        }
+
+        ul.custom-list li strong {
+            color: var(--text-main);
+        }
+
+        ul.custom-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            top: 1px;
+            width: 20px;
+            height: 20px;
+            background-color: var(--emerald-light);
+            color: var(--emerald);
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Step Timeline */
+        .timeline {
+            position: relative;
+            max-width: 900px;
+            margin: 24px auto 0 auto;
+            padding-left: 24px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 7px;
+            bottom: 12px;
+            width: 2px;
+            background-color: var(--border-color);
+        }
+
+        .step-item {
+            position: relative;
+            padding-left: 36px;
+            margin-bottom: 32px;
+        }
+
+        .step-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .step-badge {
+            position: absolute;
+            left: -4px;
+            top: 2px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: #ffffff;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 0 4px #ffffff;
+        }
+
+        .step-item h3 {
+            font-size: 1.15rem;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .step-item p {
+            font-size: 0.925rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .alert-info {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Formulas Container */
+        .formula-container {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+        }
+
+        .formula-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .formula-desc {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 12px;
+        }
+
+        /* Badge Styles */
+        .icon-badge {
+            display: inline-flex;
+            padding: 6px;
+            border-radius: 10px;
+            font-size: 1.25rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            padding-top: 32px;
+            margin-top: 60px;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        
+        <!-- Hero Section -->
+        <header class="hero">
+            <h1>Sistem Terpadu HRIS & HPP UMKM</h1>
+            <p>Dokumentasi resmi dan panduan penggunaan lengkap mengenai integrasi cerdas sistem kepegawaian (HRIS Geolocation), manajemen shift, persetujuan cuti & lembur, payroll, logistik distribusi kurir, serta kalkulasi Harga Pokok Penjualan (HPP) modular.</p>
+        </header>
+
+        <!-- Navigation Shortcut Bar -->
+        <nav class="nav-links">
+            <a href="#konsep">I. Konsep & Arsitektur</a>
+            <a href="#admin">II. Panduan Admin</a>
+            <a href="#karyawan">III. Panduan Karyawan</a>
+            <a href="#driver">IV. Panduan Driver / Sopir</a>
+            <a href="#rumus">V. Rumus Kalkulasi HPP</a>
+        </nav>
+
+        <!-- I. Konsep & Arsitektur Utama -->
+        <section id="konsep" class="content-section">
+            <h2><span class="icon-badge icon-hris">⚙️</span> I. Konsep & Arsitektur Utama (HRIS + HPP)</h2>
+            <p>Aplikasi ini dirancang untuk menyatukan dua pilar operasional UMKM Indonesia: pengelolaan sumber daya manusia dan pelacakan biaya modal produksi secara dinamis. Keunggulan dari model modular ini adalah <strong>korelasi data</strong> yang saling mendukung:</p>
+            <div class="grid-cards">
+                <div class="role-card">
+                    <h3>👤 Integrasi HRIS & Kepegawaian</h3>
+                    <p>Mencatat absensi karyawan dengan keamanan berlapis (koordinat GPS, verifikasi IP, deteksi perangkat, dan swafoto) yang langsung berkorelasi dengan pemotongan upah atau kalkulasi bonus lembur pada payroll bulanan.</p>
+                </div>
+                <div class="role-card">
+                    <h3>🏭 Integrasi Kalkulator HPP</h3>
+                    <p>Menyediakan asisten kalkulasi modal bisnis dengan menghitung penggunaan bahan baku resep, jam pengerjaan pekerja, serta pembagian alokasi overhead operasional tetap (listrik, air, sewa) berdasarkan kapasitas bulanan.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- II. Panduan Lengkap Tata Cara Penggunaan (Peran: ADMIN) -->
+        <section id="admin" class="content-section">
+            <h2><span class="icon-badge icon-hris">🔑</span> II. Panduan Tata Cara Penggunaan (Peran: ADMIN)</h2>
+            <p>Sebagai pemilik usaha atau HR Admin, berikut alur kerja sistematis untuk mengaktifkan dan mengelola seluruh fitur di dalam aplikasi:</p>
+            
+            <div class="timeline">
+                
+                <div class="step-item">
+                    <div class="step-badge">1</div>
+                    <h3>Setup Profil Bisnis Awal (Onboarding)</h3>
+                    <p>Buka halaman <strong>Dashboard HPP</strong> di panel kiri. Jika data profil belum lengkap, Anda akan diminta mengisi nama usaha, kategori industri, serta kapasitas produksi bulanan.</p>
+                    <div class="alert-info">⚠️ Kapasitas produksi bulanan bertindak sebagai pembagi total biaya overhead untuk menghasilkan nilai overhead unit produk.</div>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-badge">2</div>
+                    <h3>Mengisi Database Bahan Baku</h3>
+                    <p>Buka menu <strong>Bahan Baku</strong> dan tambahkan bahan dasar yang Anda gunakan (contoh: Tepung Terigu, Mentega, Cokelat) beserta harga beli satuan per unit takar (gram, kg, pcs, atau liter).</p>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-badge">3</div>
+                    <h3>Memasukkan Biaya Overhead Operasional</h3>
+                    <p>Buka menu <strong>Biaya Overhead</strong> untuk menginput biaya rutin bulanan seperti sewa ruko, listrik, air, internet, atau biaya perawatan mesin.</p>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-badge">4</div>
+                    <h3>Pembuatan Produk & Resep (Wizard 3-Tipe Usaha)</h3>
+                    <p>Buka menu <strong>Produk & HPP</strong> lalu klik "+ Tambah Produk". Tentukan tipe produk:</p>
+                    <ul class="custom-list">
+                        <li><strong>Manufaktur (Produksi Sendiri):</strong> Tentukan nama produk, pilih racikan resep bahan baku, tentukan jam pengerjaan serta upah buruh per jam, dan target keuntungan (margin %).</li>
+                        <li><strong>Dagang (Beli & Jual Kembali):</strong> Cocok untuk reseller, cukup masukkan harga beli dari supplier, ongkos kirim/penanganan, dan target margin.</li>
+                        <li><strong>Jasa / Layanan:</strong> Cocok untuk salon, laundry, atau jasa reparasi, cukup masukkan durasi jam kerja, upah tenaga ahli per jam, dan target margin.</li>
+                    </ul>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-badge">5</div>
+                    <h3>Pengaturan Geofence & Shift Karyawan</h3>
+                    <p>Buka menu <strong>Kelola Lokasi Geofence</strong> untuk menandai titik koordinat lokasi kantor Anda dan tentukan batas radius absen. Atur pula jadwal pergantian shift di menu <strong>Kelola Shift Kerja</strong>.</p>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-badge">6</div>
+                    <h3>Proses Approval Cuti & Lembur</h3>
+                    <p>Admin dapat menyetujui atau menolak permohonan lembur dan cuti karyawan yang masuk melalui menu <strong>Persetujuan Cuti & Izin</strong> dan <strong>Persetujuan Lembur</strong>.</p>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-badge">7</div>
+                    <h3>Pemrosesan Gaji (Payroll) Bulanan</h3>
+                    <p>Di akhir bulan, klik <strong>Kalkulasi Bulanan</strong> di menu <strong>Kelola Gaji & Payroll</strong>. Sistem akan menghitung otomatis kehadiran, lemburan, potongan absen, dan menerbitkan slip gaji PDF ke akun karyawan.</p>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- III. Panduan Tata Cara Penggunaan (Peran: KARYAWAN) -->
+        <section id="karyawan" class="content-section">
+            <h2><span class="icon-badge icon-hris">💼</span> III. Panduan Tata Cara Penggunaan (Peran: KARYAWAN)</h2>
+            <p>Akun Karyawan didesain khusus untuk mengelola aktivitas mandiri sehari-hari:</p>
+            <ul class="custom-list">
+                <li><strong>Presensi Kehadiran Swafoto (Scanner Geolocation):</strong> Izinkan perangkat mengakses lokasi GPS. Ambil swafoto verifikasi, kemudian klik <strong>Check-In</strong> saat mulai bekerja dan <strong>Check-Out</strong> saat selesai. Presensi hanya berhasil apabila posisi Anda berada di dalam radius Geofence kantor.</li>
+                <li><strong>Mengajukan Lembur & Cuti/Izin:</strong> Buka menu Cuti & Izin Saya atau Lembur Saya untuk mengajukan form dengan mengisi alasan dan mengunggah berkas pendukung (contoh: surat keterangan sakit dari dokter).</li>
+                <li><strong>Melihat & Mengunduh Slip Gaji:</strong> Karyawan dapat melihat riwayat slip gaji bulanan yang telah diterbitkan Admin dan mengunduhnya dalam bentuk berkas PDF resmi.</li>
+            </ul>
+        </section>
+
+        <!-- IV. Panduan Tata Cara Penggunaan (Peran: DRIVER / SOPIR) -->
+        <section id="driver" class="content-section">
+            <h2><span class="icon-badge icon-hris">🚚</span> IV. Panduan Tata Cara Penggunaan (Peran: DRIVER / SOPIR)</h2>
+            <p>Untuk kurir atau driver logistik, modul logistik terintegrasi memandu alur distribusi barang kepada pelanggan:</p>
+            <ul class="custom-list">
+                <li><strong>Daftar Tugas Pengiriman:</strong> Buka menu <strong>Tugas Pengiriman Saya</strong> untuk melihat daftar tujuan paket, nama pelanggan, serta detail barang yang harus diantarkan hari ini.</li>
+                <li><strong>Pelacakan Koordinat GPS Aktif:</strong> Saat melakukan perjalanan pengantaran, sistem akan memperbarui koordinat GPS lokasi Anda secara berkala di latar belakang, mempermudah Admin untuk memantau status posisi kurir di peta.</li>
+                <li><strong>Konfirmasi Pengantaran Berhasil:</strong> Setelah barang sampai ke tangan pelanggan, ambil foto bukti serah terima bersama pelanggan langsung melalui kamera aplikasi, lalu kirim status selesai.</li>
+            </ul>
+        </section>
+
+        <!-- V. Rumus Akuntansi yang Digunakan Secara Otomatis -->
+        <section id="rumus" class="content-section">
+            <h2><span class="icon-badge icon-hpp">🧮</span> V. Rumus Kalkulasi HPP & Harga Jual Rekomendasi</h2>
+            <p>Aplikasi ini mengadopsi standar akuntansi biaya manufaktur dan perdagangan untuk menjamin kalkulasi margin keuntungan yang aman:</p>
+            
+            <!-- Rumus Bahan Baku -->
+            <div class="formula-container">
+                <div class="formula-title">🧪 1. Biaya Bahan Baku Produk</div>
+                \[\text{Biaya Bahan Baku} = \sum_{i=1}^{n} (\text{Harga Beli Bahan}_i \times \text{Kuantitas Pemakaian dalam Resep}_i)\]
+                <p class="formula-desc">Mengalkulasi total biaya bahan mentah yang terpakai dalam formula satu satuan unit produk.</p>
+            </div>
+
+            <!-- Rumus Upah Tenaga Kerja -->
+            <div class="formula-container">
+                <div class="formula-title">👷 2. Biaya Tenaga Kerja Langsung (BTKL)</div>
+                \[\text{Biaya Tenaga Kerja} = \text{Jam Pengerjaan per Unit} \times \text{Tarif Upah per Jam}\]
+                <p class="formula-desc">Mengestimasi biaya upah kerja langsung per unit berdasarkan durasi waktu pembuatan.</p>
+            </div>
+
+            <!-- Rumus Alokasi Overhead -->
+            <div class="formula-container">
+                <div class="formula-title">⚡ 3. Alokasi Biaya Overhead Tetap</div>
+                \[\text{Alokasi Overhead per Unit} = \frac{\text{Total Biaya Overhead Bulanan}}{\text{Estimasi Total Produksi Bulanan (Kapasitas)}}\]
+                <p class="formula-desc">Membagikan rata biaya operasional rutin (sewa, listrik, air) ke setiap unit produk yang diproduksi secara proporsional.</p>
+            </div>
+
+            <!-- Rumus HPP Produksi -->
+            <div class="formula-container">
+                <div class="formula-title">✅ 4. Harga Pokok Penjualan (HPP) Manufaktur</div>
+                \[\text{HPP (Manufaktur)} = \text{Biaya Bahan Baku} + \text{Biaya Tenaga Kerja} + \text{Alokasi Overhead per Unit}\]
+                <p class="formula-desc">Total modal akhir untuk memproduksi satu satuan unit produk.</p>
+            </div>
+
+            <!-- Rumus Harga Jual Rekomendasi -->
+            <div class="formula-container">
+                <div class="formula-title">💰 5. Rekomendasi Harga Jual Pasar</div>
+                \[\text{Harga Jual Rekomendasi} = \text{HPP} \times \left(1 + \frac{\text{Target Margin Keuntungan (\%)}}{100}\right)\]
+                <p class="formula-desc">Harga jual optimal di pasar untuk mencapai persentase laba bersih yang ditargetkan di atas biaya modal.</p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>Sistem Manajemen HRIS & HPP UMKM Indonesia &copy; 2026. Dioptimalkan untuk pertumbuhan bisnis modern yang mandiri.</p>
+        </footer>
+    </div>
+</body>
+</html>

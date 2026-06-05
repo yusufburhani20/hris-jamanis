@@ -24,6 +24,7 @@ class UserController extends Controller
         $roles = [
             ['value' => 'admin', 'label' => 'Admin HRIS'],
             ['value' => 'employee', 'label' => 'Karyawan / Staff'],
+            ['value' => 'driver', 'label' => 'Sopir / Driver'],
         ];
 
         return Inertia::render('Admin/Users/Index', [
@@ -41,7 +42,19 @@ class UserController extends Controller
             'nip' => 'nullable|string|max:50',
             'phone' => 'nullable|string|max:20',
             'status' => ['required', Rule::enum(UserStatus::class)],
-            'role' => 'required|string|in:admin,employee',
+            'role' => [
+                'required',
+                'string',
+                function ($attribute, $value, $fail) {
+                    $roles = array_map('trim', explode(',', $value));
+                    $validRoles = ['admin', 'employee', 'driver'];
+                    foreach ($roles as $role) {
+                        if (!in_array($role, $validRoles)) {
+                            $fail('Peran (role) yang dipilih tidak valid.');
+                        }
+                    }
+                }
+            ],
             'basic_salary' => 'nullable|numeric|min:0',
         ]);
 
@@ -67,7 +80,19 @@ class UserController extends Controller
             'nip' => 'nullable|string|max:50',
             'phone' => 'nullable|string|max:20',
             'status' => ['required', Rule::enum(UserStatus::class)],
-            'role' => 'required|string|in:admin,employee',
+            'role' => [
+                'required',
+                'string',
+                function ($attribute, $value, $fail) {
+                    $roles = array_map('trim', explode(',', $value));
+                    $validRoles = ['admin', 'employee', 'driver'];
+                    foreach ($roles as $role) {
+                        if (!in_array($role, $validRoles)) {
+                            $fail('Peran (role) yang dipilih tidak valid.');
+                        }
+                    }
+                }
+            ],
             'basic_salary' => 'nullable|numeric|min:0',
         ]);
 

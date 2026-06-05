@@ -17,7 +17,7 @@ class LeaveController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             // Admin sees all leaves
             $leaves = Leave::with('user:id,name,email,role')
                 ->with('approvedBy:id,name')
@@ -70,7 +70,7 @@ class LeaveController extends Controller
 
         // Send Email notification to all Admin(s)
         try {
-            $admins = \App\Models\User::where('role', 'admin')->get();
+            $admins = \App\Models\User::where('role', 'LIKE', '%admin%')->get();
             foreach ($admins as $admin) {
                 if ($admin->email) {
                     \Illuminate\Support\Facades\Mail::to($admin->email)->send(new \App\Mail\LeaveRequestNotification($leave));
@@ -88,7 +88,7 @@ class LeaveController extends Controller
      */
     public function approve(Request $request, Leave $leave)
     {
-        if ($request->user()->role !== 'admin') {
+        if (!$request->user()->isAdmin()) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -106,7 +106,7 @@ class LeaveController extends Controller
      */
     public function reject(Request $request, Leave $leave)
     {
-        if ($request->user()->role !== 'admin') {
+        if (!$request->user()->isAdmin()) {
             abort(403, 'Unauthorized action.');
         }
 

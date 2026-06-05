@@ -28,6 +28,7 @@
     },
     "dependencies": {
         "@heroicons/react": "^2.2.0",
+        "@rolldown/binding-win32-x64-msvc": "^1.0.0-rc.13",
         "html5-qrcode": "^2.3.8",
         "jsbarcode": "^3.12.3",
         "qrcode.react": "^4.2.0",

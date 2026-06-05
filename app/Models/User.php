@@ -60,9 +60,19 @@ class User extends Authenticatable
                     ->first();
     }
 
+    public function getRoles(): array
+    {
+        return array_map('trim', explode(',', $this->role ?? ''));
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return in_array($role, $this->getRoles());
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->hasRole('admin');
     }
 
     public function payrolls()
@@ -72,6 +82,32 @@ class User extends Authenticatable
 
     public function isEmployee(): bool
     {
-        return $this->role === 'employee';
+        return $this->hasRole('employee');
+    }
+
+    public function isDriver(): bool
+    {
+        return $this->hasRole('driver');
+    }
+
+    public function business()
+    {
+        return $this->hasOne(Business::class);
+    }
+
+    public function materials()
+    {
+        return $this->hasMany(Material::class);
+    }
+
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    public function overheadCosts()
+    {
+        return $this->hasMany(OverheadCost::class);
     }
 }
+

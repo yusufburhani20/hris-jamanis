@@ -152,16 +152,116 @@ Setelah database berhasil di-seed (Langkah 6), Anda dapat masuk ke dalam sistem 
     *   **Email:** `karyawan@salira.com`
     *   **Password:** `password`
 
+### 7. 🏭 Modul Perhitungan HPP UMKM (Harga Pokok Penjualan)
+*   **Kalkulator HPP 3-Tipe Usaha:** Alur perhitungan otomatis terstandarisasi untuk tipe usaha *Produksi Sendiri (Manufaktur)*, *Beli & Jual Kembali (Dagang/Reseller)*, dan *Jasa / Layanan*.
+*   **Database Bahan Baku Terpusat:** Input dan kelola bahan dasar (gram, kg, liter, dll.) satu kali, terhubung otomatis ke resep produk sehingga kalkulasi HPP terbarui secara dinamis saat harga bahan baku berubah.
+*   **Alokasi Biaya Overhead Otomatis:** Sistem mendistribusikan total pengeluaran tetap bulanan (sewa ruko, listrik, air, internet) secara proporsional ke unit produk berdasarkan kapasitas produksi bulanan.
+*   **Estimasi Upah Kerja & Margin:** Input perkiraan durasi pengerjaan per unit dan tarif upah kerja langsung per jam, serta target margin keuntungan (%) untuk mendapatkan harga rekomendasi pasar secara real-time.
+
 ---
 
-## 📁 Struktur Direktori Utama Pengujian
-*   **Rute Web:** [routes/web.php](file:///d:/web/hris/routes/web.php)
-*   **Sistem Payroll:** [Admin/PayrollController.php](file:///d:/web/hris/app/Http/Controllers/Admin/PayrollController.php)
-*   **Panel Lembur:** [OvertimeRequestController.php](file:///d:/web/hris/app/Http/Controllers/OvertimeRequestController.php)
-*   **Sistem Shift Kerja Karyawan:** [Admin/ShiftController.php](file:///d:/web/hris/app/Http/Controllers/Admin/ShiftController.php)
-*   **Tampilan Penggajian (React):** [Pages/Admin/Payrolls/Index.tsx](file:///d:/web/hris/resources/js/Pages/Admin/Payrolls/Index.tsx)
-*   **Tampilan Shift Kerja (React):** [Pages/Admin/Shifts/Index.tsx](file:///d:/web/hris/resources/js/Pages/Admin/Shifts/Index.tsx)
-*   **Tampilan Lembur Karyawan (React):** [Pages/Overtimes/Index.tsx](file:///d:/web/hris/resources/js/Pages/Overtimes/Index.tsx)
+## 🌐 Panduan Deployment di Hosting & VPS
+
+Berikut adalah panduan lengkap cara men-deploy aplikasi **HRIS & HPP terpadu** ini ke hosting cPanel maupun aaPanel (VPS Linux):
+
+### Skenario A: Shared Hosting (cPanel)
+
+Metode deployment di hosting cPanel standar (tanpa akses root SSH):
+
+1.  **Kompilasi Aset Frontend secara Lokal:**
+    Sebelum mengunggah file ke hosting, lakukan kompilasi React/Tailwind di komputer lokal Anda terlebih dahulu:
+    ```bash
+    npm run build
+    composer install --no-dev --optimize-autoloader
+    ```
+2.  **Unggah File Proyek:**
+    *   Buat folder baru di luar folder `public_html` pada direktori home Anda, misalnya `/home/username/hris`.
+    *   Kompres (ZIP) seluruh file proyek Anda (kecuali folder `node_modules` dan `.git`) lalu unggah dan ekstrak ke folder `/home/username/hris`.
+3.  **Sesuaikan Document Root Domain:**
+    *   Masuk ke menu **Domains** di cPanel Anda, cari domain Anda, lalu ganti **Document Root** domain agar mengarah langsung ke folder `/home/username/hris/public`.
+    *   *Alternatif (Jika cPanel membatasi Document Root):* Pindahkan isi folder `/home/username/hris/public` ke folder `public_html` utama. Buka berkas `public_html/index.php` dan sesuaikan path boot Laravel:
+        ```php
+        require __DIR__.'/../hris/bootstrap/app.php';
+        ```
+4.  **Konfigurasi Database & `.env`:**
+    *   Buat database dan user database baru melalui menu **MySQL Database Wizard** di cPanel.
+    *   Salin file `.env` di direktori proyek dan masukkan konfigurasi database Anda. Set `APP_ENV=production` dan `APP_DEBUG=false`.
+5.  **Jalankan Migrasi Database:**
+    *   Jika cPanel Anda memiliki fitur **Terminal**, masuk ke direktori proyek dan jalankan:
+        ```bash
+        php artisan migrate --force --seed
+        ```
+    *   *Alternatif (Jika Terminal tidak tersedia):* Tambahkan satu baris tugas **Cron Job** sekali jalan di cPanel:
+        ```bash
+        cd /home/username/hris && php artisan migrate --force --seed
+        ```
+        Hapus kembali Cron Job tersebut setelah migrasi berhasil berjalan.
+6.  **Membuat Storage Link:**
+    *   Gunakan perintah Cron Job sekali jalan berikut untuk membuat tautan folder publik:
+        ```bash
+        cd /home/username/hris && php artisan storage:link
+        ```
+
+---
+
+### Skenario B: VPS Linux (aaPanel)
+
+Metode deployment di VPS Ubuntu/Debian menggunakan aaPanel:
+
+1.  **Persiapan Lingkungan Server:**
+    *   Pasang aplikasi **Nginx**, **PHP (>=8.2)**, dan **MySQL (>=8.0)** melalui aaPanel App Store.
+    *   Pasang **Node.js Manager** di aaPanel dan instal versi Node.js LTS terbaru.
+2.  **Kloning Repositori:**
+    Masuk ke terminal VPS Anda dan lakukan kloning ke folder web aaPanel:
+    ```bash
+    git clone https://github.com/yusufburhani20/hris.git /www/wwwroot/hris
+    cd /www/wwwroot/hris
+    ```
+3.  **Pengaturan Hak Akses (Permissions):**
+    Nginx membutuhkan hak kepemilikan baca-tulis penuh pada folder storage:
+    ```bash
+    chown -R www:www /www/wwwroot/hris
+    chmod -R 775 /www/wwwroot/hris/storage /www/wwwroot/hris/bootstrap/cache
+    ```
+4.  **Instalasi Dependensi & Build Aset:**
+    ```bash
+    composer install --no-dev --optimize-autoloader
+    npm install --legacy-peer-deps
+    npm run build
+    ```
+5.  **Konfigurasi Situs di aaPanel:**
+    *   Tambahkan website baru di aaPanel dengan menunjuk Root Directory ke `/www/wwwroot/hris/public`.
+    *   Buka konfigurasi situs di aaPanel, masuk ke menu **URL Rewrite**, lalu pilih preset `laravel` atau masukkan rule berikut:
+        ```nginx
+        location / {
+            try_files $uri $uri/ /index.php?$query_string;
+        }
+        ```
+6.  **Konfigurasi Database & Migrasi:**
+    *   Buat database MySQL baru melalui tab **Database** di panel aaPanel.
+    *   Ubah file `/www/wwwroot/hris/.env` dan sesuaikan nama serta password database yang baru dibuat.
+    *   Jalankan migrasi dan generate application key:
+        ```bash
+        php artisan key:generate
+        php artisan migrate --force --seed
+        php artisan storage:link
+        ```
+7.  **Optimasi Kinerja Produksi:**
+    ```bash
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+    ```
+
+---
+
+## 📁 Struktur Direktori Utama Pengujian HPP & HRIS
+*   **Rute Web Utama:** [routes/web.php](file:///e:/Y/hris/routes/web.php)
+*   **HPP Dashboard Controller:** [HppDashboardController.php](file:///e:/Y/hris/app/Http/Controllers/Admin/Hpp/HppDashboardController.php)
+*   **HPP Product Controller:** [HppProductController.php](file:///e:/Y/hris/app/Http/Controllers/Admin/Hpp/HppProductController.php)
+*   **Layout Navigasi & Sidebar:** [AuthenticatedLayout.tsx](file:///e:/Y/hris/resources/js/Layouts/AuthenticatedLayout.tsx)
+*   **Tampilan Dasbor HPP (React):** [Dashboard.tsx](file:///e:/Y/hris/resources/js/Pages/Admin/Hpp/Dashboard.tsx)
+*   **Tampilan Wizard HPP (React):** [Create.tsx](file:///e:/Y/hris/resources/js/Pages/Admin/Hpp/Products/Create.tsx)
 
 ---
 

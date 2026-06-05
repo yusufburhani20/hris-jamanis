@@ -11,7 +11,7 @@ interface User {
     nip: string | null;
     phone: string | null;
     status: string;
-    role: 'admin' | 'employee';
+    role: string;
     basic_salary?: number | string;
 }
 
@@ -141,13 +141,23 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                                                 {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(userRecord.basic_salary || 0))}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`inline-flex text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-0.5 ${
-                                                    userRecord.role === 'admin' 
-                                                        ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-400' 
-                                                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-400'
-                                                }`}>
-                                                    {userRecord.role === 'admin' ? 'HR Admin' : 'Karyawan'}
-                                                </span>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {(userRecord.role ? userRecord.role.split(',') : []).map((rVal) => {
+                                                        const r = rVal.trim();
+                                                        if (!r) return null;
+                                                        const color = r === 'admin' 
+                                                            ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-400' 
+                                                            : r === 'driver'
+                                                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400'
+                                                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-400';
+                                                        const label = r === 'admin' ? 'HR Admin' : (r === 'driver' ? 'Sopir / Driver' : 'Karyawan');
+                                                        return (
+                                                            <span key={r} className={`inline-flex text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 ${color}`}>
+                                                                {label}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-0.5 capitalize 
@@ -221,12 +231,34 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                                             {errors.phone && <p className="text-red-500 text-[10px] mt-1">{errors.phone}</p>}
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Peran (Role Hak Akses)</label>
-                                            <select value={data.role} onChange={e => setData('role', e.target.value as any)} className="mt-1 block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2.5">
-                                                {roles.map(r => (
-                                                    <option key={r.value} value={r.value}>{r.label}</option>
-                                                ))}
-                                            </select>
+                                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Hak Akses (Role)</label>
+                                            <div className="flex flex-wrap gap-4 mt-2">
+                                                {roles.map(r => {
+                                                    const rolesArray = data.role ? data.role.split(',').map((item: string) => item.trim()) : [];
+                                                    const isChecked = rolesArray.includes(r.value);
+
+                                                    return (
+                                                        <label key={r.value} className="inline-flex items-center space-x-2 text-xs text-slate-700 dark:text-slate-300 font-semibold cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                value={r.value}
+                                                                checked={isChecked}
+                                                                onChange={e => {
+                                                                    let updatedRoles = [...rolesArray];
+                                                                    if (e.target.checked) {
+                                                                        updatedRoles.push(r.value);
+                                                                    } else {
+                                                                        updatedRoles = updatedRoles.filter(role => role !== r.value);
+                                                                    }
+                                                                    setData('role', updatedRoles.join(','));
+                                                                }}
+                                                                className="w-4 h-4 text-indigo-600 rounded-md border-slate-300 dark:border-slate-700 focus:ring-indigo-500"
+                                                            />
+                                                            <span>{r.label}</span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
                                             {errors.role && <p className="text-red-500 text-[10px] mt-1">{errors.role}</p>}
                                         </div>
                                     </div>

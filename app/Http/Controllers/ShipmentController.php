@@ -43,7 +43,7 @@ class ShipmentController extends Controller
 
         // Security check: only the assigned courier or admin can access
         $user = $request->user();
-        if ($user->role !== 'admin' && $shipment->courier_id !== $user->id) {
+        if (!$user->isAdmin() && $shipment->courier_id !== $user->id) {
             abort(403, 'Anda tidak ditugaskan sebagai kurir untuk pengiriman barang ini.');
         }
 
@@ -64,7 +64,7 @@ class ShipmentController extends Controller
 
         // Security check: only the assigned courier or admin can update
         $user = $request->user();
-        if ($user->role !== 'admin' && $shipment->courier_id !== $user->id) {
+        if (!$user->isAdmin() && $shipment->courier_id !== $user->id) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

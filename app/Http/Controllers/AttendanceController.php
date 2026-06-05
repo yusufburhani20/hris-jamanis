@@ -199,4 +199,21 @@ class AttendanceController extends Controller
 
         return back()->with('success', 'Presensi pulang berhasil.');
     }
+
+    public function history(Request $request)
+    {
+        $user = Auth::user();
+        $query = Attendance::where('user_id', $user->id);
+
+        if ($request->has(['start_date', 'end_date']) && $request->start_date && $request->end_date) {
+            $query->whereBetween('date', [$request->start_date, $request->end_date]);
+        }
+
+        $attendances = $query->latest('date')->latest('check_in')->get();
+
+        return \Inertia\Inertia::render('User/Attendances/History', [
+            'attendances' => $attendances,
+            'filters' => $request->only(['start_date', 'end_date'])
+        ]);
+    }
 }

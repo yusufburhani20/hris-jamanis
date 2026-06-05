@@ -18,8 +18,9 @@ class ShipmentController extends Controller
     {
         $shipments = Shipment::with(['courier', 'logs'])->orderBy('id', 'desc')->get();
         
-        // Fetch users to assign as couriers (either employees or admins)
-        $couriers = User::where('status', 'active')
+        // Fetch users to assign as couriers (only drivers)
+        $couriers = User::where('role', 'LIKE', '%driver%')
+            ->where('status', 'active')
             ->select('id', 'name', 'email', 'role')
             ->get();
 
@@ -78,7 +79,8 @@ class ShipmentController extends Controller
     {
         $shipment->load(['courier', 'logs']);
         
-        $couriers = User::where('status', 'active')
+        $couriers = User::where('role', 'LIKE', '%driver%')
+            ->where('status', 'active')
             ->select('id', 'name', 'email')
             ->get();
 

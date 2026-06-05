@@ -20,7 +20,7 @@ class OvertimeRequestController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             // Admin sees all overtime requests
             $overtimes = OvertimeRequest::with('user:id,name,email,role')
                 ->with('approvedBy:id,name')
@@ -64,7 +64,7 @@ class OvertimeRequestController extends Controller
 
         // Send Email notification to all Admin(s)
         try {
-            $admins = User::where('role', 'admin')->get();
+            $admins = User::where('role', 'LIKE', '%admin%')->get();
             foreach ($admins as $admin) {
                 if ($admin->email) {
                     Mail::to($admin->email)->send(new OvertimeRequestNotification($overtime));
@@ -82,7 +82,7 @@ class OvertimeRequestController extends Controller
      */
     public function approve(Request $request, OvertimeRequest $overtime)
     {
-        if ($request->user()->role !== 'admin') {
+        if (!$request->user()->isAdmin()) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -100,7 +100,7 @@ class OvertimeRequestController extends Controller
      */
     public function reject(Request $request, OvertimeRequest $overtime)
     {
-        if ($request->user()->role !== 'admin') {
+        if (!$request->user()->isAdmin()) {
             abort(403, 'Unauthorized action.');
         }
 

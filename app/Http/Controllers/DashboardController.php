@@ -17,9 +17,11 @@ class DashboardController extends Controller
         $user = $request->user();
         $today = Carbon::today();
 
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             // --- ADMIN DASHBOARD ---
-            $totalEmployees = User::where('role', 'employee')->count();
+            $totalEmployees = User::where('role', 'LIKE', '%employee%')
+                ->orWhere('role', 'LIKE', '%driver%')
+                ->count();
             $totalGeofences = Geofence::where('is_active', true)->count();
             
             $todayAttendances = Attendance::whereDate('date', $today)->get();
@@ -74,7 +76,9 @@ class DashboardController extends Controller
 
             // FASE 4: 3. Rata-rata Durasi Kerja Efektif Karyawan (Bar Chart)
             $averageWorkHours = [];
-            $activeEmployees = User::where('role', 'employee')->limit(5)->get();
+            $activeEmployees = User::where('role', 'LIKE', '%employee%')
+                ->orWhere('role', 'LIKE', '%driver%')
+                ->limit(5)->get();
             foreach ($activeEmployees as $emp) {
                 $empAttendances = Attendance::where('user_id', $emp->id)
                     ->whereNotNull('check_in')
