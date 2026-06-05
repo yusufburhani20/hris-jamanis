@@ -13,7 +13,7 @@ export default function Register() {
         nip: '',
         phone: '',
         telegram_id: '',
-        role: 'Guru/Dosen',
+        role: 'employee',
         password: '',
         password_confirmation: '',
     });
@@ -59,12 +59,13 @@ export default function Register() {
                 </div>
 
                 <div className="mt-4">
-                    <InputLabel htmlFor="nip" value="NIP / NUPTK" />
+                    <InputLabel htmlFor="nip" value="NIP (Nomor Induk Pegawai)" />
                     <TextInput
                         id="nip"
                         name="nip"
                         value={data.nip}
                         className="mt-1 block w-full"
+                        placeholder="Masukkan NIP Anda"
                         onChange={(e) => setData('nip', e.target.value)}
                         required
                     />
@@ -92,11 +93,11 @@ export default function Register() {
                         name="role"
                         value={data.role}
                         onChange={(e) => setData('role', e.target.value)}
-                        className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                        className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm text-xs py-2.5"
                         required
                     >
-                        <option value="Guru/Dosen">Guru / Dosen</option>
-                        <option value="Staff/TU">Staff / Tata Usaha</option>
+                        <option value="employee">Karyawan / Staff</option>
+                        <option value="driver">Sopir / Driver</option>
                     </select>
                     <InputError message={errors.role} className="mt-2" />
                 </div>

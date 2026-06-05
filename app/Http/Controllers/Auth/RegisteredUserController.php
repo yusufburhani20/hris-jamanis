@@ -37,7 +37,7 @@ class RegisteredUserController extends Controller
             'nip' => 'required|string|max:50|unique:'.User::class,
             'phone' => 'required|string|max:20|unique:'.User::class,
             'telegram_id' => 'nullable|string|max:100',
-            'role' => 'required|string|in:Guru/Dosen,Staff/TU',
+            'role' => 'required|string|in:employee,driver',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ], [
             'required' => ':attribute wajib diisi.',
@@ -47,7 +47,7 @@ class RegisteredUserController extends Controller
         ], [
             'name' => 'Nama Lengkap',
             'email' => 'Email',
-            'nip' => 'NIP/NUPTK',
+            'nip' => 'NIP',
             'phone' => 'No. HP',
             'password' => 'Kata Sandi',
         ]);
@@ -58,11 +58,10 @@ class RegisteredUserController extends Controller
             'nip' => $request->nip,
             'phone' => $request->phone,
             'telegram_id' => $request->telegram_id,
+            'role' => $request->role,
             'status' => \App\Enums\UserStatus::active,
             'password' => Hash::make($request->password),
         ]);
-
-        $user->assignRole($request->role);
 
         event(new Registered($user));
 
