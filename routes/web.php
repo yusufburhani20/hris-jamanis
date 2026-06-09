@@ -121,6 +121,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/shipments/{shipment}/log', [\App\Http\Controllers\Admin\ShipmentController::class, 'addLog'])->name('shipments.add-log');
         Route::post('/shipments/{shipment}/coords', [\App\Http\Controllers\Admin\ShipmentController::class, 'updateCourierCoords'])->name('shipments.coords');
 
+        // Admin Branch CRUD
+        Route::resource('branches', \App\Http\Controllers\Admin\BranchController::class)->except(['show']);
+
         // Admin HPP Calculation Module
         Route::prefix('hpp')->name('hpp.')->group(function () {
             Route::get('/dashboard', [HppDashboardController::class, 'index'])->name('dashboard');

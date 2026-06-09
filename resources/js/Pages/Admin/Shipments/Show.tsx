@@ -49,7 +49,15 @@ interface Shipment {
     logs: ShipmentLog[];
 }
 
-export default function ShipmentShow({ auth, shipment, couriers }: PageProps<{ shipment: Shipment, couriers: Courier[] }>) {
+interface Branch {
+    id: number;
+    name: string;
+    latitude: number;
+    longitude: number;
+    is_active: boolean;
+}
+
+export default function ShipmentShow({ auth, shipment, couriers, branches }: PageProps<{ shipment: Shipment, couriers: Courier[], branches: Branch[] }>) {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const courierMarkerRef = useRef<any>(null);
@@ -414,6 +422,62 @@ export default function ShipmentShow({ auth, shipment, couriers }: PageProps<{ s
                                         value={editData.title}
                                         onChange={e => setEditData('title', e.target.value)}
                                         className="mt-1 block w-full rounded-xl border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 text-xs dark:text-white"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500">Cabang Asal</label>
+                                    <select
+                                        onChange={e => {
+                                            const branch = branches.find(b => b.id === parseInt(e.target.value));
+                                            if (branch) {
+                                                setEditData(prev => ({
+                                                    ...prev,
+                                                    origin_name: branch.name,
+                                                    origin_lat: String(branch.latitude),
+                                                    origin_lng: String(branch.longitude),
+                                                }));
+                                            }
+                                        }}
+                                        className="mt-1 block w-full rounded-xl border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 text-xs dark:text-white cursor-pointer"
+                                    >
+                                        <option value="">-- Ubah Cabang Asal --</option>
+                                        {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                    </select>
+                                    <input
+                                        type="text"
+                                        value={editData.origin_name}
+                                        onChange={e => setEditData('origin_name', e.target.value)}
+                                        className="mt-1 block w-full rounded-xl border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 text-xs dark:text-white"
+                                        placeholder="Nama Asal"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500">Cabang Tujuan</label>
+                                    <select
+                                        onChange={e => {
+                                            const branch = branches.find(b => b.id === parseInt(e.target.value));
+                                            if (branch) {
+                                                setEditData(prev => ({
+                                                    ...prev,
+                                                    destination_name: branch.name,
+                                                    destination_lat: String(branch.latitude),
+                                                    destination_lng: String(branch.longitude),
+                                                }));
+                                            }
+                                        }}
+                                        className="mt-1 block w-full rounded-xl border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 text-xs dark:text-white cursor-pointer"
+                                    >
+                                        <option value="">-- Ubah Cabang Tujuan --</option>
+                                        {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                    </select>
+                                    <input
+                                        type="text"
+                                        value={editData.destination_name}
+                                        onChange={e => setEditData('destination_name', e.target.value)}
+                                        className="mt-1 block w-full rounded-xl border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 text-xs dark:text-white"
+                                        placeholder="Nama Tujuan"
                                     />
                                 </div>
 

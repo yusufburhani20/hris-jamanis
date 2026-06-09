@@ -24,9 +24,13 @@ class ShipmentController extends Controller
             ->select('id', 'name', 'email', 'role')
             ->get();
 
+        // Fetch active branches
+        $branches = \App\Models\Branch::where('is_active', true)->orderBy('name', 'asc')->get();
+
         return Inertia::render('Admin/Shipments/Index', [
             'shipments' => $shipments,
             'couriers' => $couriers,
+            'branches' => $branches,
         ]);
     }
 
@@ -84,9 +88,13 @@ class ShipmentController extends Controller
             ->select('id', 'name', 'email')
             ->get();
 
+        // Fetch active branches
+        $branches = \App\Models\Branch::where('is_active', true)->orderBy('name', 'asc')->get();
+
         return Inertia::render('Admin/Shipments/Show', [
             'shipment' => $shipment,
             'couriers' => $couriers,
+            'branches' => $branches,
         ]);
     }
 

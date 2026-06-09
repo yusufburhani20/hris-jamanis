@@ -48,15 +48,15 @@ interface Shipment {
     courier?: Courier;
 }
 
-const PRESET_BRANCHES = [
-    { name: 'Gudang Pusat Jakarta (Monas)', lat: -6.175392, lng: 106.827153 },
-    { name: 'Cabang Bandung (Paskal)', lat: -6.917464, lng: 107.619122 },
-    { name: 'Cabang Yogyakarta (Malioboro)', lat: -7.795580, lng: 110.369490 },
-    { name: 'Cabang Surabaya (Tunjungan)', lat: -7.257472, lng: 112.752090 },
-    { name: 'Cabang Semarang (Simpang Lima)', lat: -6.966667, lng: 110.416664 },
-];
+interface Branch {
+    id: number;
+    name: string;
+    latitude: number;
+    longitude: number;
+    is_active: boolean;
+}
 
-export default function ShipmentsIndex({ auth, shipments, couriers }: PageProps<{ shipments: Shipment[], couriers: Courier[] }>) {
+export default function ShipmentsIndex({ auth, shipments, couriers, branches }: PageProps<{ shipments: Shipment[], couriers: Courier[], branches: Branch[] }>) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -332,21 +332,22 @@ export default function ShipmentsIndex({ auth, shipments, couriers }: PageProps<
         reset();
     };
 
-    const handlePresetSelect = (type: 'origin' | 'destination', index: number) => {
-        const branch = PRESET_BRANCHES[index];
+    const handlePresetSelect = (type: 'origin' | 'destination', branchId: number) => {
+        const branch = branches.find(b => b.id === branchId);
+        if (!branch) return;
         if (type === 'origin') {
             setData(prev => ({
                 ...prev,
                 origin_name: branch.name,
-                origin_lat: String(branch.lat),
-                origin_lng: String(branch.lng),
+                origin_lat: String(branch.latitude),
+                origin_lng: String(branch.longitude),
             }));
         } else {
             setData(prev => ({
                 ...prev,
                 destination_name: branch.name,
-                destination_lat: String(branch.lat),
-                destination_lng: String(branch.lng),
+                destination_lat: String(branch.latitude),
+                destination_lng: String(branch.longitude),
             }));
         }
     };
@@ -634,8 +635,8 @@ export default function ShipmentsIndex({ auth, shipments, couriers }: PageProps<
                                                         onChange={e => handlePresetSelect('origin', parseInt(e.target.value))}
                                                         className="text-[10px] border-none bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-lg py-0.5 px-1.5 font-bold focus:ring-0 cursor-pointer animate-pulse"
                                                     >
-                                                        <option value="">Cabang Preset</option>
-                                                        {PRESET_BRANCHES.map((b, i) => <option key={i} value={i}>{b.name.split(' ')[0]}</option>)}
+                                                        <option value="">Pilih Cabang</option>
+                                                        {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                                                     </select>
                                                 </div>
                                                 <input 
@@ -677,8 +678,8 @@ export default function ShipmentsIndex({ auth, shipments, couriers }: PageProps<
                                                         onChange={e => handlePresetSelect('destination', parseInt(e.target.value))}
                                                         className="text-[10px] border-none bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-lg py-0.5 px-1.5 font-bold focus:ring-0 cursor-pointer animate-pulse"
                                                     >
-                                                        <option value="">Cabang Preset</option>
-                                                        {PRESET_BRANCHES.map((b, i) => <option key={i} value={i}>{b.name.split(' ')[0]}</option>)}
+                                                        <option value="">Pilih Cabang</option>
+                                                        {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                                                     </select>
                                                 </div>
                                                 <input 
