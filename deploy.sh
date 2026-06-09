@@ -12,6 +12,20 @@ echo "=== MEMULAI DEPLOYMENT SISTEM HRIS ==="
 echo "Direktori: $(pwd)"
 date
 
+# ---- 0. Deteksi Path Node.js aaPanel & NVM ----
+echo "Mendeteksi instalasi Node.js di server..."
+# Cek path aaPanel Node Version Manager
+for node_dir in /www/server/nodejs/v*/bin; do
+    if [ -d "$node_dir" ]; then
+        export PATH="$node_dir:$PATH"
+        echo "      Menemukan Node.js aaPanel: $node_dir"
+    fi
+done
+
+# Tambahkan path sistem umum lainnya
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+echo "      PATH aktif: $PATH"
+
 # --- TRAP: Jaminan php artisan up selalu berjalan saat script exit ---
 # Fungsi ini dipanggil otomatis saat script selesai, berhasil maupun error.
 function cleanup {
@@ -34,6 +48,10 @@ php artisan down || true
 # ---- 2. Git Pull ----
 echo ""
 echo "[2/7] Menarik pembaruan kode dari GitHub..."
+echo "      Mengamankan repositori (discard local changes)..."
+git reset --hard HEAD
+git clean -fd
+
 if [ -n "$GITHUB_USER" ] && [ -n "$GITHUB_TOKEN" ]; then
     echo "      Menggunakan token GitHub untuk autentikasi..."
     git remote set-url origin "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/hris.git"
