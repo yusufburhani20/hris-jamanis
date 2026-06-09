@@ -239,6 +239,45 @@ class ShipmentController extends Controller
     }
 
     /**
+     * Display driver monitor page (Live fleet tracker).
+     */
+    public function driverMonitor()
+    {
+        return Inertia::render('Admin/Shipments/DriverMonitor');
+    }
+
+    /**
+     * Fetch active drivers coords as JSON.
+     */
+    public function activeDrivers()
+    {
+        $drivers = User::where('role', 'LIKE', '%driver%')
+            ->select('id', 'name', 'email', 'driver_lat', 'driver_lng', 'driver_is_sharing_location', 'driver_location_updated_at')
+            ->get()
+            ->map(function ($driver) {
+                // If coordinates are set and updated within last 5 minutes, mark as online
+                $isOnline = $driver->driver_is_sharing_location && 
+                            $driver->driver_location_updated_at && 
+                            $driver->driver_location_updated_at->gt(now()->subMinutes(5));
+                return [
+                    'id' => $driver->id,
+                    'name' => $driver->name,
+                    'email' => $driver->email,
+                    'lat' => $driver->driver_lat,
+                    'lng' => $driver->driver_lng,
+                    'is_sharing' => $driver->driver_is_sharing_location,
+                    'is_online' => $isOnline,
+                    'last_updated' => $driver->driver_location_updated_at ? $driver->driver_location_updated_at->diffForHumans() : 'Belum pernah',
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'drivers' => $drivers,
+        ]);
+    }
+
+    /**
      * Remove the specified shipment from storage.
      */
     public function destroy(Shipment $shipment)

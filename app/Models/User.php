@@ -19,6 +19,8 @@ class User extends Authenticatable
         'status' => UserStatus::class,
         'last_login_at' => 'datetime',
         'basic_salary' => 'decimal:2',
+        'driver_is_sharing_location' => 'boolean',
+        'driver_location_updated_at' => 'datetime',
     ];
 
     public function attendances()

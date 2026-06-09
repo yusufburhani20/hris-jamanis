@@ -68,6 +68,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // --- COURIER SHIPMENTS DASHBOARD ROUTES ---
         Route::get('/courier/shipments', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'index'])->name('courier.shipments.index');
+        Route::post('/courier/update-location', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'updateGlobalLocation'])->name('courier.update-location');
+        Route::post('/courier/shipments/self-initiate', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'storeSelfInitiated'])->name('courier.shipments.self-initiate');
         Route::get('/courier/shipments/{shipment}', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'show'])->name('courier.shipments.show');
         Route::post('/courier/shipments/{shipment}/deliver', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'deliver'])->name('courier.shipments.deliver');
     });
@@ -116,6 +118,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/payrolls/{payroll}', [AdminPayrollController::class, 'destroy'])->name('payrolls.destroy');
 
         // Admin Shipment CRUD & Tracking Controls
+        Route::get('/driver-monitor', [\App\Http\Controllers\Admin\ShipmentController::class, 'driverMonitor'])->name('driver-monitor');
+        Route::get('/active-drivers', [\App\Http\Controllers\Admin\ShipmentController::class, 'activeDrivers'])->name('active-drivers');
         Route::resource('shipments', \App\Http\Controllers\Admin\ShipmentController::class);
         Route::post('/shipments/{shipment}/status', [\App\Http\Controllers\Admin\ShipmentController::class, 'updateStatus'])->name('shipments.update-status');
         Route::post('/shipments/{shipment}/log', [\App\Http\Controllers\Admin\ShipmentController::class, 'addLog'])->name('shipments.add-log');

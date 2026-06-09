@@ -26,6 +26,11 @@ class Shipment extends Model
         'status',
         'notes',
         'delivery_photo',
+        'is_self_initiated',
+    ];
+
+    protected $casts = [
+        'is_self_initiated' => 'boolean',
     ];
 
     /**

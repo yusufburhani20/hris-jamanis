@@ -47,6 +47,69 @@ export default function Authenticated({
     const isEmployee = userRoles.includes('employee');
     const isDriver = userRoles.includes('driver');
 
+    // Live Telemetry Setup for Driver
+    const [isSharing, setIsSharing] = useState(user.driver_is_sharing_location || false);
+
+    const updateGlobalGPS = (sharingState: boolean) => {
+        if (!navigator.geolocation) return;
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                fetch(route('courier.update-location'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as any)?.content || ''
+                    },
+                    body: JSON.stringify({
+                        latitude,
+                        longitude,
+                        is_sharing: sharingState
+                    })
+                }).catch(err => console.error("Error broadcasting GPS:", err));
+            },
+            (error) => {
+                console.warn("Telemetry GPS warning:", error.message);
+                fetch(route('courier.update-location'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as any)?.content || ''
+                    },
+                    body: JSON.stringify({
+                        latitude: 0,
+                        longitude: 0,
+                        is_sharing: sharingState
+                    })
+                }).catch(err => console.error("Error broadcasting GPS:", err));
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    };
+
+    const handleSharingToggle = (val: boolean) => {
+        setIsSharing(val);
+        updateGlobalGPS(val);
+    };
+
+    useEffect(() => {
+        let interval: any = null;
+        if (isDriver && isSharing) {
+            updateGlobalGPS(true);
+            interval = setInterval(() => {
+                updateGlobalGPS(true);
+            }, 30000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [isSharing, isDriver]);
+
     // Grouped HRIS nav structure
     const navGroups = [
         {
@@ -202,6 +265,13 @@ export default function Authenticated({
                     active: route().current('shipments.track') || route().current('shipments.courier-scanner'),
                     show: isAdmin || isDriver,
                     icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>),
+                },
+                {
+                    label: 'Pantau Posisi Driver',
+                    href: route('admin.driver-monitor'),
+                    active: route().current('admin.driver-monitor'),
+                    show: isAdmin,
+                    icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>),
                 },
                 {
                     label: 'Kelola Pengiriman',
@@ -362,6 +432,21 @@ export default function Authenticated({
                     <div className="flex-1 lg:flex-none" />
 
                     <div className="flex items-center gap-2">
+                        {isDriver && (
+                            <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-700/60 shadow-sm mr-1.5 select-none">
+                                <span className={`w-2 h-2 rounded-full ${isSharing ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                                <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">GPS Live</span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={isSharing}
+                                        onChange={e => handleSharingToggle(e.target.checked)}
+                                        className="sr-only peer cursor-pointer" 
+                                    />
+                                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                                </label>
+                            </div>
+                        )}
                         <SystemClock />
                         <ThemeToggle />
 

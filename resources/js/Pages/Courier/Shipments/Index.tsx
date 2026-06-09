@@ -1,6 +1,6 @@
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import React, { useState } from 'react';
 import { 
     TruckIcon, 
@@ -9,7 +9,8 @@ import {
     CheckCircleIcon, 
     ClockIcon, 
     ArrowRightIcon,
-    CameraIcon
+    CameraIcon,
+    PlusIcon
 } from '@heroicons/react/24/outline';
 
 interface Shipment {
@@ -24,8 +25,24 @@ interface Shipment {
     delivery_photo: string | null;
 }
 
-export default function CourierIndex({ auth, shipments }: PageProps<{ shipments: Shipment[] }>) {
+interface Branch {
+    id: number;
+    name: string;
+    address: string | null;
+    latitude: number;
+    longitude: number;
+}
+
+export default function CourierIndex({ auth, shipments, branches }: PageProps<{ shipments: Shipment[], branches: Branch[] }>) {
     const [filterTab, setFilterTab] = useState<'active' | 'history'>('active');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // useForm helper for starting a trip
+    const { data, setData, post, processing, errors, reset } = useForm({
+        origin_branch_id: '',
+        destination_branch_id: '',
+        notes: ''
+    });
 
     // Categorize assignments
     const activeDeliveries = shipments.filter(s => s.status !== 'delivered' && s.status !== 'failed');
@@ -38,6 +55,16 @@ export default function CourierIndex({ auth, shipments }: PageProps<{ shipments:
         alert(`Resi ${text} berhasil disalin!`);
     };
 
+    const handleSelfInitiateSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(route('courier.shipments.self-initiate'), {
+            onSuccess: () => {
+                setIsModalOpen(false);
+                reset();
+            }
+        });
+    };
+
     return (
         <AuthenticatedLayout
             header={<h2 className="font-semibold text-xl text-slate-800 dark:text-slate-200 leading-tight">Daftar Tugas Pengiriman Kurir</h2>}
@@ -46,15 +73,24 @@ export default function CourierIndex({ auth, shipments }: PageProps<{ shipments:
 
             <div className="py-6 max-w-4xl mx-auto space-y-6">
                 
-                {/* DRIVER WELCOME HEADER */}
-                <div className="bg-gradient-to-r from-slate-800 to-indigo-950 text-white p-6 rounded-2xl shadow-xl flex items-center space-x-4">
-                    <div className="p-3.5 bg-indigo-500/10 text-indigo-400 rounded-2xl border border-indigo-500/20">
-                        <TruckIcon className="w-8 h-8" />
+                {/* DRIVER WELCOME HEADER WITH SELF-INITIATED TRIP BUTTON */}
+                <div className="bg-gradient-to-r from-slate-800 to-indigo-950 text-white p-6 rounded-2xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center space-x-4">
+                        <div className="p-3.5 bg-indigo-500/10 text-indigo-400 rounded-2xl border border-indigo-500/20 flex-shrink-0">
+                            <TruckIcon className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <h1 className="text-lg font-black tracking-tight">Halo, {auth.user.name}!</h1>
+                            <p className="text-xs text-slate-300">Berikut adalah daftar stok pengisian cabang yang ditugaskan kepada Anda. Harap pancarkan GPS saat berkendara.</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-lg font-black tracking-tight">Halo, {auth.user.name}!</h1>
-                        <p className="text-xs text-slate-300">Berikut adalah daftar stok pengisian cabang yang ditugaskan kepada Anda. Harap pancarkan GPS saat berkendara.</p>
-                    </div>
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center space-x-1.5 whitespace-nowrap self-start md:self-auto"
+                    >
+                        <PlusIcon className="w-4 h-4" />
+                        <span>Buat Perjalanan Mandiri</span>
+                    </button>
                 </div>
 
                 {/* TASK SUMMARY COUNTER */}
@@ -192,6 +228,86 @@ export default function CourierIndex({ auth, shipments }: PageProps<{ shipments:
                 </div>
 
             </div>
+
+            {/* SELF INITIATED TRIP MODAL */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-2xl max-w-md w-full overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                            <h3 className="font-black text-slate-900 dark:text-white text-lg">Mulai Perjalanan Mandiri</h3>
+                            <button 
+                                onClick={() => { setIsModalOpen(false); reset(); }} 
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleSelfInitiateSubmit} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Cabang Asal</label>
+                                <select
+                                    value={data.origin_branch_id}
+                                    onChange={e => setData('origin_branch_id', e.target.value)}
+                                    required
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-900 text-sm font-semibold dark:text-white focus:border-indigo-500 focus:ring-indigo-500"
+                                >
+                                    <option value="">-- Pilih Cabang Asal --</option>
+                                    {branches.map(b => (
+                                        <option key={b.id} value={b.id}>{b.name}</option>
+                                    ))}
+                                </select>
+                                {errors.origin_branch_id && <p className="text-rose-500 text-xs mt-1">{errors.origin_branch_id}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Cabang Tujuan</label>
+                                <select
+                                    value={data.destination_branch_id}
+                                    onChange={e => setData('destination_branch_id', e.target.value)}
+                                    required
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-900 text-sm font-semibold dark:text-white focus:border-indigo-500 focus:ring-indigo-500"
+                                >
+                                    <option value="">-- Pilih Cabang Tujuan --</option>
+                                    {branches.map(b => (
+                                        <option key={b.id} value={b.id}>{b.name}</option>
+                                    ))}
+                                </select>
+                                {errors.destination_branch_id && <p className="text-rose-500 text-xs mt-1">{errors.destination_branch_id}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Catatan Perjalanan (Opsional)</label>
+                                <textarea
+                                    value={data.notes}
+                                    onChange={e => setData('notes', e.target.value)}
+                                    rows={3}
+                                    placeholder="Tuliskan tujuan khusus, rincian barang, atau instruksi..."
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-900 text-sm dark:text-white focus:border-indigo-500 focus:ring-indigo-500"
+                                />
+                                {errors.notes && <p className="text-rose-500 text-xs mt-1">{errors.notes}</p>}
+                            </div>
+
+                            <div className="flex justify-end space-x-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsModalOpen(false); reset(); }}
+                                    className="px-4 py-2 text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl disabled:opacity-50 transition-all shadow-md shadow-indigo-600/10"
+                                >
+                                    {processing ? 'Menyimpan...' : 'Mulai Jalan'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }
