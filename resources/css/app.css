@@ -30,3 +30,21 @@
         border-radius: 9999px;
     }
 }
+
+@layer utilities {
+    /* Disable all shadow effects */
+    .shadow, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl, .shadow-3xl, .shadow-inner {
+        box-shadow: none !important;
+    }
+    
+    /* Disable all gradient backgrounds and fallback to solid brand green */
+    .bg-gradient-to-r, .bg-gradient-to-br, .bg-gradient-to-tr, .bg-gradient-to-l, .bg-gradient-to-t, .bg-gradient-to-b, .bg-gradient-to-bl, .bg-gradient-to-tl {
+        background-image: none !important;
+        background-color: #2b7a43 !important; /* Brand Green */
+    }
+
+    /* Ensure dark header sections remain dark slate instead of brand green */
+    .from-slate-800, .from-slate-900, .from-slate-950, .to-indigo-950 {
+        background-color: #0f172a !important;
+    }
+}
