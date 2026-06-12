@@ -113,22 +113,38 @@ class Payroll extends Model
         }
 
         // Save or update payroll draft
-        return self::updateOrCreate(
+        $payroll = self::updateOrCreate(
             [
                 'user_id' => $userId,
-                'month' => $month,
-                'year' => $year,
+                'month'   => $month,
+                'year'    => $year,
             ],
             [
                 'basic_salary' => $basicSalary,
-                'allowances' => $allowances,
-                'deductions' => $deductions,
+                'allowances'   => $allowances,
+                'deductions'   => $deductions,
                 'overtime_pay' => $overtimePay,
-                'net_salary' => $netSalary,
-                'status' => 'draft',
-                'start_date' => $startDate->toDateString(),
-                'end_date' => $endDate->toDateString(),
+                'net_salary'   => $netSalary,
+                'status'       => 'draft',
+                'start_date'   => $startDate->toDateString(),
+                'end_date'     => $endDate->toDateString(),
             ]
         );
+
+        // Send push notification to the employee
+        try {
+            $monthName = Carbon::create($year, $month)->translatedFormat('F Y');
+            $netFormatted = 'Rp ' . number_format($netSalary, 0, ',', '.');
+            app(\App\Services\WebPushService::class)->sendToUser(
+                $userId,
+                '📋 Slip Gaji Tersedia',
+                "Slip gaji Anda periode {$monthName} telah dihitung. Total: {$netFormatted}",
+                ['url' => '/payrolls']
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Push notif (payroll) failed: ' . $e->getMessage());
+        }
+
+        return $payroll;
     }
 }

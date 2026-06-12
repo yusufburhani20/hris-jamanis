@@ -142,4 +142,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
+// --- PWA PUSH NOTIFICATION ROUTES ---
+Route::get('/push/vapid-public-key', [App\Http\Controllers\PushSubscriptionController::class, 'vapidPublicKey'])->name('push.vapid');
+Route::middleware('auth')->group(function () {
+    Route::post('/push/subscribe', [App\Http\Controllers\PushSubscriptionController::class, 'store'])->name('push.subscribe');
+    Route::delete('/push/unsubscribe', [App\Http\Controllers\PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
+});
+
 require __DIR__.'/auth.php';

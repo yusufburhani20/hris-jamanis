@@ -23,6 +23,82 @@ try {
 
 Schedule::command('salira:send-absence-alerts')->dailyAt($alertTime);
 
+// ─── PWA Push Notification: Pengingat Absensi ────────────────────────────────
+use App\Services\WebPushService;
+use App\Models\User as UserModel;
+
+// Pengingat Check-in pagi (jam bisa diset dari settings, default 07:45)
+$checkinReminder = '07:45';
+try {
+    if (Schema::hasTable('settings')) {
+        $checkinReminder = Setting::where('key', 'push_checkin_reminder_time')->value('value') ?? '07:45';
+    }
+} catch (\Exception $e) {}
+
+Schedule::call(function () {
+    try {
+        $employees = UserModel::where('role', 'LIKE', '%employee%')
+            ->orWhere('role', 'LIKE', '%driver%')
+            ->get();
+
+        $push = app(WebPushService::class);
+        foreach ($employees as $emp) {
+            // Only send if they haven't checked in today
+            $hasCheckedIn = \App\Models\Attendance::where('user_id', $emp->id)
+                ->whereDate('date', today())
+                ->exists();
+
+            if (!$hasCheckedIn) {
+                $push->sendToUser(
+                    $emp->id,
+                    '🔔 Pengingat Absensi Masuk',
+                    'Jangan lupa melakukan check-in kehadiran hari ini!',
+                    ['url' => '/attendances/scanner']
+                );
+            }
+        }
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::warning('Push checkin reminder failed: ' . $e->getMessage());
+    }
+})->dailyAt($checkinReminder);
+
+// Pengingat Check-out sore (jam bisa diset dari settings, default 17:00)
+$checkoutReminder = '17:00';
+try {
+    if (Schema::hasTable('settings')) {
+        $checkoutReminder = Setting::where('key', 'push_checkout_reminder_time')->value('value') ?? '17:00';
+    }
+} catch (\Exception $e) {}
+
+Schedule::call(function () {
+    try {
+        $employees = UserModel::where('role', 'LIKE', '%employee%')
+            ->orWhere('role', 'LIKE', '%driver%')
+            ->get();
+
+        $push = app(WebPushService::class);
+        foreach ($employees as $emp) {
+            // Only send if they checked in but haven't checked out
+            $attendance = \App\Models\Attendance::where('user_id', $emp->id)
+                ->whereDate('date', today())
+                ->whereNotNull('check_in')
+                ->whereNull('check_out')
+                ->exists();
+
+            if ($attendance) {
+                $push->sendToUser(
+                    $emp->id,
+                    '🌙 Pengingat Absensi Pulang',
+                    'Sudah waktunya pulang! Jangan lupa melakukan check-out.',
+                    ['url' => '/attendances/scanner']
+                );
+            }
+        }
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::warning('Push checkout reminder failed: ' . $e->getMessage());
+    }
+})->dailyAt($checkoutReminder);
+
 use App\Models\User;
 use App\Models\Payroll;
 

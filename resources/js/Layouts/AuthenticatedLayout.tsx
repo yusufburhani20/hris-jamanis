@@ -4,6 +4,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState, useEffect } from 'react';
 import ThemeToggle from '@/Components/ThemeToggle';
 import SystemClock from '@/Components/SystemClock';
+import { usePushNotification } from '@/hooks/usePushNotification';
 
 export default function Authenticated({
     header,
@@ -13,6 +14,9 @@ export default function Authenticated({
     const flash = props.flash as any;
     const user = props.auth.user as any; 
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // Auto-subscribe to PWA push notifications
+    usePushNotification();
     
     // Sidebar collapse state (Desktop)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {

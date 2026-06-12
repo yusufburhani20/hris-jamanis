@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hris-pwa-cache-v1';
+const CACHE_NAME = 'hris-pwa-cache-v2';
 const ASSETS_TO_CACHE = [
     '/',
     '/images/icon-192.png',
@@ -84,5 +84,71 @@ self.addEventListener('fetch', (event) => {
                     }
                 });
             })
+    );
+});
+
+// ─── PUSH NOTIFICATION HANDLER ───────────────────────────────────────────────
+
+self.addEventListener('push', (event) => {
+    let data = {
+        title: 'HRIS Enterprise',
+        body: 'Ada notifikasi baru untuk Anda.',
+        icon: '/images/icon-192.png',
+        badge: '/images/icon-192.png',
+        data: { url: '/' }
+    };
+
+    if (event.data) {
+        try {
+            const parsed = event.data.json();
+            data = {
+                title: parsed.title || data.title,
+                body: parsed.body || data.body,
+                icon: parsed.icon || data.icon,
+                badge: parsed.badge || data.badge,
+                data: parsed.data || data.data,
+            };
+        } catch (e) {
+            data.body = event.data.text();
+        }
+    }
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, {
+            body: data.body,
+            icon: data.icon,
+            badge: data.badge,
+            data: data.data,
+            vibrate: [200, 100, 200],
+            requireInteraction: false,
+            tag: data.data?.url || 'hris-notification',
+        })
+    );
+});
+
+// ─── NOTIFICATION CLICK HANDLER ──────────────────────────────────────────────
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+
+    const targetUrl = event.notification.data?.url || '/dashboard';
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            // If there's an open tab, focus it and navigate
+            for (const client of windowClients) {
+                if ('focus' in client) {
+                    client.focus();
+                    if ('navigate' in client) {
+                        client.navigate(targetUrl);
+                    }
+                    return;
+                }
+            }
+            // Otherwise open a new tab
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
     );
 });
