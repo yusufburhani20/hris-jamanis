@@ -58,9 +58,11 @@ class PayrollController extends Controller
             'user_id' => 'required|exists:users,id',
             'month' => 'required|integer|between:1,12',
             'year' => 'required|integer|min:2020',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
         ]);
 
-        $this->performCalculation($request->user_id, $request->month, $request->year);
+        $this->performCalculation($request->user_id, $request->month, $request->year, $request->start_date, $request->end_date);
 
         return redirect()->back()->with('success', 'Draf gaji berhasil dihitung berdasarkan rekap presensi, mangkir, dan lembur.');
     }
@@ -73,10 +75,14 @@ class PayrollController extends Controller
         $request->validate([
             'month' => 'required|integer|between:1,12',
             'year' => 'required|integer|min:2020',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
         ]);
 
         $month = $request->month;
         $year = $request->year;
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
 
         $employees = User::where('role', 'LIKE', '%employee%')
             ->orWhere('role', 'LIKE', '%driver%')
@@ -86,7 +92,7 @@ class PayrollController extends Controller
         }
 
         foreach ($employees as $employee) {
-            $this->performCalculation($employee->id, $month, $year);
+            $this->performCalculation($employee->id, $month, $year, $startDate, $endDate);
         }
 
         return redirect()->back()->with('success', 'Draf gaji untuk seluruh karyawan berhasil dihitung.');
@@ -95,14 +101,14 @@ class PayrollController extends Controller
     /**
      * Perform payroll calculation for a single employee.
      */
-    private function performCalculation($userId, $month, $year)
+    private function performCalculation($userId, $month, $year, $startDateInput = null, $endDateInput = null)
     {
         $user = User::findOrFail($userId);
         $basicSalary = floatval($user->basic_salary ?: 4500000);
 
         // Calculate attendance metrics for that month/year
-        $startDate = Carbon::create($year, $month, 1)->startOfMonth();
-        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        $startDate = $startDateInput ? Carbon::parse($startDateInput) : Carbon::create($year, $month, 1)->startOfMonth();
+        $endDate = $endDateInput ? Carbon::parse($endDateInput) : Carbon::create($year, $month, 1)->endOfMonth();
 
         $attendances = Attendance::where('user_id', $userId)
             ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
@@ -183,6 +189,8 @@ class PayrollController extends Controller
                 'overtime_pay' => $overtimePay,
                 'net_salary' => $netSalary,
                 'status' => 'draft',
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
             ]
         );
     }

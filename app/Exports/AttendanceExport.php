@@ -2,69 +2,60 @@
 
 namespace App\Exports;
 
-use App\Models\Attendance;
-use Maatwebsite\Excel\Concerns\FromQuery;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStyles;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use Illuminate\Contracts\View\View;
+use Maatwebsite\Excel\Concerns\FromView;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-class AttendanceExport implements FromQuery, WithHeadings, WithMapping, WithStyles
+class AttendanceExport implements FromView, ShouldAutoSize
 {
     protected $startDate;
     protected $endDate;
+    protected $userId;
+    protected $month;
 
-    public function __construct($startDate, $endDate)
+    public function __construct($startDate, $endDate, $userId = null, $month = null)
     {
         $this->startDate = $startDate;
         $this->endDate = $endDate;
+        $this->userId = $userId;
+        $this->month = $month;
     }
 
-    public function query()
+    public function view(): View
     {
-        return Attendance::query()
-            ->with('user')
-            ->whereBetween('date', [$this->startDate, $this->endDate])
-            ->join('users', 'attendances.user_id', '=', 'users.id')
+        $query = \App\Models\Attendance::with('user');
+
+        if ($this->userId) {
+            $query->where('user_id', $this->userId);
+        }
+
+        if ($this->month) {
+            $monthDate = \Carbon\Carbon::parse($this->month);
+            $query->whereYear('date', $monthDate->year)
+                  ->whereMonth('date', $monthDate->month);
+            $startDate = $monthDate->startOfMonth()->toDateString();
+            $endDate = $monthDate->endOfMonth()->toDateString();
+        } else {
+            $startDate = $this->startDate ?: \Carbon\Carbon::now()->startOfMonth()->toDateString();
+            $endDate = $this->endDate ?: \Carbon\Carbon::now()->endOfMonth()->toDateString();
+            $query->whereBetween('date', [$startDate, $endDate]);
+        }
+
+        $attendances = $query->join('users', 'attendances.user_id', '=', 'users.id')
             ->orderBy('users.name', 'asc')
             ->orderBy('attendances.date', 'asc')
-            ->select('attendances.*');
-    }
+            ->select('attendances.*')
+            ->get();
 
-    public function headings(): array
-    {
-        return [
-            'ID',
-            'Nama Guru',
-            'Tanggal',
-            'Check-In',
-            'Check-Out',
-            'Status',
-            'Notes',
-            'Link Foto Check-In',
-            'Link Foto Check-Out',
-        ];
-    }
+        $groupedAttendances = $attendances->groupBy(function($item) {
+            return $item->user->name;
+        });
 
-    public function map($attendance): array
-    {
-        return [
-            $attendance->id,
-            $attendance->user->name,
-            $attendance->date,
-            $attendance->check_in,
-            $attendance->check_out,
-            $attendance->status->label(),
-            $attendance->system_notes,
-            $attendance->photo_url ? url($attendance->photo_url) : '-',
-            $attendance->checkout_photo_url ? url($attendance->checkout_photo_url) : '-',
-        ];
-    }
-
-    public function styles(Worksheet $sheet)
-    {
-        return [
-            1    => ['font' => ['bold' => true]],
-        ];
+        return view('exports.attendances-excel', [
+            'groupedAttendances' => $groupedAttendances,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'month' => $this->month,
+        ]);
     }
 }

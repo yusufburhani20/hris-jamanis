@@ -24,6 +24,8 @@ interface Payroll {
     status: 'draft' | 'paid';
     paid_at: string | null;
     user: User;
+    start_date: string | null;
+    end_date: string | null;
 }
 
 interface PayrollSettings {
@@ -46,6 +48,8 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
         user_id: '',
         month: currentMonth,
         year: currentYear,
+        start_date: `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`,
+        end_date: `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(new Date(currentYear, currentMonth, 0).getDate()).padStart(2, '0')}`,
     });
 
     const { data: settingsData, setData: setSettingsData, post: postSettings, processing: processingSettings } = useForm({
@@ -125,7 +129,9 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
         if (confirm('Hitung draf gaji untuk seluruh karyawan pada periode ini secara masal?')) {
             router.post(route('admin.payrolls.calculateBulk'), {
                 month,
-                year
+                year,
+                start_date: data.start_date,
+                end_date: data.end_date
             }, {
                 preserveScroll: true
             });
@@ -308,8 +314,14 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                     <select
                                         value={month}
                                         onChange={(e) => {
-                                            setMonth(parseInt(e.target.value));
-                                            setData('month', parseInt(e.target.value));
+                                            const newMonth = parseInt(e.target.value);
+                                            setMonth(newMonth);
+                                            setData(prev => ({
+                                                ...prev,
+                                                month: newMonth,
+                                                start_date: `${prev.year}-${String(newMonth).padStart(2, '0')}-01`,
+                                                end_date: `${prev.year}-${String(newMonth).padStart(2, '0')}-${String(new Date(prev.year, newMonth, 0).getDate()).padStart(2, '0')}`,
+                                            }));
                                         }}
                                         className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
                                     >
@@ -323,8 +335,14 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                     <select
                                         value={year}
                                         onChange={(e) => {
-                                            setYear(parseInt(e.target.value));
-                                            setData('year', parseInt(e.target.value));
+                                            const newYear = parseInt(e.target.value);
+                                            setYear(newYear);
+                                            setData(prev => ({
+                                                ...prev,
+                                                year: newYear,
+                                                start_date: `${newYear}-${String(prev.month).padStart(2, '0')}-01`,
+                                                end_date: `${newYear}-${String(prev.month).padStart(2, '0')}-${String(new Date(newYear, prev.month, 0).getDate()).padStart(2, '0')}`,
+                                            }));
                                         }}
                                         className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
                                     >
@@ -353,6 +371,30 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                             </p>
                             
                             <form onSubmit={handleCalculate} className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tanggal Mulai Periode</label>
+                                        <input
+                                            type="date"
+                                            value={data.start_date}
+                                            onChange={(e) => setData('start_date', e.target.value)}
+                                            required
+                                            className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs"
+                                        />
+                                        {errors.start_date && <p className="text-red-500 text-xs mt-1">{errors.start_date}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tanggal Selesai Periode</label>
+                                        <input
+                                            type="date"
+                                            value={data.end_date}
+                                            onChange={(e) => setData('end_date', e.target.value)}
+                                            required
+                                            className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs"
+                                        />
+                                        {errors.end_date && <p className="text-red-500 text-xs mt-1">{errors.end_date}</p>}
+                                    </div>
+                                </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Pilih Karyawan</label>
                                     <select
@@ -458,7 +500,12 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="font-bold text-gray-900 dark:text-white">{payroll.user.name}</div>
-                                                <div className="text-xs text-gray-500">NIP: {payroll.user.nip || '-'}</div>
+                                                <div className="text-xs text-gray-500 mb-0.5">NIP: {payroll.user.nip || '-'}</div>
+                                                {payroll.start_date && payroll.end_date && (
+                                                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                                        🗓️ {new Date(payroll.start_date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})} - {new Date(payroll.end_date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-gray-600 dark:text-gray-300 font-mono text-sm">{formatRupiah(payroll.basic_salary)}</td>
                                             <td className="px-6 py-4 text-emerald-600 font-mono text-sm">+{formatRupiah(payroll.allowances)}</td>

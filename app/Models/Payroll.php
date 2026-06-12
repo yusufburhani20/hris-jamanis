@@ -20,6 +20,8 @@ class Payroll extends Model
         'deductions' => 'decimal:2',
         'overtime_pay' => 'decimal:2',
         'net_salary' => 'decimal:2',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
     public function user()

@@ -26,6 +26,7 @@ interface ShipmentLog {
     description: string;
     latitude: number | null;
     longitude: number | null;
+    photo_path: string | null;
     created_at: string;
 }
 
@@ -46,7 +47,9 @@ interface Shipment {
     status: 'packing' | 'picked_up' | 'in_transit' | 'delivered' | 'failed';
     notes: string | null;
     created_at: string;
+    updated_at?: string;
     logs: ShipmentLog[];
+    delivery_photo?: string | null;
 }
 
 interface Branch {
@@ -76,6 +79,14 @@ export default function ShipmentShow({ auth, shipment, couriers, branches }: Pag
         latitude: String(shipment.courier_lat || shipment.origin_lat),
         longitude: String(shipment.courier_lng || shipment.origin_lng),
     });
+
+    const [viewerPhoto, setViewerPhoto] = useState<{
+        url: string;
+        title: string;
+        time: string;
+        gps: string | null;
+        driver: string;
+    } | null>(null);
 
     // Form helper to save overall data
     const { data: editData, setData: setEditData, put, processing: editProcessing } = useForm({
@@ -280,20 +291,44 @@ export default function ShipmentShow({ auth, shipment, couriers, branches }: Pag
                                                 <div className={`w-2.5 h-2.5 rounded-full ${isLatest ? 'bg-white' : 'bg-slate-400'}`} />
                                             </span>
                                             
-                                            <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 mb-2">
-                                                    <h4 className={`text-sm font-black ${isLatest ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-slate-300'}`}>
-                                                        {log.title}
-                                                    </h4>
-                                                    <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                                                        <CalendarIcon className="w-3 h-3" />
-                                                        {new Date(log.created_at).toLocaleString('id-ID', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}
-                                                    </span>
+                                            <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-start">
+                                                <div className="flex-1">
+                                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 mb-2">
+                                                        <h4 className={`text-sm font-black ${isLatest ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-slate-300'}`}>
+                                                            {log.title}
+                                                        </h4>
+                                                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                                            <CalendarIcon className="w-3 h-3" />
+                                                            {new Date(log.created_at).toLocaleString('id-ID', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{log.description}</p>
+                                                    {log.latitude && (
+                                                        <div className="text-[9px] font-mono text-slate-400 mt-2">
+                                                            GPS Checkpoint: {log.latitude}, {log.longitude}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{log.description}</p>
-                                                {log.latitude && (
-                                                    <div className="text-[9px] font-mono text-slate-400 mt-2">
-                                                        GPS Checkpoint: {log.latitude}, {log.longitude}
+
+                                                {log.photo_path && (
+                                                    <div 
+                                                        onClick={() => setViewerPhoto({
+                                                            url: `/storage/${log.photo_path}`,
+                                                            title: log.title,
+                                                            time: new Date(log.created_at).toLocaleString('id-ID', {day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'}),
+                                                            gps: log.latitude && log.longitude ? `${log.latitude}, ${log.longitude}` : null,
+                                                            driver: shipment.courier_name || 'Driver Logistik'
+                                                        })}
+                                                        className="relative w-24 h-18 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex-shrink-0 cursor-pointer active:scale-95 transition-all shadow-sm"
+                                                    >
+                                                        <img 
+                                                            src={`/storage/${log.photo_path}`} 
+                                                            alt="Foto Checkpoint" 
+                                                            className="w-full h-full object-cover" 
+                                                        />
+                                                        <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                                            <span className="text-[10px] text-white font-bold bg-indigo-600/90 backdrop-blur-sm px-2 py-1 rounded">🔍</span>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -307,6 +342,29 @@ export default function ShipmentShow({ auth, shipment, couriers, branches }: Pag
 
                     {/* COL 2: CONTROL PANEL PANEL (SPAN 1) */}
                     <div className="space-y-6">
+
+                        {/* Bukti Foto Pengiriman Card */}
+                        {shipment.delivery_photo && (
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm p-6 space-y-4">
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white">Bukti Penerimaan Paket</h3>
+                                <div className="relative rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-50 dark:bg-slate-900/50">
+                                    <img 
+                                        src={`/storage/${shipment.delivery_photo}`} 
+                                        alt="Bukti Pengiriman" 
+                                        className="w-full h-auto max-h-[300px] object-contain mx-auto" 
+                                    />
+                                    <div className="absolute bottom-0 left-0 right-0 bg-slate-950/80 backdrop-blur-sm text-white p-3 text-[10px] space-y-0.5 border-t border-white/10 select-none text-left">
+                                        <p className="font-extrabold text-emerald-400 tracking-wider">📸 PROOF OF DELIVERY (POD)</p>
+                                        <p>👤 <b>Kurir:</b> {shipment.courier_name || 'Driver Logistik'}</p>
+                                        <p>📅 <b>Tanggal:</b> {new Date(shipment.updated_at || shipment.created_at).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                        <p>⏰ <b>Waktu:</b> {new Date(shipment.updated_at || shipment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB</p>
+                                        {shipment.courier_lat && shipment.courier_lng && (
+                                            <p>📍 <b>GPS:</b> {shipment.courier_lat}, {shipment.courier_lng}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Status Update Card */}
                         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm p-6 space-y-4">
@@ -524,6 +582,38 @@ export default function ShipmentShow({ auth, shipment, couriers, branches }: Pag
                 </div>
             </div>
             
+            {/* Glassmorphic Photo Zoom Modal */}
+            {viewerPhoto && (
+                <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+                    onClick={() => setViewerPhoto(null)}
+                >
+                    <div 
+                        className="relative bg-white dark:bg-slate-800 rounded-2xl p-4 max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-700/60"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center mb-3 border-b dark:border-slate-700 pb-2">
+                            <h3 className="font-black text-slate-855 dark:text-white text-sm">{viewerPhoto.title}</h3>
+                            <button 
+                                onClick={() => setViewerPhoto(null)} 
+                                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex-1 flex items-center justify-center">
+                            <img src={viewerPhoto.url} alt="Checkpoint" className="max-h-[60vh] w-auto object-contain rounded-xl" />
+                            <div className="absolute bottom-0 left-0 right-0 bg-slate-950/85 backdrop-blur-md text-white p-3.5 text-[10px] space-y-0.5 border-t border-white/10 select-none text-left">
+                                <p className="font-extrabold text-indigo-400 tracking-wider">📸 LIVE PHOTO CHECKPOINT</p>
+                                <p>👤 <b>Kurir:</b> {viewerPhoto.driver}</p>
+                                <p>📅 <b>Waktu:</b> {viewerPhoto.time} WIB</p>
+                                {viewerPhoto.gps && <p>📍 <b>GPS:</b> {viewerPhoto.gps}</p>}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Custom Leaflet keyframes support inside the dashboard */}
             <style>{`
                 @keyframes ping-once {

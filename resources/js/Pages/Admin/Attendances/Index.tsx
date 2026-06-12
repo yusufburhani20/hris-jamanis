@@ -23,16 +23,46 @@ interface Attendance {
     user: User;
 }
 
-export default function AttendanceIndex({ auth, attendances, filters }: PageProps<{ attendances: Attendance[], filters: { start_date?: string, end_date?: string } }>) {
+export default function AttendanceIndex({ auth, attendances, users, filters }: PageProps<{ attendances: Attendance[], users: User[], filters: { start_date?: string, end_date?: string, user_id?: string, month?: string } }>) {
     const [startDate, setStartDate] = useState(filters.start_date || '');
     const [endDate, setEndDate] = useState(filters.end_date || '');
-    const [photoViewer, setPhotoViewer] = useState<{ checkin: string | null, checkout: string | null, checkinTime: string | null, checkoutTime: string | null } | null>(null);
+    const [userId, setUserId] = useState(filters.user_id || '');
+    const [month, setMonth] = useState(filters.month || '');
+    const [photoViewer, setPhotoViewer] = useState<{ 
+        checkin: string | null, 
+        checkout: string | null, 
+        checkinTime: string | null, 
+        checkoutTime: string | null,
+        userName?: string,
+        date?: string,
+        checkinCoords?: string
+    } | null>(null);
+
+    const handleMonthChange = (val: string) => {
+        setMonth(val);
+        if (val) {
+            setStartDate('');
+            setEndDate('');
+        }
+    };
+
+    const handleCustomDateChange = (type: 'start' | 'end', val: string) => {
+        if (type === 'start') {
+            setStartDate(val);
+        } else {
+            setEndDate(val);
+        }
+        if (val) {
+            setMonth('');
+        }
+    };
 
     const handleFilter = () => {
-        // Use Inertia to visit with query params
         window.location.href = route('admin.attendances.index', { 
             start_date: startDate, 
-            end_date: endDate 
+            end_date: endDate,
+            user_id: userId,
+            month: month
         });
     };
 
@@ -40,7 +70,9 @@ export default function AttendanceIndex({ auth, attendances, filters }: PageProp
         const baseUrl = route(`admin.attendances.export.${type}`);
         const params = new URLSearchParams({
             start_date: startDate,
-            end_date: endDate
+            end_date: endDate,
+            user_id: userId,
+            month: month
         });
         window.open(`${baseUrl}?${params.toString()}`, '_blank');
     };
@@ -51,6 +83,9 @@ export default function AttendanceIndex({ auth, attendances, filters }: PageProp
             checkout: record.checkout_photo_url,
             checkinTime: record.check_in,
             checkoutTime: record.check_out,
+            userName: record.user.name,
+            date: new Date(record.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+            checkinCoords: record.latitude && record.longitude ? `${record.latitude}, ${record.longitude}` : null,
         });
     };
 
@@ -67,14 +102,36 @@ export default function AttendanceIndex({ auth, attendances, filters }: PageProp
                     {/* Filters & Actions Card */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                         <div className="flex flex-col md:flex-row md:items-end gap-4">
-                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Karyawan</label>
+                                    <select 
+                                        value={userId}
+                                        onChange={(e) => setUserId(e.target.value)}
+                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                        <option value="">Semua Karyawan</option>
+                                        {users && users.map(u => (
+                                            <option key={u.id} value={u.id}>{u.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Pilih Bulan</label>
+                                    <input 
+                                        type="month" 
+                                        value={month}
+                                        onChange={(e) => handleMonthChange(e.target.value)}
+                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tanggal Mulai</label>
                                     <input 
                                         type="date" 
                                         value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-secondary focus:border-secondary"
+                                        onChange={(e) => handleCustomDateChange('start', e.target.value)}
+                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
                                     />
                                 </div>
                                 <div>
@@ -82,8 +139,8 @@ export default function AttendanceIndex({ auth, attendances, filters }: PageProp
                                     <input 
                                         type="date" 
                                         value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
-                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-secondary focus:border-secondary"
+                                        onChange={(e) => handleCustomDateChange('end', e.target.value)}
+                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
                                     />
                                 </div>
                             </div>
@@ -197,33 +254,55 @@ export default function AttendanceIndex({ auth, attendances, filters }: PageProp
                             {/* Check-In Photo */}
                             <div className="flex flex-col items-center">
                                 <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
                                     Foto Check-In {photoViewer.checkinTime && <span className="text-gray-400 normal-case font-normal">— {photoViewer.checkinTime}</span>}
                                 </div>
-                                {photoViewer.checkin ? (
-                                    <img src={photoViewer.checkin} alt="Check-In Selfie" className="max-h-[55vh] rounded-lg object-contain border border-gray-200 dark:border-gray-600 w-full" />
-                                ) : (
-                                    <div className="w-full max-h-[55vh] h-64 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900/30">
-                                        <svg className="w-12 h-12 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                        <p className="text-sm">Foto tidak tersedia</p>
-                                    </div>
-                                )}
+                                <div className="relative w-full rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden bg-slate-50 dark:bg-slate-900/50">
+                                    {photoViewer.checkin ? (
+                                        <>
+                                            <img src={photoViewer.checkin} alt="Check-In Selfie" className="max-h-[55vh] rounded-lg object-contain w-full" />
+                                            <div className="absolute bottom-0 left-0 right-0 bg-slate-950/80 backdrop-blur-sm text-white p-3 text-[10px] space-y-0.5 border-t border-white/10 select-none text-left">
+                                                <p className="font-extrabold text-indigo-400 tracking-wider">📸 LIVE PHOTO VERIFIED</p>
+                                                <p>👤 <b>Karyawan:</b> {photoViewer.userName}</p>
+                                                <p>📅 <b>Tanggal:</b> {photoViewer.date}</p>
+                                                <p>⏰ <b>Waktu:</b> {photoViewer.checkinTime}</p>
+                                                {photoViewer.checkinCoords && <p>📍 <b>GPS:</b> {photoViewer.checkinCoords}</p>}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="w-full max-h-[55vh] h-64 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900/30">
+                                            <svg className="w-12 h-12 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            <p className="text-sm">Foto tidak tersedia</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Check-Out Photo */}
                             <div className="flex flex-col items-center">
                                 <div className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                    <span className="w-2 h-2 rounded-full bg-orange-500 inline-block"></span>
+                                    <span className="w-2 h-2 rounded-full bg-orange-500 inline-block animate-pulse"></span>
                                     Foto Check-Out {photoViewer.checkoutTime && <span className="text-gray-400 normal-case font-normal">— {photoViewer.checkoutTime}</span>}
                                 </div>
-                                {photoViewer.checkout ? (
-                                    <img src={photoViewer.checkout} alt="Check-Out Selfie" className="max-h-[55vh] rounded-lg object-contain border border-gray-200 dark:border-gray-600 w-full" />
-                                ) : (
-                                    <div className="w-full max-h-[55vh] h-64 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900/30">
-                                        <svg className="w-12 h-12 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                        <p className="text-sm">{photoViewer.checkoutTime ? 'Foto tidak tersedia' : 'Belum Check-Out'}</p>
-                                    </div>
-                                )}
+                                <div className="relative w-full rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden bg-slate-50 dark:bg-slate-900/50">
+                                    {photoViewer.checkout ? (
+                                        <>
+                                            <img src={photoViewer.checkout} alt="Check-Out Selfie" className="max-h-[55vh] rounded-lg object-contain w-full" />
+                                            <div className="absolute bottom-0 left-0 right-0 bg-slate-950/80 backdrop-blur-sm text-white p-3 text-[10px] space-y-0.5 border-t border-white/10 select-none text-left">
+                                                <p className="font-extrabold text-amber-400 tracking-wider">📸 LIVE PHOTO VERIFIED</p>
+                                                <p>👤 <b>Karyawan:</b> {photoViewer.userName}</p>
+                                                <p>📅 <b>Tanggal:</b> {photoViewer.date}</p>
+                                                <p>⏰ <b>Waktu:</b> {photoViewer.checkoutTime}</p>
+                                                {photoViewer.checkinCoords && <p>📍 <b>GPS:</b> {photoViewer.checkinCoords}</p>}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="w-full max-h-[55vh] h-64 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900/30">
+                                            <svg className="w-12 h-12 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            <p className="text-sm">{photoViewer.checkoutTime ? 'Foto tidak tersedia' : 'Belum Check-Out'}</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -185,7 +185,15 @@
                     <tr>
                         <td class="meta-label">Periode</td>
                         <td class="meta-colon">:</td>
-                        <td class="meta-value"><strong>{{ $monthName }} {{ $payroll->year }}</strong></td>
+                        <td class="meta-value">
+                            <strong>{{ $monthName }} {{ $payroll->year }}</strong>
+                            @if($payroll->start_date && $payroll->end_date)
+                                <br>
+                                <span style="font-size: 11px; color: #6b7280; font-weight: normal;">
+                                    ({{ \Carbon\Carbon::parse($payroll->start_date)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($payroll->end_date)->format('d/m/Y') }})
+                                </span>
+                            @endif
+                        </td>
                     </tr>
                     <tr>
                         <td class="meta-label">Status Bayar</td>

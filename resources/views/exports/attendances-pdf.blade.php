@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Laporan Absensi Guru</title>
+    <title>Laporan Absensi Karyawan</title>
     <style>
         body { font-family: sans-serif; font-size: 11px; }
         .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
@@ -27,14 +27,14 @@
     </style>
 </head>
 <body>
-    <div className="header">
-        <h2>Laporan Presensi Kehadiran Guru</h2>
+    <div class="header">
+        <h2>Laporan Presensi Kehadiran Karyawan</h2>
         <p>Periode: {{ $startDate }} s/d {{ $endDate }}</p>
     </div>
 
     @foreach ($groupedAttendances as $teacherName => $records)
-        <div className="teacher-section">
-            <div className="teacher-name">Nama Guru: {{ $teacherName }}</div>
+        <div class="teacher-section">
+            <div class="teacher-name">Nama Karyawan: {{ $teacherName }}</div>
             <table>
                 <thead>
                     <tr>
@@ -53,17 +53,17 @@
                             <td>{{ $record->check_in ?? '-' }}</td>
                             <td>{{ $record->check_out ?? '-' }}</td>
                             <td>
-                                <span className="status-badge status-{{ $record->status->value }}">
-                                    {{ $record->status->label() }}
+                                <span class="status-badge status-{{ is_object($record->status) && method_exists($record->status, 'value') ? $record->status->value : $record->status }}">
+                                    {{ is_object($record->status) && method_exists($record->status, 'label') ? $record->status->label() : ucfirst(str_replace('_', ' ', $record->status)) }}
                                 </span>
                             </td>
                             <td>{{ $record->system_notes }}</td>
                             <td>
                                 @if($record->photo_url)
-                                    <a href="{{ url($record->photo_url) }}" className="photo-link">In: [Link]</a><br>
+                                    <a href="{{ url($record->photo_url) }}" class="photo-link">In: [Link]</a><br>
                                 @endif
                                 @if($record->checkout_photo_url)
-                                    <a href="{{ url($record->checkout_photo_url) }}" className="photo-link">Out: [Link]</a>
+                                    <a href="{{ url($record->checkout_photo_url) }}" class="photo-link">Out: [Link]</a>
                                 @endif
                             </td>
                         </tr>
@@ -73,8 +73,8 @@
         </div>
     @endforeach
 
-    <div className="footer">
-        Dicetak pada: {{ now()->format('d/m/Y H:i') }} | SALIRA Integrated System
+    <div class="footer">
+        Dicetak pada: {{ now()->format('d/m/Y H:i') }} | HRIS Enterprise System
     </div>
 </body>
 </html>

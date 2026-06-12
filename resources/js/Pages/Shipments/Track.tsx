@@ -24,6 +24,7 @@ interface ShipmentLog {
     description: string;
     latitude: number | null;
     longitude: number | null;
+    photo_path: string | null;
     created_at: string;
 }
 
@@ -51,6 +52,26 @@ export default function ShipmentTrack({ auth, shipment, trackingNumber, error }:
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const [inputResi, setInputResi] = useState(trackingNumber || '');
+    const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all');
+    const [viewerPhoto, setViewerPhoto] = useState<{
+        url: string;
+        title: string;
+        time: string;
+        gps: string | null;
+        driver: string;
+    } | null>(null);
+
+    const availableDates = shipment 
+        ? Array.from(new Set(shipment.logs.filter(l => l.latitude && l.longitude).map(l => l.created_at.split('T')[0])))
+        : [];
+
+    const filteredLogsForMap = shipment 
+        ? shipment.logs.filter(log => {
+            if (!log.latitude || !log.longitude) return false;
+            if (selectedDateFilter === 'all') return true;
+            return log.created_at.startsWith(selectedDateFilter);
+          })
+        : [];
 
     // Setup map
     useEffect(() => {
@@ -99,26 +120,74 @@ export default function ShipmentTrack({ auth, shipment, trackingNumber, error }:
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // Add markers
+        // Add origin & destination markers
         L.marker([oLat, oLng], { icon: warehouseIcon }).addTo(map).bindPopup(`<b>Pusat Pengirim:</b><br>${shipment.origin_name}`);
         L.marker([dLat, dLng], { icon: destinationIcon }).addTo(map).bindPopup(`<b>Cabang Penerima:</b><br>${shipment.destination_name}`);
-        L.marker([cLat, cLng], { icon: truckIcon }).addTo(map).bindPopup(`<b>Kurir Paket Live:</b><br>${shipment.courier_name || 'Driver Logistik'}`);
+        
+        // Only draw live courier marker if we are viewing "all" days or the latest active day
+        const isLatestFilterSelected = selectedDateFilter === 'all' || (availableDates.length > 0 && availableDates[availableDates.length - 1] === selectedDateFilter);
+        if (isLatestFilterSelected) {
+            L.marker([cLat, cLng], { icon: truckIcon }).addTo(map).bindPopup(`<b>Kurir Paket Live:</b><br>${shipment.courier_name || 'Driver Logistik'}`);
+        }
 
-        // Route line polyline
-        L.polyline([[oLat, oLng], [cLat, cLng], [dLat, dLng]], {
-            color: '#6366f1',
-            weight: 5,
-            dashArray: '10, 10'
-        }).addTo(map);
+        // Draw checkpoint markers on map
+        filteredLogsForMap.forEach((log) => {
+            const markerHtml = log.photo_path 
+                ? `<div class="p-1 bg-amber-500 text-white rounded-full border-2 border-white shadow-lg animate-pulse"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>`
+                : `<div class="w-3 h-3 bg-indigo-500 rounded-full border border-white shadow-md"></div>`;
+            
+            const logIcon = L.divIcon({
+                html: markerHtml,
+                className: '',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
 
-        const group = new L.featureGroup([
-            L.marker([oLat, oLng]),
-            L.marker([dLat, dLng]),
-            L.marker([cLat, cLng])
-        ]);
+            const popupContent = `
+                <div class="p-2 space-y-1.5 max-w-[180px] font-sans text-xs">
+                    <p class="font-bold text-slate-800">${log.title}</p>
+                    <p class="text-slate-500 text-[10px]">${log.description}</p>
+                    ${log.photo_path ? `<img src="/storage/${log.photo_path}" class="w-full h-auto rounded border border-slate-100 mt-1 shadow-sm" />` : ''}
+                    <p class="text-[9px] text-slate-400 font-mono mt-1">${new Date(log.created_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB</p>
+                </div>
+            `;
+
+            L.marker([Number(log.latitude), Number(log.longitude)], { icon: logIcon })
+                .addTo(map)
+                .bindPopup(popupContent);
+        });
+
+        // Route line polyline chronologically
+        const routeCoordinates = [];
+        // Add starting point if viewing all or the first day
+        if (selectedDateFilter === 'all' || (availableDates.length > 0 && availableDates[0] === selectedDateFilter)) {
+            routeCoordinates.push([oLat, oLng]);
+        }
+        
+        filteredLogsForMap.forEach(log => {
+            routeCoordinates.push([Number(log.latitude), Number(log.longitude)]);
+        });
+
+        // Add live location to route coordinates if appropriate
+        if (isLatestFilterSelected && shipment.courier_lat && shipment.courier_lng) {
+            routeCoordinates.push([cLat, cLng]);
+        }
+
+        if (routeCoordinates.length > 1) {
+            L.polyline(routeCoordinates, {
+                color: '#6366f1',
+                weight: 5,
+                opacity: 0.8
+            }).addTo(map);
+        }
+
+        // Fit map bounds dynamically
+        const boundsList = [[oLat, oLng], [dLat, dLng]];
+        routeCoordinates.forEach(coord => boundsList.push(coord));
+        const group = new L.featureGroup(boundsList.map(coord => L.marker([coord[0], coord[1]])));
         map.fitBounds(group.getBounds().pad(0.1));
 
-    }, [shipment]);
+    }, [shipment, selectedDateFilter]);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -283,19 +352,33 @@ export default function ShipmentTrack({ auth, shipment, trackingNumber, error }:
 
                         {/* LIVE TRACKING MAP CONTAINER */}
                         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm p-4 space-y-3">
-                            <div className="flex justify-between items-center px-2">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-2 gap-3 mb-1">
                                 <span className="text-sm font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
                                     <MapPinIcon className="w-5 h-5 text-indigo-500" />
                                     Peta Distribusi & Posisi Live Kurir
                                 </span>
-                                <button 
-                                    onClick={() => window.location.reload()}
-                                    title="Segarkan Peta"
-                                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1 text-xs font-bold"
-                                >
-                                    <ArrowPathIcon className="w-4 h-4 animate-spin-slow" />
-                                    Segarkan Live
-                                </button>
+                                <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+                                    <select
+                                        value={selectedDateFilter}
+                                        onChange={(e) => setSelectedDateFilter(e.target.value)}
+                                        className="text-xs rounded-lg border-slate-200 dark:border-slate-750 bg-slate-50 dark:bg-slate-900 dark:text-white py-1 cursor-pointer font-bold focus:ring-1 focus:ring-indigo-500"
+                                    >
+                                        <option value="all">Semua Hari Perjalanan</option>
+                                        {availableDates.map(d => (
+                                            <option key={d} value={d}>
+                                                {new Date(d).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button 
+                                        onClick={() => window.location.reload()}
+                                        title="Segarkan Peta"
+                                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1 text-xs font-bold"
+                                    >
+                                        <ArrowPathIcon className="w-4 h-4 animate-spin-slow" />
+                                        Segarkan Live
+                                    </button>
+                                </div>
                             </div>
                             <div 
                                 ref={mapContainerRef} 
@@ -335,16 +418,46 @@ export default function ShipmentTrack({ auth, shipment, trackingNumber, error }:
                                                 isLatest 
                                                     ? 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-100 dark:border-indigo-900/30 shadow-sm' 
                                                     : 'bg-slate-50/30 dark:bg-slate-900/20 border-slate-100/50 dark:border-slate-800/40'
-                                            }`}>
-                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 mb-2">
-                                                    <h4 className={`text-sm font-black ${isLatest ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-slate-300'}`}>
-                                                        {log.title}
-                                                    </h4>
-                                                    <span className="text-[10px] font-bold text-slate-400">
-                                                        {new Date(log.created_at).toLocaleString('id-ID', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}
-                                                    </span>
+                                            } flex flex-col sm:flex-row gap-4 items-start`}>
+                                                <div className="flex-1">
+                                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 mb-2">
+                                                        <h4 className={`text-sm font-black ${isLatest ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-slate-300'}`}>
+                                                            {log.title}
+                                                        </h4>
+                                                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                                            <CalendarIcon className="w-3 h-3" />
+                                                            {new Date(log.created_at).toLocaleString('id-ID', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{log.description}</p>
+                                                    {log.latitude && (
+                                                        <div className="text-[9px] font-mono text-slate-400 mt-2">
+                                                            GPS Checkpoint: {log.latitude}, {log.longitude}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{log.description}</p>
+
+                                                {log.photo_path && (
+                                                    <div 
+                                                        onClick={() => setViewerPhoto({
+                                                            url: `/storage/${log.photo_path}`,
+                                                            title: log.title,
+                                                            time: new Date(log.created_at).toLocaleString('id-ID', {day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'}),
+                                                            gps: log.latitude && log.longitude ? `${log.latitude}, ${log.longitude}` : null,
+                                                            driver: shipment.courier_name || 'Driver Logistik'
+                                                        })}
+                                                        className="relative w-24 h-18 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex-shrink-0 cursor-pointer active:scale-95 transition-all shadow-sm animate-pulse"
+                                                    >
+                                                        <img 
+                                                            src={`/storage/${log.photo_path}`} 
+                                                            alt="Foto Checkpoint" 
+                                                            className="w-full h-full object-cover" 
+                                                        />
+                                                        <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                                            <span className="text-[10px] text-white font-bold bg-indigo-600/90 backdrop-blur-sm px-2 py-1 rounded">🔍</span>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -364,6 +477,38 @@ export default function ShipmentTrack({ auth, shipment, trackingNumber, error }:
                 )}
 
             </div>
+
+            {/* Glassmorphic Photo Zoom Modal */}
+            {viewerPhoto && (
+                <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+                    onClick={() => setViewerPhoto(null)}
+                >
+                    <div 
+                        className="relative bg-white dark:bg-slate-800 rounded-2xl p-4 max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-700/60"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center mb-3 border-b dark:border-slate-700 pb-2">
+                            <h3 className="font-black text-slate-855 dark:text-white text-sm">{viewerPhoto.title}</h3>
+                            <button 
+                                onClick={() => setViewerPhoto(null)} 
+                                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex-1 flex items-center justify-center">
+                            <img src={viewerPhoto.url} alt="Checkpoint" className="max-h-[60vh] w-auto object-contain rounded-xl" />
+                            <div className="absolute bottom-0 left-0 right-0 bg-slate-950/85 backdrop-blur-md text-white p-3.5 text-[10px] space-y-0.5 border-t border-white/10 select-none text-left">
+                                <p className="font-extrabold text-indigo-400 tracking-wider">📸 LIVE PHOTO CHECKPOINT</p>
+                                <p>👤 <b>Kurir:</b> {viewerPhoto.driver}</p>
+                                <p>📅 <b>Waktu:</b> {viewerPhoto.time} WIB</p>
+                                {viewerPhoto.gps && <p>📍 <b>GPS:</b> {viewerPhoto.gps}</p>}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Pulsing glow styling for live marker */}
             <style>{`

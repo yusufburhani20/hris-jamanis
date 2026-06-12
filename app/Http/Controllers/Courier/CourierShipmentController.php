@@ -120,28 +120,24 @@ class CourierShipmentController extends Controller
     public function storeSelfInitiated(Request $request)
     {
         $validated = $request->validate([
-            'origin_branch_id' => 'required|exists:branches,id',
-            'destination_branch_id' => 'required|exists:branches,id',
             'notes' => 'nullable|string|max:500',
         ]);
 
-        $origin = Branch::findOrFail($validated['origin_branch_id']);
-        $destination = Branch::findOrFail($validated['destination_branch_id']);
         $user = Auth::user();
 
         // Create the shipment
         $shipment = Shipment::create([
             'title' => 'Perjalanan Mandiri - ' . $user->name,
-            'origin_name' => $origin->name,
-            'destination_name' => $destination->name,
-            'origin_lat' => $origin->latitude,
-            'origin_lng' => $origin->longitude,
-            'destination_lat' => $destination->latitude,
-            'destination_lng' => $destination->longitude,
+            'origin_name' => 'Jamanis',
+            'destination_name' => 'Perjalanan Mandiri',
+            'origin_lat' => -7.2478,
+            'origin_lng' => 108.1472,
+            'destination_lat' => -7.2478,
+            'destination_lng' => 108.1472,
             'courier_id' => $user->id,
             'courier_name' => $user->name,
-            'courier_lat' => $origin->latitude,
-            'courier_lng' => $origin->longitude,
+            'courier_lat' => -7.2478,
+            'courier_lng' => 108.1472,
             'status' => 'in_transit',
             'notes' => $validated['notes'] ?? 'Perjalanan logistik mandiri.',
             'is_self_initiated' => true,
@@ -152,12 +148,54 @@ class CourierShipmentController extends Controller
             'shipment_id' => $shipment->id,
             'status' => 'in_transit',
             'title' => 'Sopir memulai perjalanan logistik mandiri',
-            'description' => "Perjalanan mandiri dimulai dari {$origin->name} menuju {$destination->name}.",
-            'latitude' => $origin->latitude,
-            'longitude' => $origin->longitude,
+            'description' => "Perjalanan mandiri dimulai dari Jamanis.",
+            'latitude' => -7.2478,
+            'longitude' => 108.1472,
         ]);
 
         return redirect()->route('courier.shipments.show', $shipment->id)
             ->with('success', 'Perjalanan mandiri berhasil dimulai! Navigator pelacakan aktif.');
+    }
+
+    /**
+     * Store a checkpoint photo with GPS telemetry.
+     */
+    public function addCheckpointPhoto(Request $request, $id)
+    {
+        $shipment = Shipment::where('id', $id)
+            ->where('courier_id', Auth::id())
+            ->firstOrFail();
+
+        $request->validate([
+            'photo' => 'required|image|max:5120', // Max 5MB
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('checkpoint_photos', 'public');
+
+            // Update courier current position
+            $shipment->update([
+                'courier_lat' => $request->latitude,
+                'courier_lng' => $request->longitude,
+            ]);
+
+            // Add checkpoint timeline log
+            ShipmentLog::create([
+                'shipment_id' => $shipment->id,
+                'status' => 'in_transit',
+                'title' => 'Checkpoint Perjalanan Mandiri',
+                'description' => $request->description ?? 'Driver mengunggah foto checkpoint lokasi di tengah perjalanan.',
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'photo_path' => $path,
+            ]);
+
+            return redirect()->back()->with('success', 'Foto checkpoint lokasi berhasil disimpan ke log perjalanan!');
+        }
+
+        return back()->withErrors(['photo' => 'Gagal mengunggah foto checkpoint.']);
     }
 }

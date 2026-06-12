@@ -10,8 +10,20 @@ import {
     ExclamationCircleIcon,
     ArrowLeftIcon,
     CameraIcon,
-    CheckCircleIcon
+    CheckCircleIcon,
+    CalendarIcon
 } from '@heroicons/react/24/outline';
+
+interface ShipmentLog {
+    id: number;
+    status: string;
+    title: string;
+    description: string;
+    latitude: number | null;
+    longitude: number | null;
+    photo_path: string | null;
+    created_at: string;
+}
 
 interface Shipment {
     id: number;
@@ -22,6 +34,7 @@ interface Shipment {
     status: string;
     courier_lat: number | null;
     courier_lng: number | null;
+    logs: ShipmentLog[];
 }
 
 export default function CourierShow({ auth, shipment }: PageProps<{ shipment: Shipment }>) {
@@ -32,12 +45,26 @@ export default function CourierShow({ auth, shipment }: PageProps<{ shipment: Sh
     const [logs, setLogs] = useState<string[]>([]);
     const [autoTrack, setAutoTrack] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [checkpointPreview, setCheckpointPreview] = useState<string | null>(null);
+    const [viewerPhoto, setViewerPhoto] = useState<{
+        url: string;
+        title: string;
+        time: string;
+        gps: string | null;
+    } | null>(null);
     const intervalRef = useRef<any>(null);
 
     const { data, setData, post, processing, errors } = useForm({
         delivery_photo: null as File | null,
         latitude: '',
         longitude: '',
+    });
+
+    const checkpointForm = useForm({
+        photo: null as File | null,
+        latitude: '',
+        longitude: '',
+        description: '',
     });
 
     const logMessage = (msg: string) => {
@@ -153,6 +180,49 @@ export default function CourierShow({ auth, shipment }: PageProps<{ shipment: Sh
         }
     };
 
+    const handleCheckpointFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            checkpointForm.setData('photo', file);
+            setCheckpointPreview(URL.createObjectURL(file));
+            
+            logMessage("Foto checkpoint terpilih. Mendeteksi lokasi GPS...");
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        checkpointForm.setData(prev => ({
+                            ...prev,
+                            latitude: String(position.coords.latitude),
+                            longitude: String(position.coords.longitude)
+                        }));
+                        logMessage(`GPS Checkpoint: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`);
+                    },
+                    () => {
+                        logMessage("Gagal mendeteksi lokasi checkpoint. Pastikan GPS aktif.");
+                    },
+                    { enableHighAccuracy: true }
+                );
+            }
+        }
+    };
+
+    const submitCheckpoint = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!checkpointForm.data.photo) {
+            alert("Harap ambil atau pilih foto checkpoint terlebih dahulu!");
+            return;
+        }
+
+        checkpointForm.post(route('courier.shipments.checkpoint', shipment.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setCheckpointPreview(null);
+                checkpointForm.reset();
+                logMessage("Foto checkpoint berhasil disimpan!");
+            }
+        });
+    };
+
     const submitDelivery = (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -258,25 +328,99 @@ export default function CourierShow({ auth, shipment }: PageProps<{ shipment: Sh
                     </div>
                 </div>
 
-                {/* COL 2: PHOTO PROOF SUBMISSION FORM (RIGHT) */}
+                {/* COL 2: CHECKPOINT PHOTO & FINAL PROOF (RIGHT) */}
                 <div className="space-y-6">
+                    {/* Checkpoint Photo Card */}
+                    {shipment.status !== 'delivered' && shipment.status !== 'failed' && (
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm p-6 space-y-4">
+                            <div className="flex items-center space-x-2 text-slate-900 dark:text-white">
+                                <CameraIcon className="w-6 h-6 text-indigo-500" />
+                                <h3 className="text-lg font-black">Foto Checkpoint Rute</h3>
+                            </div>
+                            <p className="text-xs text-slate-400">Unggah foto checkpoint kondisi perjalanan Anda untuk menandai rute Anda secara real-time.</p>
+
+                            <form onSubmit={submitCheckpoint} className="space-y-4">
+                                <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[160px] bg-slate-50/50 dark:bg-slate-900/30 overflow-hidden">
+                                    {checkpointPreview ? (
+                                        <div className="relative w-full h-full flex flex-col items-center">
+                                            <img 
+                                                src={checkpointPreview} 
+                                                alt="Preview Checkpoint" 
+                                                className="max-h-[120px] w-auto object-contain rounded-xl border border-slate-100 dark:border-slate-800 shadow" 
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => { setCheckpointPreview(null); checkpointForm.setData('photo', null); }}
+                                                className="mt-2 text-xs text-rose-500 font-bold hover:underline"
+                                            >
+                                                Hapus & Ambil Ulang
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <label className="cursor-pointer flex flex-col items-center space-y-2 text-center p-4 w-full">
+                                            <CameraIcon className="w-8 h-8 text-indigo-500 animate-pulse" />
+                                            <div>
+                                                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Ambil / Pilih Foto Checkpoint</span>
+                                                <p className="text-[10px] text-slate-400 mt-1">Gunakan Kamera HP langsung di jalan</p>
+                                            </div>
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                capture="environment"
+                                                onChange={handleCheckpointFileChange}
+                                                required
+                                                className="hidden" 
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Keterangan / Deskripsi Checkpoint</label>
+                                    <input
+                                        type="text"
+                                        value={checkpointForm.data.description}
+                                        onChange={e => checkpointForm.setData('description', e.target.value)}
+                                        placeholder="Contoh: Bongkar muat paket / macet / cuaca buruk"
+                                        className="w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-900 text-xs dark:text-white"
+                                    />
+                                    {checkpointForm.errors.description && <p className="text-rose-500 text-[10px] mt-1">{checkpointForm.errors.description}</p>}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-[9px] font-mono text-slate-400 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                                    <div>Lat Checkpoint: {checkpointForm.data.latitude || 'Mencari GPS...'}</div>
+                                    <div>Lng Checkpoint: {checkpointForm.data.longitude || 'Mencari GPS...'}</div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={checkpointForm.processing}
+                                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                    {checkpointForm.processing ? 'Mengirim Checkpoint...' : 'Kirim Foto Checkpoint'}
+                                </button>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* Bukti Foto Kedatangan Card */}
                     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm p-6 space-y-5">
                         <div className="flex items-center space-x-2 text-slate-900 dark:text-white">
-                            <CameraIcon className="w-6 h-6 text-indigo-500" />
-                            <h3 className="text-lg font-black">Bukti Foto Kedatangan</h3>
+                            <CheckCircleIcon className="w-6 h-6 text-emerald-500" />
+                            <h3 className="text-lg font-black">Bukti Foto Kedatangan (POD)</h3>
                         </div>
                         <p className="text-xs text-slate-400">Ambil foto atau pilih file gambar dari perangkat Anda saat paket pengisian stok telah sampai di cabang tujuan.</p>
 
                         <form onSubmit={submitDelivery} className="space-y-4">
                             
                             {/* PHOTO PICKER OR PREVIEW */}
-                            <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[220px] bg-slate-50/50 dark:bg-slate-900/30 overflow-hidden">
+                            <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[200px] bg-slate-50/50 dark:bg-slate-900/30 overflow-hidden">
                                 {previewUrl ? (
                                     <div className="relative w-full h-full flex flex-col items-center">
                                         <img 
                                             src={previewUrl} 
                                             alt="Preview Bukti" 
-                                            className="max-h-[180px] w-auto object-contain rounded-xl border border-slate-100 dark:border-slate-800 shadow" 
+                                            className="max-h-[160px] w-auto object-contain rounded-xl border border-slate-100 dark:border-slate-800 shadow" 
                                         />
                                         <button
                                             type="button"
@@ -329,6 +473,104 @@ export default function CourierShow({ auth, shipment }: PageProps<{ shipment: Sh
                 </div>
 
             </div>
+
+            {/* Timeline History Section */}
+            <div className="py-4 max-w-4xl mx-auto px-4">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-sm p-6">
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Timeline Perjalanan & Foto Checkpoint</h3>
+                    
+                    <div className="relative border-l border-slate-200 dark:border-slate-700 ml-4 space-y-8">
+                        {shipment.logs && shipment.logs.map((log, index) => {
+                            const isLatest = index === shipment.logs.length - 1;
+                            return (
+                                <div key={log.id} className="relative pl-8">
+                                    {/* Circular Bullet */}
+                                    <span className={`absolute -left-3 top-1 flex items-center justify-center w-6 h-6 rounded-full border-2 ${
+                                        isLatest 
+                                            ? 'bg-indigo-600 text-white border-indigo-200 animate-ping-once' 
+                                            : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-700 dark:border-slate-600'
+                                    }`}>
+                                        <div className={`w-2.5 h-2.5 rounded-full ${isLatest ? 'bg-white' : 'bg-slate-400'}`} />
+                                    </span>
+                                    
+                                    <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-start">
+                                        <div className="flex-1">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 mb-2">
+                                                <h4 className={`text-sm font-black ${isLatest ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-slate-300'}`}>
+                                                    {log.title}
+                                                </h4>
+                                                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                                    <CalendarIcon className="w-3 h-3" />
+                                                    {new Date(log.created_at).toLocaleString('id-ID', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{log.description}</p>
+                                            {log.latitude && (
+                                                <div className="text-[9px] font-mono text-slate-400 mt-2">
+                                                    GPS Checkpoint: {log.latitude}, {log.longitude}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {log.photo_path && (
+                                            <div 
+                                                onClick={() => setViewerPhoto({
+                                                    url: `/storage/${log.photo_path}`,
+                                                    title: log.title,
+                                                    time: new Date(log.created_at).toLocaleString('id-ID', {day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'}),
+                                                    gps: log.latitude && log.longitude ? `${log.latitude}, ${log.longitude}` : null
+                                                })}
+                                                className="relative w-32 h-24 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex-shrink-0 cursor-pointer active:scale-95 transition-all shadow-sm"
+                                            >
+                                                <img 
+                                                    src={`/storage/${log.photo_path}`} 
+                                                    alt="Foto Checkpoint" 
+                                                    className="w-full h-full object-cover" 
+                                                />
+                                                <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                                    <span className="text-[10px] text-white font-bold bg-indigo-600/90 backdrop-blur-sm px-2.5 py-1.5 rounded-lg">🔍 Tinjau</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            {/* Glassmorphic Photo Zoom Modal */}
+            {viewerPhoto && (
+                <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+                    onClick={() => setViewerPhoto(null)}
+                >
+                    <div 
+                        className="relative bg-white dark:bg-slate-800 rounded-2xl p-4 max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-700/60"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center mb-3 border-b dark:border-slate-700 pb-2">
+                            <h3 className="font-black text-slate-855 dark:text-white text-sm">{viewerPhoto.title}</h3>
+                            <button 
+                                onClick={() => setViewerPhoto(null)} 
+                                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-750 bg-slate-50 dark:bg-slate-900/50 flex-1 flex items-center justify-center">
+                            <img src={viewerPhoto.url} alt="Checkpoint" className="max-h-[60vh] w-auto object-contain rounded-xl" />
+                            <div className="absolute bottom-0 left-0 right-0 bg-slate-950/85 backdrop-blur-md text-white p-3.5 text-[10px] space-y-0.5 border-t border-white/10 select-none text-left">
+                                <p className="font-extrabold text-indigo-400 tracking-wider">📸 LIVE PHOTO CHECKPOINT</p>
+                                <p>👤 <b>Kurir:</b> {auth.user.name}</p>
+                                <p>📅 <b>Waktu:</b> {viewerPhoto.time} WIB</p>
+                                {viewerPhoto.gps && <p>📍 <b>GPS:</b> {viewerPhoto.gps}</p>}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }
