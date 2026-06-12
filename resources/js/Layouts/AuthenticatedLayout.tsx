@@ -309,7 +309,7 @@ export default function Authenticated({
                 {/* Logo Area */}
                 <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-700/60 flex-shrink-0 overflow-hidden">
                     <Link href={route('dashboard')} className="flex items-center gap-3" onClick={() => setSidebarOpen(false)}>
-                        <img src="/images/Salira.png" alt="HRIS Logo" className="h-8 w-8 flex-shrink-0" />
+                        <img src="/images/icon-192.png" alt="HRIS Logo" className="h-8 w-8 flex-shrink-0 bg-white p-1 rounded-lg" />
                         {!sidebarCollapsed && (
                             <span className="text-lg font-black tracking-tighter text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
                                 HRIS GEOLOCATION
@@ -419,7 +419,7 @@ export default function Authenticated({
                     </button>
 
                     <div className="lg:hidden flex items-center gap-2">
-                        <img src="/images/Salira.png" alt="HRIS Logo" className="h-7 w-auto" />
+                        <img src="/images/icon-192.png" alt="HRIS Logo" className="h-7 w-7 bg-white p-0.5 rounded-md" />
                         <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">HRIS</span>
                     </div>
 
