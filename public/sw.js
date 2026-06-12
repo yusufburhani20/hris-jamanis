@@ -94,7 +94,7 @@ self.addEventListener('push', (event) => {
         title: 'HRIS Enterprise',
         body: 'Ada notifikasi baru untuk Anda.',
         icon: '/images/icon-192.png',
-        badge: '/images/icon-192.png',
+        badge: '/images/badge.png',
         data: { url: '/' }
     };
 

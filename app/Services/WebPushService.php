@@ -65,7 +65,7 @@ class WebPushService
             'title' => $title,
             'body'  => $body,
             'icon'  => '/images/icon-192.png',
-            'badge' => '/images/icon-192.png',
+            'badge' => '/images/badge.png',
             'data'  => array_merge(['url' => '/dashboard'], $data),
         ]);
 
