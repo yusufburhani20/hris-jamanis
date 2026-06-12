@@ -40,4 +40,9 @@ return [
         'bot_name' => env('TELEGRAM_BOT_NAME', 'SaliraBot'),
     ],
 
+    'vapid' => [
+        'public_key'  => env('VAPID_PUBLIC_KEY', ''),
+        'private_key' => env('VAPID_PRIVATE_KEY', ''),
+    ],
+
 ];

@@ -17,8 +17,8 @@ class WebPushService
         $this->webPush = new WebPush([
             'VAPID' => [
                 'subject'    => config('app.url'),
-                'publicKey'  => env('VAPID_PUBLIC_KEY', ''),
-                'privateKey' => env('VAPID_PRIVATE_KEY', ''),
+                'publicKey'  => config('services.vapid.public_key', ''),
+                'privateKey' => config('services.vapid.private_key', ''),
             ],
         ]);
         $this->webPush->setReuseVAPIDHeaders(true);
