@@ -96,10 +96,33 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-# ---- 7. Selesai ----
+# ---- 7. Restart Queue Worker (untuk push notification) ----
 echo ""
-echo "[7/7] Proses deployment selesai pada $(date)."
-echo "✅ Pembaruan selesai dengan sukses!"
+echo "[7/7] Me-restart Queue Worker..."
+if command -v supervisorctl &> /dev/null; then
+    supervisorctl restart hris-queue:* 2>/dev/null || true
+    echo "      Queue worker di-restart via Supervisor."
+else
+    echo "      ⚠️  Supervisor tidak ditemukan. Pastikan Queue Worker berjalan manual."
+fi
+
+# ---- Selesai ----
+echo ""
+echo "=== DEPLOYMENT SELESAI pada $(date) ==="
+echo ""
+echo "✅ Checklist:"
+echo "   ✓ Kode terbaru dari GitHub"
+echo "   ✓ Dependensi Composer terinstall"
+echo "   ✓ Migration database selesai"
+echo "   ✓ Aset frontend terkompilasi"
+echo "   ✓ Cache Laravel diperbarui"
+echo "   ✓ Queue Worker di-restart"
+echo ""
+echo "⚠️  Yang perlu dicek MANUAL (sekali saja saat pertama deploy):"
+echo "   - Pastikan .env berisi VAPID_PUBLIC_KEY dan VAPID_PRIVATE_KEY"
+echo "   - Pastikan Cron Job scheduler sudah aktif di aaPanel"
+echo "   - Pastikan Supervisor process hris-queue sudah dibuat"
+echo ""
 
 # Hapus trap agar cleanup() tidak menjalankan artisan up dua kali
 trap - EXIT
