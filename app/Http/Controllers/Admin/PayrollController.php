@@ -35,6 +35,10 @@ class PayrollController extends Controller
             'payroll_allowance' => \App\Models\Setting::get('payroll_allowance', '500000'),
             'payroll_absent_penalty' => \App\Models\Setting::get('payroll_absent_penalty', '100000'),
             'payroll_working_days' => explode(',', \App\Models\Setting::get('payroll_working_days', 'Monday,Tuesday,Wednesday,Thursday,Friday')),
+            'payroll_period_start_day' => \App\Models\Setting::get('payroll_period_start_day', '26'),
+            'payroll_period_end_day' => \App\Models\Setting::get('payroll_period_end_day', '25'),
+            'payroll_auto_calculate_day' => \App\Models\Setting::get('payroll_auto_calculate_day', '26'),
+            'payroll_auto_calculate_enabled' => \App\Models\Setting::get('payroll_auto_calculate_enabled', '0'),
         ];
 
         return Inertia::render('Admin/Payrolls/Index', [
@@ -103,96 +107,7 @@ class PayrollController extends Controller
      */
     private function performCalculation($userId, $month, $year, $startDateInput = null, $endDateInput = null)
     {
-        $user = User::findOrFail($userId);
-        $basicSalary = floatval($user->basic_salary ?: 4500000);
-
-        // Calculate attendance metrics for that month/year
-        $startDate = $startDateInput ? Carbon::parse($startDateInput) : Carbon::create($year, $month, 1)->startOfMonth();
-        $endDate = $endDateInput ? Carbon::parse($endDateInput) : Carbon::create($year, $month, 1)->endOfMonth();
-
-        $attendances = Attendance::where('user_id', $userId)
-            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
-            ->get();
-
-        $lateCount = $attendances->where('status', 'terlambat')->count();
-        $overtimeCount = $attendances->where('status', 'lembur')->count();
-
-        // Count manual approved overtime requests
-        $manualOvertimeCount = \App\Models\OvertimeRequest::where('user_id', $userId)
-            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
-            ->where('status', 'approved')
-            ->count();
-
-        $overtimeCount += $manualOvertimeCount;
-
-        $presentCount = $attendances->whereIn('status', ['hadir', 'terlambat', 'lembur', 'pulang_awal'])->count();
-
-        // Get dynamic settings
-        $latePenalty = floatval(\App\Models\Setting::get('payroll_late_penalty', 50000));
-        $overtimeRate = floatval(\App\Models\Setting::get('payroll_overtime_rate', 100000));
-        $fixedAllowance = floatval(\App\Models\Setting::get('payroll_allowance', 500000));
-        $absentPenalty = floatval(\App\Models\Setting::get('payroll_absent_penalty', 100000));
-        
-        $workingDaysSetting = \App\Models\Setting::get('payroll_working_days', 'Monday,Tuesday,Wednesday,Thursday,Friday');
-        $workingDays = explode(',', $workingDaysSetting);
-
-        // Calculate absent days (working days with no attendance up to today)
-        $absentCount = 0;
-        $tempDate = $startDate->copy();
-        $today = Carbon::today();
-
-        while ($tempDate->lte($endDate)) {
-            // Do not penalize for future dates if calculating current month
-            if ($tempDate->gt($today)) {
-                break;
-            }
-
-            $dayOfWeek = $tempDate->format('l'); // 'Monday', 'Tuesday', etc.
-            if (in_array($dayOfWeek, $workingDays)) {
-                $hasAttendance = Attendance::where('user_id', $userId)
-                    ->whereDate('date', $tempDate->toDateString())
-                    ->exists();
-
-                if (!$hasAttendance) {
-                    $absentCount++;
-                }
-            }
-            $tempDate->addDay();
-        }
-
-        // Tunjangan tetap
-        $allowances = $fixedAllowance;
-        if ($presentCount === 0) {
-            $allowances = 0; // Tidak dapat tunjangan jika tidak pernah masuk sama sekali
-        }
-
-        // Deductions: Late penalty + Absent penalty
-        $deductions = ($lateCount * $latePenalty) + ($absentCount * $absentPenalty);
-        $overtimePay = $overtimeCount * $overtimeRate;
-
-        $netSalary = $basicSalary + $allowances + $overtimePay - $deductions;
-        if ($netSalary < 0) {
-            $netSalary = 0;
-        }
-
-        // Save or update payroll draft
-        Payroll::updateOrCreate(
-            [
-                'user_id' => $userId,
-                'month' => $month,
-                'year' => $year,
-            ],
-            [
-                'basic_salary' => $basicSalary,
-                'allowances' => $allowances,
-                'deductions' => $deductions,
-                'overtime_pay' => $overtimePay,
-                'net_salary' => $netSalary,
-                'status' => 'draft',
-                'start_date' => $startDate->toDateString(),
-                'end_date' => $endDate->toDateString(),
-            ]
-        );
+        Payroll::calculateForUser($userId, $month, $year, $startDateInput, $endDateInput);
     }
 
     /**
@@ -206,6 +121,10 @@ class PayrollController extends Controller
             'payroll_allowance' => 'required|numeric|min:0',
             'payroll_absent_penalty' => 'required|numeric|min:0',
             'payroll_working_days' => 'required|array',
+            'payroll_period_start_day' => 'required|integer|between:1,31',
+            'payroll_period_end_day' => 'required|integer|between:1,31',
+            'payroll_auto_calculate_day' => 'required|integer|between:1,31',
+            'payroll_auto_calculate_enabled' => 'required|in:0,1',
         ]);
 
         \App\Models\Setting::set('payroll_late_penalty', $request->payroll_late_penalty);
@@ -213,6 +132,10 @@ class PayrollController extends Controller
         \App\Models\Setting::set('payroll_allowance', $request->payroll_allowance);
         \App\Models\Setting::set('payroll_absent_penalty', $request->payroll_absent_penalty);
         \App\Models\Setting::set('payroll_working_days', implode(',', $request->payroll_working_days));
+        \App\Models\Setting::set('payroll_period_start_day', $request->payroll_period_start_day);
+        \App\Models\Setting::set('payroll_period_end_day', $request->payroll_period_end_day);
+        \App\Models\Setting::set('payroll_auto_calculate_day', $request->payroll_auto_calculate_day);
+        \App\Models\Setting::set('payroll_auto_calculate_enabled', $request->payroll_auto_calculate_enabled);
 
         return redirect()->back()->with('success', 'Pengaturan parameter penggajian berhasil diperbarui.');
     }

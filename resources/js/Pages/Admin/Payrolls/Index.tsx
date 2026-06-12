@@ -34,6 +34,10 @@ interface PayrollSettings {
     payroll_allowance: string;
     payroll_absent_penalty: string;
     payroll_working_days: string[];
+    payroll_period_start_day: string;
+    payroll_period_end_day: string;
+    payroll_auto_calculate_day: string;
+    payroll_auto_calculate_enabled: string;
 }
 
 export default function PayrollIndex({ auth, payrolls, employees, currentMonth, currentYear, payrollSettings }: PageProps<{ payrolls: Payroll[], employees: User[], currentMonth: number, currentYear: number, payrollSettings: PayrollSettings }>) {
@@ -44,12 +48,36 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
     const [editingPayroll, setEditingPayroll] = useState<Payroll | null>(null);
     const [selectedPayrollIds, setSelectedPayrollIds] = useState<number[]>([]);
 
+    const getCalculatedStartDate = (m: number, y: number) => {
+        const startDay = parseInt(payrollSettings.payroll_period_start_day || '26');
+        if (startDay === 1) {
+            return `${y}-${String(m).padStart(2, '0')}-01`;
+        } else {
+            let prevMonth = m - 1;
+            let prevYear = y;
+            if (prevMonth === 0) {
+                prevMonth = 12;
+                prevYear = y - 1;
+            }
+            const daysInMonth = new Date(prevYear, prevMonth, 0).getDate();
+            const finalDay = Math.min(startDay, daysInMonth);
+            return `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(finalDay).padStart(2, '0')}`;
+        }
+    };
+
+    const getCalculatedEndDate = (m: number, y: number) => {
+        const endDay = parseInt(payrollSettings.payroll_period_end_day || '25');
+        const daysInMonth = new Date(y, m, 0).getDate();
+        const finalDay = Math.min(endDay, daysInMonth);
+        return `${y}-${String(m).padStart(2, '0')}-${String(finalDay).padStart(2, '0')}`;
+    };
+
     const { data, setData, post, processing, errors } = useForm({
         user_id: '',
         month: currentMonth,
         year: currentYear,
-        start_date: `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`,
-        end_date: `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(new Date(currentYear, currentMonth, 0).getDate()).padStart(2, '0')}`,
+        start_date: getCalculatedStartDate(currentMonth, currentYear),
+        end_date: getCalculatedEndDate(currentMonth, currentYear),
     });
 
     const { data: settingsData, setData: setSettingsData, post: postSettings, processing: processingSettings } = useForm({
@@ -58,6 +86,10 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
         payroll_allowance: payrollSettings.payroll_allowance,
         payroll_absent_penalty: payrollSettings.payroll_absent_penalty,
         payroll_working_days: payrollSettings.payroll_working_days,
+        payroll_period_start_day: payrollSettings.payroll_period_start_day,
+        payroll_period_end_day: payrollSettings.payroll_period_end_day,
+        payroll_auto_calculate_day: payrollSettings.payroll_auto_calculate_day,
+        payroll_auto_calculate_enabled: payrollSettings.payroll_auto_calculate_enabled,
     });
 
     const { data: editData, setData: setEditData, put: putPayroll, processing: processingEdit, errors: editErrors } = useForm({
@@ -273,6 +305,68 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                 </div>
 
                                 <div className="border-t border-dashed border-slate-200 dark:border-slate-700 pt-5">
+                                    <h4 className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                                        🗓️ Pengaturan Periode & Otomatisasi Payroll
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tanggal Mulai Periode (1 - 31)</label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="31"
+                                                value={settingsData.payroll_period_start_day}
+                                                onChange={e => setSettingsData('payroll_period_start_day', e.target.value)}
+                                                required
+                                                className="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs py-2.5 font-mono"
+                                                placeholder="Contoh: 26"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tanggal Selesai Periode (1 - 31)</label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="31"
+                                                value={settingsData.payroll_period_end_day}
+                                                onChange={e => setSettingsData('payroll_period_end_day', e.target.value)}
+                                                required
+                                                className="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs py-2.5 font-mono"
+                                                placeholder="Contoh: 25"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Hari Eksekusi Otomatis (1 - 31)</label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="31"
+                                                value={settingsData.payroll_auto_calculate_day}
+                                                onChange={e => setSettingsData('payroll_auto_calculate_day', e.target.value)}
+                                                required
+                                                className="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs py-2.5 font-mono"
+                                                placeholder="Contoh: 26"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Kalkulasi Otomatis Bulanan</label>
+                                            <select
+                                                value={settingsData.payroll_auto_calculate_enabled}
+                                                onChange={e => setSettingsData('payroll_auto_calculate_enabled', e.target.value)}
+                                                required
+                                                className="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs py-2.5"
+                                            >
+                                                <option value="0">Nonaktif</option>
+                                                <option value="1">Aktif (Sistem Otomatis)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2.5">
+                                        *Jika kalkulasi otomatis aktif, sistem akan mengalkulasikan draf gaji untuk semua karyawan secara otomatis pada hari eksekusi yang ditentukan pukul 01:00 pagi setiap bulannya.
+                                    </p>
+                                </div>
+
+                                <div className="border-t border-dashed border-slate-200 dark:border-slate-700 pt-5">
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
                                         🗓️ Hari Kerja Aktif (Karyawan tidak absen pada hari ini akan dikenakan denda mangkir)
                                     </label>
@@ -319,8 +413,8 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                             setData(prev => ({
                                                 ...prev,
                                                 month: newMonth,
-                                                start_date: `${prev.year}-${String(newMonth).padStart(2, '0')}-01`,
-                                                end_date: `${prev.year}-${String(newMonth).padStart(2, '0')}-${String(new Date(prev.year, newMonth, 0).getDate()).padStart(2, '0')}`,
+                                                start_date: getCalculatedStartDate(newMonth, prev.year),
+                                                end_date: getCalculatedEndDate(newMonth, prev.year),
                                             }));
                                         }}
                                         className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
@@ -340,8 +434,8 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                             setData(prev => ({
                                                 ...prev,
                                                 year: newYear,
-                                                start_date: `${newYear}-${String(prev.month).padStart(2, '0')}-01`,
-                                                end_date: `${newYear}-${String(prev.month).padStart(2, '0')}-${String(new Date(newYear, prev.month, 0).getDate()).padStart(2, '0')}`,
+                                                start_date: getCalculatedStartDate(prev.month, newYear),
+                                                end_date: getCalculatedEndDate(prev.month, newYear),
                                             }));
                                         }}
                                         className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
