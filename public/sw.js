@@ -1,8 +1,5 @@
-const CACHE_NAME = 'hris-pwa-cache-v3';
+const CACHE_NAME = 'hris-pwa-cache-v4';
 const ASSETS_TO_CACHE = [
-    '/',
-    '/dashboard',
-    '/attendances/scanner',
     '/images/icon-192.png',
     '/images/icon-512.png',
     '/favicon.ico',
@@ -53,8 +50,16 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                if (!response || response.status !== 200 || response.type !== 'basic') {
+                if (!response || response.status !== 200) {
                     return response;
+                }
+
+                // Cache navigation HTML documents dynamically to use as offline fallback
+                if (event.request.mode === 'navigate') {
+                    const responseToCache = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put('/', responseToCache);
+                    });
                 }
 
                 // Cache static assets (CSS, JS, images, fonts) to speed up loading
@@ -137,7 +142,6 @@ self.addEventListener('notificationclick', (event) => {
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            // If there's an open tab, focus it and navigate
             for (const client of windowClients) {
                 if ('focus' in client) {
                     client.focus();
@@ -147,7 +151,6 @@ self.addEventListener('notificationclick', (event) => {
                     return;
                 }
             }
-            // Otherwise open a new tab
             if (clients.openWindow) {
                 return clients.openWindow(targetUrl);
             }
