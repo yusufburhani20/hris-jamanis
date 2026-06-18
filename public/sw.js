@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hris-pwa-cache-v12';
+const CACHE_NAME = 'hris-pwa-cache-v13';
 const ASSETS_TO_CACHE = [
     '/images/icon-192.png',
     '/images/icon-512.png',
@@ -49,15 +49,34 @@ function escapeHtml(string) {
 // Helper to search cache keys for any HTML response
 async function getCachedHtmlShell(cache) {
     const fallbacks = ['/login', '/dashboard', '/'];
+    
+    // 1. Try matching fallbacks with ignoreVary: true
     for (const url of fallbacks) {
-        const cached = await cache.match(url);
+        const cached = await cache.match(url, { ignoreVary: true });
         if (cached) {
-            return cached;
+            const contentType = cached.headers.get('Content-Type');
+            if (contentType && contentType.includes('text/html')) {
+                return cached;
+            }
         }
     }
     
-    // Search cache keys for any text/html response
+    // 2. Scan keys for HTML responses matching the fallbacks
     const keys = await cache.keys();
+    for (const request of keys) {
+        const url = new URL(request.url);
+        if (fallbacks.includes(url.pathname)) {
+            const cached = await cache.match(request);
+            if (cached) {
+                const contentType = cached.headers.get('Content-Type');
+                if (contentType && contentType.includes('text/html')) {
+                    return cached;
+                }
+            }
+        }
+    }
+    
+    // 3. Fallback to any HTML response in the cache
     for (const request of keys) {
         const cached = await cache.match(request);
         if (cached) {
@@ -176,13 +195,21 @@ self.addEventListener('fetch', (event) => {
                 return response;
             })
             .catch(() => {
+                const isInertia = event.request.headers.get('x-inertia') === 'true';
+
+                // For Inertia JSON requests, match strictly (checking Vary) so we get the JSON response.
+                // For navigate requests, match with ignoreVary: true to bypass Cookie/User-Agent mismatches.
+                const matchOptions = {
+                    ignoreSearch: true,
+                    ignoreVary: !isInertia
+                };
+
                 // Fallback to cache if request fails (e.g. offline)
-                return caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
+                return caches.match(event.request, matchOptions).then((cachedResponse) => {
                     if (cachedResponse) {
                         return cachedResponse;
                     }
 
-                    const isInertia = event.request.headers.get('x-inertia') === 'true';
                     if (isInertia) {
                         // Redirect to /dashboard if the Inertia JSON is not cached
                         return new Response('', {
