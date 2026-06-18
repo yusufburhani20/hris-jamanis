@@ -46,7 +46,7 @@ class User extends Authenticatable
     public function shifts()
     {
         return $this->belongsToMany(Shift::class, 'user_shifts')
-                    ->withPivot('start_date', 'end_date')
+                    ->withPivot('id', 'start_date', 'end_date')
                     ->withTimestamps();
     }
 
