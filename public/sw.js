@@ -1,6 +1,8 @@
-const CACHE_NAME = 'hris-pwa-cache-v2';
+const CACHE_NAME = 'hris-pwa-cache-v3';
 const ASSETS_TO_CACHE = [
     '/',
+    '/dashboard',
+    '/attendances/scanner',
     '/images/icon-192.png',
     '/images/icon-512.png',
     '/favicon.ico',
@@ -43,7 +45,7 @@ self.addEventListener('fetch', (event) => {
         url.pathname.startsWith('/sanctum') || 
         url.pathname.startsWith('/telescope') ||
         url.pathname.includes('/payrolls/') ||
-        url.pathname.includes('/attendances/')
+        (url.pathname.includes('/attendances/') && !url.pathname.endsWith('/scanner') && !url.pathname.endsWith('/history'))
     ) {
         return;
     }
