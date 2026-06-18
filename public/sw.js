@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hris-pwa-cache-v11';
+const CACHE_NAME = 'hris-pwa-cache-v12';
 const ASSETS_TO_CACHE = [
     '/images/icon-192.png',
     '/images/icon-512.png',
@@ -177,7 +177,7 @@ self.addEventListener('fetch', (event) => {
             })
             .catch(() => {
                 // Fallback to cache if request fails (e.g. offline)
-                return caches.match(event.request).then((cachedResponse) => {
+                return caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
                     if (cachedResponse) {
                         return cachedResponse;
                     }
