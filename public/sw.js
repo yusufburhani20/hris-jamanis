@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hris-pwa-cache-v13';
+const CACHE_NAME = 'hris-pwa-cache-v14';
 const ASSETS_TO_CACHE = [
     '/images/icon-192.png',
     '/images/icon-512.png',
@@ -7,10 +7,38 @@ const ASSETS_TO_CACHE = [
     '/login'
 ];
 
+// Helper to fetch and cache a URL cleanly, handling potential redirects
+async function cleanAndCacheUrl(cache, url) {
+    try {
+        const response = await fetch(url);
+        if (response && response.status === 200) {
+            // Re-create the response to clean the 'redirected' flag and avoid Cache API TypeErrors
+            const body = await response.blob();
+            const cleanResponse = new Response(body, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers
+            });
+            await cache.put(url, cleanResponse);
+            
+            // Also seed the other main entry path shells immediately to guarantee offline loads
+            if (url === '/login') {
+                await cache.put('/', cleanResponse.clone());
+                await cache.put('/dashboard', cleanResponse.clone());
+            }
+        }
+    } catch (err) {
+        console.warn(`Failed to cleanly cache redirected url ${url}:`, err);
+    }
+}
+
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             const cachePromises = ASSETS_TO_CACHE.map((url) => {
+                if (url === '/login') {
+                    return cleanAndCacheUrl(cache, url);
+                }
                 return cache.add(url).catch((err) => {
                     console.warn(`Failed to pre-cache ${url}:`, err);
                 });
