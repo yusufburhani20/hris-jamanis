@@ -243,7 +243,6 @@ class AttendanceController extends Controller
         ]);
 
         return back()->with('success', 'Presensi pulang berhasil.');
-    }rhasil.');
     }
 
     public function history(Request $request)
