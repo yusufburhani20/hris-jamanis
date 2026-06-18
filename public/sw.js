@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hris-pwa-cache-v5';
+const CACHE_NAME = 'hris-pwa-cache-v6';
 const ASSETS_TO_CACHE = [
     '/images/icon-192.png',
     '/images/icon-512.png',
@@ -85,9 +85,18 @@ self.addEventListener('fetch', (event) => {
                     if (cachedResponse) {
                         return cachedResponse;
                     }
-                    // If page request or Inertia fetch fails offline, fallback to root path /
+                    // If Inertia fetch fails offline, return 409 with X-Inertia-Location to force full-page navigation reload
                     const isInertia = event.request.headers.get('x-inertia') === 'true';
-                    if (event.request.mode === 'navigate' || isInertia) {
+                    if (isInertia) {
+                        return new Response('', {
+                            status: 409,
+                            headers: {
+                                'x-inertia-location': event.request.url
+                            }
+                        });
+                    }
+                    // If page request fails offline, fallback to root path /
+                    if (event.request.mode === 'navigate') {
                         return caches.match('/');
                     }
                 });
