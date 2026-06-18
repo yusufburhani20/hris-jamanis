@@ -23,6 +23,17 @@ class SettingController extends Controller
                 'school_favicon'           => Setting::get('school_favicon') ? Storage::url(Setting::get('school_favicon')) : null,
                 'github_username'          => Setting::get('github_username', ''),
                 'github_token'             => Setting::get('github_token', ''),
+                
+                // Notification keys
+                'push_checkin_reminder_enabled'  => Setting::get('push_checkin_reminder_enabled', '1') === '1',
+                'push_checkin_reminder_time'     => Setting::get('push_checkin_reminder_time', '07:45'),
+                'push_checkout_reminder_enabled' => Setting::get('push_checkout_reminder_enabled', '1') === '1',
+                'push_checkout_reminder_time'    => Setting::get('push_checkout_reminder_time', '17:00'),
+                'notif_payroll_paid_enabled'     => Setting::get('notif_payroll_paid_enabled', '1') === '1',
+                'notif_leave_request_enabled'    => Setting::get('notif_leave_request_enabled', '1') === '1',
+                'notif_leave_status_enabled'     => Setting::get('notif_leave_status_enabled', '1') === '1',
+                'notif_overtime_request_enabled' => Setting::get('notif_overtime_request_enabled', '1') === '1',
+                'notif_overtime_status_enabled'  => Setting::get('notif_overtime_status_enabled', '1') === '1',
             ]
         ]);
     }
@@ -39,6 +50,17 @@ class SettingController extends Controller
             'school_favicon'     => 'nullable|image|mimes:ico,png,jpg,jpeg,svg|max:1024',
             'github_username'    => 'nullable|string|max:100',
             'github_token'       => 'nullable|string|max:255',
+            
+            // Notification validation
+            'push_checkin_reminder_enabled'  => 'nullable|boolean',
+            'push_checkin_reminder_time'     => 'nullable|string|max:5',
+            'push_checkout_reminder_enabled' => 'nullable|boolean',
+            'push_checkout_reminder_time'    => 'nullable|string|max:5',
+            'notif_payroll_paid_enabled'     => 'nullable|boolean',
+            'notif_leave_request_enabled'    => 'nullable|boolean',
+            'notif_leave_status_enabled'     => 'nullable|boolean',
+            'notif_overtime_request_enabled' => 'nullable|boolean',
+            'notif_overtime_status_enabled'  => 'nullable|boolean',
         ]);
 
         Setting::set('school_name', $request->school_name);
@@ -48,6 +70,16 @@ class SettingController extends Controller
         Setting::set('report_location', $request->report_location);
         Setting::set('github_username', $request->github_username);
         Setting::set('github_token', $request->github_token);
+
+        Setting::set('push_checkin_reminder_enabled', $request->push_checkin_reminder_enabled ? '1' : '0');
+        Setting::set('push_checkin_reminder_time', $request->push_checkin_reminder_time ?? '07:45');
+        Setting::set('push_checkout_reminder_enabled', $request->push_checkout_reminder_enabled ? '1' : '0');
+        Setting::set('push_checkout_reminder_time', $request->push_checkout_reminder_time ?? '17:00');
+        Setting::set('notif_payroll_paid_enabled', $request->notif_payroll_paid_enabled ? '1' : '0');
+        Setting::set('notif_leave_request_enabled', $request->notif_leave_request_enabled ? '1' : '0');
+        Setting::set('notif_leave_status_enabled', $request->notif_leave_status_enabled ? '1' : '0');
+        Setting::set('notif_overtime_request_enabled', $request->notif_overtime_request_enabled ? '1' : '0');
+        Setting::set('notif_overtime_status_enabled', $request->notif_overtime_status_enabled ? '1' : '0');
 
         if ($request->hasFile('school_logo')) {
             // Delete old logo

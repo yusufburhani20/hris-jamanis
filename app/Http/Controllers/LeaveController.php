@@ -68,16 +68,34 @@ class LeaveController extends Controller
         // Load user relationship for email mailable
         $leave->load('user');
 
-        // Send Email notification to all Admin(s)
-        try {
-            $admins = \App\Models\User::where('role', 'LIKE', '%admin%')->get();
-            foreach ($admins as $admin) {
-                if ($admin->email) {
-                    \Illuminate\Support\Facades\Mail::to($admin->email)->send(new \App\Mail\LeaveRequestNotification($leave));
+        // Send Email & PWA notification to all Admin(s)
+        $notifEnabled = \App\Models\Setting::get('notif_leave_request_enabled', '1') === '1';
+        if ($notifEnabled) {
+            try {
+                $admins = \App\Models\User::where('role', 'LIKE', '%admin%')->get();
+                foreach ($admins as $admin) {
+                    if ($admin->email) {
+                        \Illuminate\Support\Facades\Mail::to($admin->email)->send(new \App\Mail\LeaveRequestNotification($leave));
+                    }
                 }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Email sending failed for new Leave request: " . $e->getMessage());
             }
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Email sending failed for new Leave request: " . $e->getMessage());
+
+            try {
+                $push = app(\App\Services\WebPushService::class);
+                $admins = \App\Models\User::where('role', 'LIKE', '%admin%')->get();
+                foreach ($admins as $admin) {
+                    $push->sendToUser(
+                        $admin->id,
+                        '📝 Pengajuan Izin Baru',
+                        "Pengajuan {$leave->type} baru dari {$leave->user->name} membutuhkan persetujuan Anda.",
+                        ['url' => '/admin/leaves']
+                    );
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("PWA leave request notification failed: " . $e->getMessage());
+            }
         }
 
         return redirect()->route('leaves.index')->with('success', 'Pengajuan izin/cuti berhasil dikirim.');
@@ -98,6 +116,32 @@ class LeaveController extends Controller
             'approved_at' => now(),
         ]);
 
+        // Load user relationship
+        $leave->load('user');
+
+        // Send Email & PWA status notification to Karyawan
+        $notifEnabled = \App\Models\Setting::get('notif_leave_status_enabled', '1') === '1';
+        if ($notifEnabled) {
+            try {
+                if ($leave->user && $leave->user->email) {
+                    \Illuminate\Support\Facades\Mail::to($leave->user->email)->send(new \App\Mail\LeaveStatusNotification($leave));
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Email status leave approved failed: " . $e->getMessage());
+            }
+
+            try {
+                app(\App\Services\WebPushService::class)->sendToUser(
+                    $leave->user_id,
+                    '✅ Status Izin Diperbarui',
+                    "Pengajuan {$leave->type} Anda telah disetujui oleh Admin.",
+                    ['url' => '/leaves']
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("PWA leave approved notification failed: " . $e->getMessage());
+            }
+        }
+
         return redirect()->back()->with('success', 'Pengajuan izin/cuti disetujui.');
     }
 
@@ -115,6 +159,32 @@ class LeaveController extends Controller
             'approved_by' => Auth::id(),
             'approved_at' => now(),
         ]);
+
+        // Load user relationship
+        $leave->load('user');
+
+        // Send Email & PWA status notification to Karyawan
+        $notifEnabled = \App\Models\Setting::get('notif_leave_status_enabled', '1') === '1';
+        if ($notifEnabled) {
+            try {
+                if ($leave->user && $leave->user->email) {
+                    \Illuminate\Support\Facades\Mail::to($leave->user->email)->send(new \App\Mail\LeaveStatusNotification($leave));
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Email status leave rejected failed: " . $e->getMessage());
+            }
+
+            try {
+                app(\App\Services\WebPushService::class)->sendToUser(
+                    $leave->user_id,
+                    '✅ Status Izin Diperbarui',
+                    "Pengajuan {$leave->type} Anda telah ditolak oleh Admin.",
+                    ['url' => '/leaves']
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("PWA leave rejected notification failed: " . $e->getMessage());
+            }
+        }
 
         return redirect()->back()->with('success', 'Pengajuan izin/cuti ditolak.');
     }

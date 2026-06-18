@@ -185,14 +185,28 @@ class PayrollController extends Controller
             'paid_at' => now(),
         ]);
 
-        // Send Email payslip notification
-        try {
-            $payrollWithUser = Payroll::with('user')->findOrFail($payroll->id);
-            if ($payrollWithUser->user && $payrollWithUser->user->email) {
-                \Illuminate\Support\Facades\Mail::to($payrollWithUser->user->email)->send(new \App\Mail\PayslipNotification($payrollWithUser));
+        // Send Email & PWA payslip notification
+        $notifEnabled = \App\Models\Setting::get('notif_payroll_paid_enabled', '1') === '1';
+        if ($notifEnabled) {
+            try {
+                $payrollWithUser = Payroll::with('user')->findOrFail($payroll->id);
+                if ($payrollWithUser->user && $payrollWithUser->user->email) {
+                    \Illuminate\Support\Facades\Mail::to($payrollWithUser->user->email)->send(new \App\Mail\PayslipNotification($payrollWithUser));
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Email sending failed for payroll ID {$payroll->id}: " . $e->getMessage());
             }
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Email sending failed for payroll ID {$payroll->id}: " . $e->getMessage());
+
+            try {
+                app(\App\Services\WebPushService::class)->sendToUser(
+                    $payroll->user_id,
+                    '📋 Slip Gaji Diterbitkan',
+                    "Gaji Anda untuk periode {$payroll->month}/{$payroll->year} telah selesai dihitung dan dibayarkan.",
+                    ['url' => '/payrolls']
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("PWA payroll notification failed for User ID {$payroll->user_id}: " . $e->getMessage());
+            }
         }
 
         return redirect()->back()->with('success', 'Gaji berhasil ditandai telah dibayarkan dan email slip gaji telah dikirim.');
@@ -234,13 +248,27 @@ class PayrollController extends Controller
                 'paid_at' => now(),
             ]);
 
-            // Send Email payslip notification
-            try {
-                if ($payroll->user && $payroll->user->email) {
-                    \Illuminate\Support\Facades\Mail::to($payroll->user->email)->send(new \App\Mail\PayslipNotification($payroll));
+            // Send Email & PWA payslip notification
+            $notifEnabled = \App\Models\Setting::get('notif_payroll_paid_enabled', '1') === '1';
+            if ($notifEnabled) {
+                try {
+                    if ($payroll->user && $payroll->user->email) {
+                        \Illuminate\Support\Facades\Mail::to($payroll->user->email)->send(new \App\Mail\PayslipNotification($payroll));
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Email sending failed in bulk for payroll ID {$payroll->id}: " . $e->getMessage());
                 }
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("Email sending failed in bulk for payroll ID {$payroll->id}: " . $e->getMessage());
+
+                try {
+                    app(\App\Services\WebPushService::class)->sendToUser(
+                        $payroll->user_id,
+                        '📋 Slip Gaji Diterbitkan',
+                        "Gaji Anda untuk periode {$payroll->month}/{$payroll->year} telah selesai dihitung dan dibayarkan.",
+                        ['url' => '/payrolls']
+                    );
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning("PWA payroll bulk notification failed for User ID {$payroll->user_id}: " . $e->getMessage());
+                }
             }
         }
 

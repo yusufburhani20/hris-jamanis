@@ -29,6 +29,17 @@ use App\Models\User as UserModel;
 
 Schedule::call(function () {
     try {
+        $isEnabled = true;
+        try {
+            if (Schema::hasTable('settings')) {
+                $isEnabled = Setting::where('key', 'push_checkin_reminder_enabled')->value('value') !== '0';
+            }
+        } catch (\Exception $e) {}
+
+        if (!$isEnabled) {
+            return;
+        }
+
         $currentTime = Carbon::now()->format('H:i');
         
         $employees = UserModel::where('role', 'LIKE', '%employee%')
@@ -78,6 +89,17 @@ Schedule::call(function () {
 
 Schedule::call(function () {
     try {
+        $isEnabled = true;
+        try {
+            if (Schema::hasTable('settings')) {
+                $isEnabled = Setting::where('key', 'push_checkout_reminder_enabled')->value('value') !== '0';
+            }
+        } catch (\Exception $e) {}
+
+        if (!$isEnabled) {
+            return;
+        }
+
         $currentTime = Carbon::now()->format('H:i');
         
         $employees = UserModel::where('role', 'LIKE', '%employee%')

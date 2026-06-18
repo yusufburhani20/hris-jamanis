@@ -62,16 +62,34 @@ class OvertimeRequestController extends Controller
         // Load user relationship for notification email
         $overtime->load('user');
 
-        // Send Email notification to all Admin(s)
-        try {
-            $admins = User::where('role', 'LIKE', '%admin%')->get();
-            foreach ($admins as $admin) {
-                if ($admin->email) {
-                    Mail::to($admin->email)->send(new OvertimeRequestNotification($overtime));
+        // Send Email & PWA notification to all Admin(s)
+        $notifEnabled = \App\Models\Setting::get('notif_overtime_request_enabled', '1') === '1';
+        if ($notifEnabled) {
+            try {
+                $admins = User::where('role', 'LIKE', '%admin%')->get();
+                foreach ($admins as $admin) {
+                    if ($admin->email) {
+                        Mail::to($admin->email)->send(new OvertimeRequestNotification($overtime));
+                    }
                 }
+            } catch (\Exception $e) {
+                Log::error("Email sending failed for new Overtime request: " . $e->getMessage());
             }
-        } catch (\Exception $e) {
-            Log::error("Email sending failed for new Overtime request: " . $e->getMessage());
+
+            try {
+                $push = app(\App\Services\WebPushService::class);
+                $admins = User::where('role', 'LIKE', '%admin%')->get();
+                foreach ($admins as $admin) {
+                    $push->sendToUser(
+                        $admin->id,
+                        '⏰ Pengajuan Lembur Baru',
+                        "Pengajuan lembur baru dari {$overtime->user->name} membutuhkan persetujuan Anda.",
+                        ['url' => '/admin/overtimes']
+                    );
+                }
+            } catch (\Exception $e) {
+                Log::warning("PWA overtime request notification failed: " . $e->getMessage());
+            }
         }
 
         return redirect()->route('overtimes.index')->with('success', 'Pengajuan upah lembur berhasil dikirim.');
@@ -92,6 +110,33 @@ class OvertimeRequestController extends Controller
             'approved_at' => now(),
         ]);
 
+        // Load user relationship
+        $overtime->load('user');
+
+        // Send Email & PWA status notification to Karyawan
+        $notifEnabled = \App\Models\Setting::get('notif_overtime_status_enabled', '1') === '1';
+        if ($notifEnabled) {
+            try {
+                if ($overtime->user && $overtime->user->email) {
+                    Mail::to($overtime->user->email)->send(new \App\Mail\OvertimeStatusNotification($overtime));
+                }
+            } catch (\Exception $e) {
+                Log::error("Email status overtime approved failed: " . $e->getMessage());
+            }
+
+            try {
+                $dateLabel = $overtime->date->format('d M Y');
+                app(\App\Services\WebPushService::class)->sendToUser(
+                    $overtime->user_id,
+                    '✅ Status Lembur Diperbarui',
+                    "Pengajuan lembur Anda untuk tanggal {$dateLabel} telah disetujui oleh Admin.",
+                    ['url' => '/overtimes']
+                );
+            } catch (\Exception $e) {
+                Log::warning("PWA overtime approved notification failed: " . $e->getMessage());
+            }
+        }
+
         return redirect()->back()->with('success', 'Pengajuan lembur disetujui.');
     }
 
@@ -109,6 +154,33 @@ class OvertimeRequestController extends Controller
             'approved_by' => Auth::id(),
             'approved_at' => now(),
         ]);
+
+        // Load user relationship
+        $overtime->load('user');
+
+        // Send Email & PWA status notification to Karyawan
+        $notifEnabled = \App\Models\Setting::get('notif_overtime_status_enabled', '1') === '1';
+        if ($notifEnabled) {
+            try {
+                if ($overtime->user && $overtime->user->email) {
+                    Mail::to($overtime->user->email)->send(new \App\Mail\OvertimeStatusNotification($overtime));
+                }
+            } catch (\Exception $e) {
+                Log::error("Email status overtime rejected failed: " . $e->getMessage());
+            }
+
+            try {
+                $dateLabel = $overtime->date->format('d M Y');
+                app(\App\Services\WebPushService::class)->sendToUser(
+                    $overtime->user_id,
+                    '✅ Status Lembur Diperbarui',
+                    "Pengajuan lembur Anda untuk tanggal {$dateLabel} telah ditolak oleh Admin.",
+                    ['url' => '/overtimes']
+                );
+            } catch (\Exception $e) {
+                Log::warning("PWA overtime rejected notification failed: " . $e->getMessage());
+            }
+        }
 
         return redirect()->back()->with('success', 'Pengajuan lembur ditolak.');
     }
