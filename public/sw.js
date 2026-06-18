@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hris-pwa-cache-v10';
+const CACHE_NAME = 'hris-pwa-cache-v11';
 const ASSETS_TO_CACHE = [
     '/images/icon-192.png',
     '/images/icon-512.png',
@@ -10,7 +10,12 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS_TO_CACHE);
+            const cachePromises = ASSETS_TO_CACHE.map((url) => {
+                return cache.add(url).catch((err) => {
+                    console.warn(`Failed to pre-cache ${url}:`, err);
+                });
+            });
+            return Promise.all(cachePromises);
         })
     );
     self.skipWaiting();
@@ -41,8 +46,32 @@ function escapeHtml(string) {
         .replace(/>/g, '&gt;');
 }
 
-// Helper to construct offline HTML page by merging login HTML shell and Inertia JSON
-async function getOfflineHtmlResponse(request, cache, fallbackUrl = '/login') {
+// Helper to search cache keys for any HTML response
+async function getCachedHtmlShell(cache) {
+    const fallbacks = ['/login', '/dashboard', '/'];
+    for (const url of fallbacks) {
+        const cached = await cache.match(url);
+        if (cached) {
+            return cached;
+        }
+    }
+    
+    // Search cache keys for any text/html response
+    const keys = await cache.keys();
+    for (const request of keys) {
+        const cached = await cache.match(request);
+        if (cached) {
+            const contentType = cached.headers.get('Content-Type');
+            if (contentType && contentType.includes('text/html')) {
+                return cached;
+            }
+        }
+    }
+    return null;
+}
+
+// Helper to construct offline HTML page by merging cached HTML shell and Inertia JSON
+async function getOfflineHtmlResponse(request, cache) {
     // 1. Try to find the cached Inertia JSON for this URL
     let inertiaRequest = new Request(request.url, {
         headers: { 'x-inertia': 'true' }
@@ -60,19 +89,19 @@ async function getOfflineHtmlResponse(request, cache, fallbackUrl = '/login') {
         }
     }
 
-    // 2. Fetch the cached login HTML shell
-    const loginResponse = await cache.match(fallbackUrl);
-    if (!loginResponse) {
+    // 2. Fetch the cached HTML shell
+    const shellResponse = await getCachedHtmlShell(cache);
+    if (!shellResponse) {
         return null;
     }
 
     if (!inertiaResponse) {
-        // Fallback to just the login HTML shell
-        return loginResponse;
+        // Fallback to just the HTML shell directly
+        return shellResponse;
     }
 
     try {
-        const loginHtmlText = await loginResponse.text();
+        const shellHtmlText = await shellResponse.text();
         const inertiaJsonText = await inertiaResponse.text();
 
         // Update the URL in the Inertia page data to represent the actual requested path
@@ -80,14 +109,14 @@ async function getOfflineHtmlResponse(request, cache, fallbackUrl = '/login') {
         inertiaData.url = new URL(request.url).pathname;
 
         const escapedJson = escapeHtml(JSON.stringify(inertiaData));
-        const modifiedHtml = loginHtmlText.replace(/data-page="[^"]*"/, `data-page="${escapedJson}"`);
+        const modifiedHtml = shellHtmlText.replace(/data-page="[^"]*"/, `data-page="${escapedJson}"`);
 
         return new Response(modifiedHtml, {
             headers: { 'Content-Type': 'text/html' }
         });
     } catch (e) {
         console.error('Error merging offline HTML:', e);
-        return loginResponse;
+        return shellResponse;
     }
 }
 
