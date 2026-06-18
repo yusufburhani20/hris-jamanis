@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hris-pwa-cache-v7';
+const CACHE_NAME = 'hris-pwa-cache-v8';
 const ASSETS_TO_CACHE = [
     '/images/icon-192.png',
     '/images/icon-512.png',
@@ -54,15 +54,21 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 }
 
-                // Cache navigation HTML documents dynamically to use as offline fallback
+                const isInertia = event.request.headers.get('x-inertia') === 'true';
+
+                // Cache navigation HTML documents dynamically under their request URL
                 if (event.request.mode === 'navigate') {
                     const responseToCache = response.clone();
                     caches.open(CACHE_NAME).then((cache) => {
-                        cache.put('/', responseToCache);
+                        cache.put(event.request, responseToCache);
+                        // Also update the general '/' fallback cache
+                        if (url.pathname === '/' || url.pathname === '/dashboard') {
+                            cache.put('/', responseToCache.clone());
+                        }
                     });
                 }
 
-                // Cache static assets (CSS, JS, images, fonts) to speed up loading
+                // Cache static assets (CSS, JS, images, fonts) and Inertia JSON responses
                 const isStaticAsset = (
                     event.request.destination === 'style' ||
                     event.request.destination === 'script' ||
@@ -70,7 +76,7 @@ self.addEventListener('fetch', (event) => {
                     event.request.destination === 'font'
                 );
 
-                if (isStaticAsset) {
+                if (isStaticAsset || isInertia) {
                     const responseToCache = response.clone();
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put(event.request, responseToCache);
@@ -84,16 +90,6 @@ self.addEventListener('fetch', (event) => {
                 return caches.match(event.request).then((cachedResponse) => {
                     if (cachedResponse) {
                         return cachedResponse;
-                    }
-                    // If Inertia fetch fails offline, return 409 with X-Inertia-Location to force full-page navigation reload
-                    const isInertia = event.request.headers.get('x-inertia') === 'true';
-                    if (isInertia) {
-                        return new Response('', {
-                            status: 409,
-                            headers: {
-                                'x-inertia-location': event.request.url
-                            }
-                        });
                     }
                     // If page request fails offline, fallback to root path /
                     if (event.request.mode === 'navigate') {
