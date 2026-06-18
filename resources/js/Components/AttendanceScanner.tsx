@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm } from '@inertiajs/react';
 import { MapPinIcon, CameraIcon, CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { addToOfflineQueue } from '../utils/offlineStore';
 
 export default function AttendanceScanner({ existingRecord, geofences = [] }: { existingRecord?: any, geofences?: any[] }) {
     const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
@@ -8,6 +9,7 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
     
     // Geofence validation state
     const [nearestGeofence, setNearestGeofence] = useState<{ name: string, distance: number, radius: number, valid: boolean } | null>(null);
+    const [localSuccessMessage, setLocalSuccessMessage] = useState<string | null>(null);
     
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
@@ -291,8 +293,40 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
         startCamera();
     };
 
-    const submit = (type: 'checkIn' | 'checkOut') => (e: React.FormEvent) => {
+    const submit = (type: 'checkIn' | 'checkOut') => async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Fallback to offline queue if client is offline
+        if (!navigator.onLine) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const localDeviceTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+            const offlinePayload = {
+                type: type === 'checkIn' ? 'check-in' as const : 'check-out' as const,
+                latitude: parseFloat(data.latitude),
+                longitude: parseFloat(data.longitude),
+                photo_base64: photoPreview || undefined,
+                offline_device_time: localDeviceTime,
+                is_mocked: data.is_mocked,
+            };
+
+            try {
+                await addToOfflineQueue(offlinePayload);
+                setLocalSuccessMessage(`Absensi ${type === 'checkIn' ? 'masuk' : 'pulang'} berhasil disimpan secara lokal karena Anda sedang offline. Data akan disinkronkan saat koneksi internet kembali normal.`);
+                stopCamera();
+                return;
+            } catch (err: any) {
+                alert("Gagal menyimpan absensi offline: " + err.message);
+                return;
+            }
+        }
+
         const routeName = type === 'checkIn' ? 'attendances.check-in' : 'attendances.check-out';
         post(route(routeName), {
             preserveScroll: true,
@@ -309,6 +343,29 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
 
     const isCheckedIn = existingRecord && existingRecord.check_in;
     const isCheckedOut = existingRecord && existingRecord.check_out;
+
+    if (localSuccessMessage) {
+        return (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 text-center h-full flex flex-col justify-center items-center space-y-4 shadow-md transition-shadow">
+                <CheckCircleIcon className="w-16 h-16 text-emerald-500 animate-bounce" />
+                <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Absensi Disimpan</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm leading-relaxed">{localSuccessMessage}</p>
+                </div>
+                <button
+                    onClick={() => {
+                        setLocalSuccessMessage(null);
+                        setPhotoPreview(null);
+                        setData('photo', null);
+                        startCamera();
+                    }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
+                >
+                    Kembali ke Pemindai
+                </button>
+            </div>
+        );
+    }
 
     if (isCheckedOut) {
         return (

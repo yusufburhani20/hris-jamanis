@@ -1,5 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { getOfflineQueue, deleteFromOfflineQueue, OfflineAttendance } from '@/utils/offlineStore';
 import StatCard from '@/Components/StatCard';
 import Card from '@/Components/Card';
 import { 
@@ -62,6 +65,77 @@ export default function Dashboard({
     recentAttendances,
     analytics
 }: DashboardProps) {
+    const [offlineQueue, setOfflineQueue] = useState<OfflineAttendance[]>([]);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncError, setSyncError] = useState<string | null>(null);
+    const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
+
+    useEffect(() => {
+        checkOfflineQueue();
+        
+        const handleOnline = () => {
+            checkOfflineQueue();
+        };
+        window.addEventListener('online', handleOnline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+        };
+    }, []);
+
+    const checkOfflineQueue = async () => {
+        try {
+            const queue = await getOfflineQueue();
+            setOfflineQueue(queue);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleSync = async () => {
+        if (offlineQueue.length === 0 || isSyncing) return;
+        setIsSyncing(true);
+        setSyncError(null);
+        setSyncSuccess(false);
+
+        const queueCopy = [...offlineQueue];
+        let successCount = 0;
+
+        for (const item of queueCopy) {
+            const endpoint = route(item.type === 'check-in' ? 'attendances.check-in' : 'attendances.check-out');
+            try {
+                await axios.post(endpoint, {
+                    latitude: item.latitude,
+                    longitude: item.longitude,
+                    photo_base64: item.photo_base64,
+                    offline_device_time: item.offline_device_time,
+                    is_mocked: item.is_mocked,
+                }, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (item.id !== undefined) {
+                    await deleteFromOfflineQueue(item.id);
+                    successCount++;
+                }
+            } catch (err: any) {
+                console.error("Gagal sinkronisasi item:", err);
+                const errMsg = err.response?.data?.message || err.message || "Kesalahan jaringan";
+                setSyncError(`Sinkronisasi terhenti: ${errMsg}`);
+                break;
+            }
+        }
+
+        await checkOfflineQueue();
+        setIsSyncing(false);
+
+        if (successCount > 0) {
+            setSyncSuccess(true);
+            router.reload({ preserveScroll: true });
+            setTimeout(() => setSyncSuccess(false), 5000);
+        }
+    };
 
     return (
         <AuthenticatedLayout
@@ -81,6 +155,57 @@ export default function Dashboard({
             <Head title="Dashboard" />
 
             <div className="space-y-6">
+
+                {/* ── SECTION: Offline Sync Banner ── */}
+                {offlineQueue.length > 0 && (
+                    <div className="bg-gradient-to-r from-amber-500 to-orange-600 dark:from-amber-600 dark:to-orange-700 text-white rounded-2xl p-5 shadow-lg border border-amber-400/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 bg-white/10 backdrop-blur-md rounded-xl shrink-0">
+                                <ExclamationTriangleIcon className="w-6 h-6 text-amber-100" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold">Data Absensi Offline Terdeteksi</h4>
+                                <p className="text-xs text-amber-100/90 mt-0.5">
+                                    Terdapat {offlineQueue.length} data absensi lokal yang belum disinkronkan ke server. Silakan kirim data ini sekarang.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleSync}
+                            disabled={isSyncing}
+                            className="w-full sm:w-auto px-5 py-2.5 bg-white text-orange-700 hover:bg-orange-50 disabled:bg-white/50 disabled:text-orange-700/50 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2"
+                        >
+                            {isSyncing ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-orange-700 border-t-transparent"></div>
+                                    <span>Menyinkronkan...</span>
+                                </>
+                            ) : (
+                                <span>Kirim Data Absensi ({offlineQueue.length})</span>
+                            )}
+                        </button>
+                    </div>
+                )}
+
+                {syncSuccess && (
+                    <div className="bg-emerald-500 text-white rounded-2xl p-4 shadow-lg flex items-center gap-3">
+                        <CheckCircleIcon className="w-6 h-6 shrink-0 text-emerald-100" />
+                        <div>
+                            <p className="text-sm font-bold">Sinkronisasi Berhasil!</p>
+                            <p className="text-xs text-emerald-100">Semua data absensi offline Anda telah sukses diunggah ke server.</p>
+                        </div>
+                    </div>
+                )}
+
+                {syncError && (
+                    <div className="bg-rose-500 text-white rounded-2xl p-4 shadow-lg flex items-center gap-3">
+                        <ExclamationTriangleIcon className="w-6 h-6 shrink-0 text-rose-100" />
+                        <div>
+                            <p className="text-sm font-bold">Gagal Sinkronisasi</p>
+                            <p className="text-xs text-rose-100">{syncError}</p>
+                        </div>
+                    </div>
+                )}
                 
                 {/* ── SECTION 1: Welcome Banner ── */}
                 <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-700 text-white shadow-2xl shadow-indigo-500/20 isolate">

@@ -50,12 +50,13 @@ class User extends Authenticatable
                     ->withTimestamps();
     }
 
-    public function activeShift()
+    public function activeShift($date = null)
     {
+        $targetDate = $date ? \Carbon\Carbon::parse($date)->startOfDay() : today();
         return $this->shifts()
-                    ->where('user_shifts.start_date', '<=', today())
-                    ->where(function($q) {
-                        $q->where('user_shifts.end_date', '>=', today())
+                    ->where('user_shifts.start_date', '<=', $targetDate)
+                    ->where(function($q) use ($targetDate) {
+                        $q->where('user_shifts.end_date', '>=', $targetDate)
                           ->orWhereNull('user_shifts.end_date');
                     })
                     ->latest('user_shifts.start_date')

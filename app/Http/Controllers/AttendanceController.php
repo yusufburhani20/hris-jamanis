@@ -48,8 +48,10 @@ class AttendanceController extends Controller
         $request->validate([
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'photo' => 'required|image|max:2048', // Max 2MB
+            'photo' => 'required_without:photo_base64|image|max:2048', // Max 2MB
+            'photo_base64' => 'required_without:photo|string',
             'is_mocked' => 'nullable|boolean',
+            'offline_device_time' => 'nullable|string',
         ]);
 
         // Strict Spoofing Check
@@ -59,7 +61,10 @@ class AttendanceController extends Controller
         }
 
         $user = Auth::user();
-        $date = Carbon::today();
+        $offlineDeviceTime = $request->input('offline_device_time');
+        $isOffline = !empty($offlineDeviceTime);
+        $deviceTime = $isOffline ? Carbon::parse($offlineDeviceTime) : Carbon::now();
+        $date = $isOffline ? $deviceTime->toDateString() : Carbon::today()->toDateString();
 
         // Check if already checked in today
         $existing = Attendance::where('user_id', $user->id)
@@ -76,18 +81,17 @@ class AttendanceController extends Controller
         }
 
         $status = 'hadir';
-        $now = Carbon::now();
-        
+
         // ── SHIFT PENUGASAN INTEGRATION (PHASE 1) ──
-        $activeShift = $user->activeShift();
+        $activeShift = $user->activeShift($date);
         if ($activeShift) {
             $startTime = Carbon::createFromFormat('H:i:s', $activeShift->start_time);
-            if ($now->greaterThan($startTime)) {
+            if ($deviceTime->greaterThan($startTime)) {
                 $status = 'terlambat';
             }
         } elseif ($geoCheck['geofence'] && $geoCheck['geofence']->work_start_time) {
             $startTime = Carbon::createFromFormat('H:i:s', $geoCheck['geofence']->work_start_time);
-            if ($now->greaterThan($startTime)) {
+            if ($deviceTime->greaterThan($startTime)) {
                 $status = 'terlambat';
             }
         }
@@ -95,12 +99,30 @@ class AttendanceController extends Controller
         $verificationStatus = $geoCheck['valid'] ? 'valid' : 'system_flagged';
         $notes = $geoCheck['notes'];
 
-        $path = $request->file('photo')->store('attendances/checkin', 'public');
+        $path = null;
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('attendances/checkin', 'public');
+        } elseif ($request->filled('photo_base64')) {
+            $base64Data = $request->input('photo_base64');
+            if (preg_match('/^data:image\/(\w+);base64,/', $base64Data, $type)) {
+                $base64Data = substr($base64Data, strpos($base64Data, ',') + 1);
+                $ext = strtolower($type[1]);
+            } else {
+                $ext = 'png';
+            }
+            $image = base64_decode($base64Data);
+            if ($image === false) {
+                return back()->with('error', 'Gagal memproses foto selfie.');
+            }
+            $filename = 'offline_' . uniqid() . '.' . $ext;
+            $path = 'attendances/checkin/' . $filename;
+            \Illuminate\Support\Facades\Storage::disk('public')->put($path, $image);
+        }
 
         Attendance::updateOrCreate(
             ['user_id' => $user->id, 'date' => $date],
             [
-                'check_in' => Carbon::now()->format('H:i:s'),
+                'check_in' => $deviceTime->format('H:i:s'),
                 'status' => $status,
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
@@ -110,6 +132,8 @@ class AttendanceController extends Controller
                 'verification_status' => $verificationStatus,
                 'system_notes' => $notes,
                 'is_mocked' => false,
+                'is_offline' => $isOffline,
+                'offline_device_time' => $isOffline ? $deviceTime->toDateTimeString() : null,
             ]
         );
 
@@ -122,7 +146,9 @@ class AttendanceController extends Controller
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
             'photo' => 'nullable|image|max:2048',
+            'photo_base64' => 'nullable|string',
             'is_mocked' => 'nullable|boolean',
+            'offline_device_time' => 'nullable|string',
         ]);
 
         // Strict Spoofing Check
@@ -132,7 +158,10 @@ class AttendanceController extends Controller
         }
 
         $user = Auth::user();
-        $date = Carbon::today();
+        $offlineDeviceTime = $request->input('offline_device_time');
+        $isOffline = !empty($offlineDeviceTime);
+        $deviceTime = $isOffline ? Carbon::parse($offlineDeviceTime) : Carbon::now();
+        $date = $isOffline ? $deviceTime->toDateString() : Carbon::today()->toDateString();
 
         $existing = Attendance::where('user_id', $user->id)
             ->where('date', $date)
@@ -151,53 +180,70 @@ class AttendanceController extends Controller
             return back()->with('error', 'Gagal Check-Out: Anda berada di luar radius lokasi yang diizinkan.');
         }
 
-        $now = Carbon::now();
         $notes = $existing->system_notes . " | CheckOut: " . $geoCheck['notes'];
         $newStatus = $existing->status;
-        
+
         // ── SHIFT PENUGASAN INTEGRATION (PHASE 1) ──
-        $activeShift = $user->activeShift();
+        $activeShift = $user->activeShift($date);
         if ($activeShift) {
             $endTime = Carbon::createFromFormat('H:i:s', $activeShift->end_time);
-            if ($now->greaterThan($endTime)) {
+            if ($deviceTime->greaterThan($endTime)) {
                 $notes .= " (Lembur)";
                 $newStatus = 'lembur';
-            } elseif ($now->lessThan($endTime)) {
+            } elseif ($deviceTime->lessThan($endTime)) {
                 $notes .= " (Pulang Lebih Awal)";
                 $newStatus = 'pulang_awal';
             }
         } elseif ($geoCheck['geofence'] && $geoCheck['geofence']->work_end_time) {
             $endTime = Carbon::createFromFormat('H:i:s', $geoCheck['geofence']->work_end_time);
-            if ($now->greaterThan($endTime)) {
+            if ($deviceTime->greaterThan($endTime)) {
                 $notes .= " (Lembur)";
                 $newStatus = 'lembur';
-            } elseif ($now->lessThan($endTime)) {
+            } elseif ($deviceTime->lessThan($endTime)) {
                 $notes .= " (Pulang Lebih Awal)";
                 $newStatus = 'pulang_awal';
             }
         }
 
-        $prevValid = is_string($existing->verification_status) 
-            ? $existing->verification_status === 'valid' 
+        $prevValid = is_string($existing->verification_status)
+            ? $existing->verification_status === 'valid'
             : $existing->verification_status->value === 'valid';
 
         $verificationStatus = ($geoCheck['valid'] && $prevValid) ? 'valid' : 'system_flagged';
-        
+
         $checkoutPath = null;
         if ($request->hasFile('photo')) {
             $checkoutPath = $request->file('photo')->store('attendances/checkout', 'public');
+        } elseif ($request->filled('photo_base64')) {
+            $base64Data = $request->input('photo_base64');
+            if (preg_match('/^data:image\/(\w+);base64,/', $base64Data, $type)) {
+                $base64Data = substr($base64Data, strpos($base64Data, ',') + 1);
+                $ext = strtolower($type[1]);
+            } else {
+                $ext = 'png';
+            }
+            $image = base64_decode($base64Data);
+            if ($image !== false) {
+                $filename = 'offline_' . uniqid() . '.' . $ext;
+                $path = 'attendances/checkout/' . $filename;
+                \Illuminate\Support\Facades\Storage::disk('public')->put($path, $image);
+                $checkoutPath = $path;
+            }
         }
 
         $existing->update([
-            'check_out' => Carbon::now()->format('H:i:s'),
+            'check_out' => $deviceTime->format('H:i:s'),
             'status' => $newStatus,
             'system_notes' => $notes,
             'verification_status' => $verificationStatus,
             'checkout_photo_path' => $checkoutPath,
             'is_mocked' => false,
+            'is_offline' => $existing->is_offline || $isOffline,
+            'offline_device_time' => $isOffline ? $deviceTime->toDateTimeString() : $existing->offline_device_time,
         ]);
 
         return back()->with('success', 'Presensi pulang berhasil.');
+    }rhasil.');
     }
 
     public function history(Request $request)

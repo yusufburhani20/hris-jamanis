@@ -23,6 +23,9 @@ interface Attendance {
     user: User;
     latitude: number | string | null;
     longitude: number | string | null;
+    is_offline?: boolean;
+    offline_device_time?: string | null;
+    created_at?: string;
 }
 
 export default function AttendanceIndex({ auth, attendances, users, filters }: PageProps<{ attendances: Attendance[], users: User[], filters: { start_date?: string, end_date?: string, user_id?: string, month?: string } }>) {
@@ -37,7 +40,10 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
         checkoutTime: string | null,
         userName?: string,
         date?: string,
-        checkinCoords?: string | null
+        checkinCoords?: string | null,
+        isOffline?: boolean,
+        offlineDeviceTime?: string | null,
+        createdAt?: string
     } | null>(null);
 
     const handleMonthChange = (val: string) => {
@@ -88,6 +94,9 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
             userName: record.user.name,
             date: new Date(record.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
             checkinCoords: record.latitude && record.longitude ? `${record.latitude}, ${record.longitude}` : null,
+            isOffline: record.is_offline,
+            offlineDeviceTime: record.offline_device_time,
+            createdAt: record.created_at,
         });
     };
 
@@ -211,6 +220,14 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                             ⚠️ GPS PALSU
                                                         </span>
                                                     )}
+                                                    {record.is_offline && (
+                                                        <span 
+                                                            className="inline-flex items-center gap-1 text-[9px] uppercase font-black rounded-full px-2 py-0.5 w-max bg-amber-100 text-amber-800 border border-amber-200 cursor-help"
+                                                            title={`Sinkronisasi Offline&#10;Waktu Klaim HP: ${record.offline_device_time || '-'}&#10;Diterima Server: ${record.created_at ? new Date(record.created_at).toLocaleString('id-ID') : '-'}`}
+                                                        >
+                                                            ⚡ OFFLINE SYNC
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-xs text-gray-500 dark:text-gray-400 max-w-xs truncate" title={record.system_notes || ''}>
@@ -264,11 +281,20 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                         <>
                                             <img src={photoViewer.checkin} alt="Check-In Selfie" className="max-h-[55vh] rounded-lg object-contain w-full" />
                                             <div className="absolute bottom-0 left-0 right-0 bg-slate-950/80 backdrop-blur-sm text-white p-3 text-[10px] space-y-0.5 border-t border-white/10 select-none text-left">
-                                                <p className="font-extrabold text-indigo-400 tracking-wider">📸 LIVE PHOTO VERIFIED</p>
+                                                <p className="font-extrabold text-indigo-400 tracking-wider flex items-center gap-1">
+                                                    📸 LIVE PHOTO VERIFIED
+                                                    {photoViewer.isOffline && <span className="bg-amber-500 text-slate-950 px-1 py-0.2 rounded font-black text-[8px]">OFFLINE</span>}
+                                                </p>
                                                 <p>👤 <b>Karyawan:</b> {photoViewer.userName}</p>
                                                 <p>📅 <b>Tanggal:</b> {photoViewer.date}</p>
                                                 <p>⏰ <b>Waktu:</b> {photoViewer.checkinTime}</p>
                                                 {photoViewer.checkinCoords && <p>📍 <b>GPS:</b> {photoViewer.checkinCoords}</p>}
+                                                {photoViewer.isOffline && (
+                                                    <>
+                                                        <p className="text-amber-400">⚡ <b>Waktu Klaim HP:</b> {photoViewer.offlineDeviceTime}</p>
+                                                        <p className="text-amber-400">📥 <b>Diterima Server:</b> {photoViewer.createdAt ? new Date(photoViewer.createdAt).toLocaleString('id-ID') : '-'}</p>
+                                                    </>
+                                                )}
                                             </div>
                                         </>
                                     ) : (
@@ -291,11 +317,20 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                         <>
                                             <img src={photoViewer.checkout} alt="Check-Out Selfie" className="max-h-[55vh] rounded-lg object-contain w-full" />
                                             <div className="absolute bottom-0 left-0 right-0 bg-slate-950/80 backdrop-blur-sm text-white p-3 text-[10px] space-y-0.5 border-t border-white/10 select-none text-left">
-                                                <p className="font-extrabold text-amber-400 tracking-wider">📸 LIVE PHOTO VERIFIED</p>
+                                                <p className="font-extrabold text-amber-400 tracking-wider flex items-center gap-1">
+                                                    📸 LIVE PHOTO VERIFIED
+                                                    {photoViewer.isOffline && <span className="bg-amber-500 text-slate-950 px-1 py-0.2 rounded font-black text-[8px]">OFFLINE</span>}
+                                                </p>
                                                 <p>👤 <b>Karyawan:</b> {photoViewer.userName}</p>
                                                 <p>📅 <b>Tanggal:</b> {photoViewer.date}</p>
                                                 <p>⏰ <b>Waktu:</b> {photoViewer.checkoutTime}</p>
                                                 {photoViewer.checkinCoords && <p>📍 <b>GPS:</b> {photoViewer.checkinCoords}</p>}
+                                                {photoViewer.isOffline && (
+                                                    <>
+                                                        <p className="text-amber-400">⚡ <b>Waktu Klaim HP:</b> {photoViewer.offlineDeviceTime}</p>
+                                                        <p className="text-amber-400">📥 <b>Diterima Server:</b> {photoViewer.createdAt ? new Date(photoViewer.createdAt).toLocaleString('id-ID') : '-'}</p>
+                                                    </>
+                                                )}
                                             </div>
                                         </>
                                     ) : (
