@@ -35,6 +35,17 @@ export default function Authenticated({
     const [geoState, setGeoState] = useState<'granted' | 'denied' | 'prompt'>('prompt');
     const [permissionsGranted, setPermissionsGranted] = useState<boolean | null>(null);
     const [checkingPermissions, setCheckingPermissions] = useState<boolean>(true);
+    const [hidePermissionOverlay, setHidePermissionOverlay] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return sessionStorage.getItem('hidePermissionOverlay') === 'true';
+        }
+        return false;
+    });
+
+    const closePermissionOverlay = () => {
+        setHidePermissionOverlay(true);
+        sessionStorage.setItem('hidePermissionOverlay', 'true');
+    };
 
     const getDeviceOS = () => {
         const ua = navigator.userAgent;
@@ -431,9 +442,19 @@ export default function Authenticated({
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-            {permissionsGranted === false && (
+            {permissionsGranted === false && !hidePermissionOverlay && (
                 <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center p-4 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md text-white">
-                    <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-slate-800 dark:text-white border border-slate-100 dark:border-slate-700/50 text-center flex flex-col items-center space-y-6 animate-bounce-in">
+                    <div className="relative max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-slate-800 dark:text-white border border-slate-100 dark:border-slate-700/50 text-center flex flex-col items-center space-y-6 animate-bounce-in">
+                        {/* Tombol Tutup Silang di Pojok Kanan Atas */}
+                        <button
+                            type="button"
+                            onClick={closePermissionOverlay}
+                            className="absolute top-4 right-4 text-slate-450 hover:text-slate-700 dark:hover:text-slate-200 transition-colors p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                            title="Tutup &amp; Ingatkan Nanti"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+
                         <div className="relative">
                             <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-xl animate-pulse"></div>
                             <div className="relative w-16 h-16 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
@@ -562,6 +583,17 @@ export default function Authenticated({
                                 </button>
                             </div>
                         )}
+
+                        {/* Tombol Tutup di Footer Modal (Sifat Pengingat) */}
+                        <div className="w-full border-t border-slate-100 dark:border-slate-800/80 pt-4">
+                            <button
+                                type="button"
+                                onClick={closePermissionOverlay}
+                                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                            >
+                                Tutup &amp; Ingatkan Nanti
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
