@@ -431,7 +431,7 @@ export default function Authenticated({
                                         {notifState === 'granted' ? 'Diizinkan' : notifState === 'denied' ? 'Ditolak' : 'Belum Diizinkan'}
                                     </span>
                                 </div>
-                                {notifState === 'prompt' && (
+                                {notifState !== 'granted' && notifState !== 'unsupported' && (
                                     <button
                                         type="button"
                                         onClick={requestNotificationPermission}
@@ -459,14 +459,14 @@ export default function Authenticated({
                                         {geoState === 'granted' ? 'Diizinkan' : geoState === 'denied' ? 'Ditolak' : 'Belum Diizinkan'}
                                     </span>
                                 </div>
-                                {geoState === 'prompt' && (
+                                {geoState !== 'granted' && (
                                     <button
                                         type="button"
                                         onClick={requestLocationPermission}
                                         disabled={checkingPermissions}
                                         className="w-full mt-1.5 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs font-bold rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-sm"
                                     >
-                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                         Minta Akses Lokasi (GPS)
                                     </button>
                                 )}
