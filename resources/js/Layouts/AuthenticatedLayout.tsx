@@ -36,6 +36,17 @@ export default function Authenticated({
     const [permissionsGranted, setPermissionsGranted] = useState<boolean | null>(null);
     const [checkingPermissions, setCheckingPermissions] = useState<boolean>(true);
 
+    const getDeviceOS = () => {
+        const ua = navigator.userAgent;
+        if (/android/i.test(ua)) {
+            return 'android';
+        }
+        if (/iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream) {
+            return 'ios';
+        }
+        return 'desktop';
+    };
+
     const checkPermissions = async () => {
         // 1. Check Notification
         let currentNotif: typeof notifState = 'prompt';
@@ -498,12 +509,57 @@ export default function Authenticated({
                         </div>
 
                         {(notifState === 'denied' || geoState === 'denied') && (
-                            <div className="text-xs text-rose-500 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50 p-3.5 rounded-2xl text-left leading-relaxed">
-                                <p className="font-bold flex items-center gap-1.5 mb-1 text-rose-600 dark:text-rose-400">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                    Akses Izin Ditolak
+                            <div className="w-full text-left space-y-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50 p-4 rounded-2xl">
+                                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
+                                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    <span>Langkah Membuka Izin Lokasi/GPS</span>
+                                </div>
+                                
+                                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    Karena aturan keamanan browser, kami tidak dapat mengarahkan Anda ke halaman pengaturan secara otomatis. Silakan buka izin secara manual dengan panduan cepat berikut:
                                 </p>
-                                Anda telah memblokir akses lokasi atau notifikasi di browser Anda. Mohon buka pengaturan browser (klik ikon gembok di sebelah kiri URL), ubah izin Notifikasi & Lokasi menjadi <b>"Izinkan" (Allow)</b>, lalu muat ulang halaman ini.
+
+                                {getDeviceOS() === 'ios' && (
+                                    <div className="text-[11px] text-slate-700 dark:text-slate-300 space-y-1.5 bg-white dark:bg-slate-900 p-3 rounded-xl border dark:border-slate-800 leading-relaxed">
+                                        <p className="font-bold text-indigo-600 dark:text-indigo-400 uppercase text-[9px] tracking-wider">Perangkat iPhone / Safari:</p>
+                                        <ol className="list-decimal list-inside space-y-1">
+                                            <li>Ketuk ikon <b>aA</b> di sebelah kiri kolom alamat URL.</li>
+                                            <li>Pilih <b>Pengaturan Situs Web</b> (Website Settings).</li>
+                                            <li>Ubah izin <b>Lokasi</b> menjadi <b>Izinkan</b> (Allow).</li>
+                                            <li>Pastikan GPS aktif di: <b>Pengaturan iOS</b> &rarr; <b>Privasi</b> &rarr; <b>Layanan Lokasi</b> &rarr; <b>Safari</b>.</li>
+                                        </ol>
+                                    </div>
+                                )}
+
+                                {getDeviceOS() === 'android' && (
+                                    <div className="text-[11px] text-slate-700 dark:text-slate-300 space-y-1.5 bg-white dark:bg-slate-900 p-3 rounded-xl border dark:border-slate-800 leading-relaxed">
+                                        <p className="font-bold text-indigo-600 dark:text-indigo-400 uppercase text-[9px] tracking-wider">Perangkat Android / Google Chrome:</p>
+                                        <ol className="list-decimal list-inside space-y-1">
+                                            <li>Ketuk ikon <b>gembok / opsi situs</b> di sebelah kiri URL.</li>
+                                            <li>Pilih **Setelan Situs** (Site Settings) atau **Izin** (Permissions).</li>
+                                            <li>Ubah status **Lokasi** dan **Notifikasi** menjadi **Izinkan** (Allow).</li>
+                                        </ol>
+                                    </div>
+                                )}
+
+                                {getDeviceOS() === 'desktop' && (
+                                    <div className="text-[11px] text-slate-700 dark:text-slate-300 space-y-1.5 bg-white dark:bg-slate-900 p-3 rounded-xl border dark:border-slate-800 leading-relaxed">
+                                        <p className="font-bold text-indigo-600 dark:text-indigo-400 uppercase text-[9px] tracking-wider">Browser Komputer (Chrome/Firefox):</p>
+                                        <ol className="list-decimal list-inside space-y-1">
+                                            <li>Klik ikon <b>Gembok</b> di sebelah kiri alamat URL.</li>
+                                            <li>Ubah sakelar izin **Notifikasi** dan **Lokasi** menjadi **Izinkan** (Allow).</li>
+                                        </ol>
+                                    </div>
+                                )}
+
+                                <button
+                                    type="button"
+                                    onClick={() => window.location.reload()}
+                                    className="w-full mt-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A9 9 0 1121.36 4.36L20 5" /></svg>
+                                    Saya Sudah Mengaktifkannya, Muat Ulang Halaman
+                                </button>
                             </div>
                         )}
                     </div>
