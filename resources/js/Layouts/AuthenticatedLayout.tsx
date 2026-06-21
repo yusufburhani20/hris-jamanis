@@ -30,6 +30,94 @@ export default function Authenticated({
         localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
     }, [sidebarCollapsed]);
     
+    // Permission Lock Screen States
+    const [notifState, setNotifState] = useState<'granted' | 'denied' | 'prompt' | 'unsupported'>('prompt');
+    const [geoState, setGeoState] = useState<'granted' | 'denied' | 'prompt'>('prompt');
+    const [permissionsGranted, setPermissionsGranted] = useState<boolean | null>(null);
+    const [checkingPermissions, setCheckingPermissions] = useState<boolean>(true);
+
+    const checkPermissions = async () => {
+        // 1. Check Notification
+        let currentNotif: typeof notifState = 'prompt';
+        if (!('Notification' in window)) {
+            currentNotif = 'unsupported';
+        } else if (Notification.permission === 'granted') {
+            currentNotif = 'granted';
+        } else if (Notification.permission === 'denied') {
+            currentNotif = 'denied';
+        } else {
+            currentNotif = 'prompt';
+        }
+        setNotifState(currentNotif);
+
+        // 2. Check Geolocation
+        let currentGeo: typeof geoState = 'prompt';
+        if (!navigator.geolocation) {
+            currentGeo = 'denied';
+        } else if (navigator.permissions && navigator.permissions.query) {
+            try {
+                const res = await navigator.permissions.query({ name: 'geolocation' });
+                if (res.state === 'granted') {
+                    currentGeo = 'granted';
+                } else if (res.state === 'denied') {
+                    currentGeo = 'denied';
+                } else {
+                    currentGeo = 'prompt';
+                }
+                
+                res.onchange = () => {
+                    checkPermissions();
+                };
+            } catch (e) {
+                currentGeo = 'prompt';
+            }
+        } else {
+            currentGeo = 'prompt';
+        }
+        setGeoState(currentGeo);
+
+        const isAllGranted = (currentNotif === 'granted' || currentNotif === 'unsupported') && (currentGeo === 'granted');
+        setPermissionsGranted(isAllGranted);
+        setCheckingPermissions(false);
+    };
+
+    const requestPermissions = async () => {
+        setCheckingPermissions(true);
+        
+        // Request Notification
+        if ('Notification' in window && Notification.permission !== 'granted') {
+            try {
+                await Notification.requestPermission();
+            } catch (err) {
+                console.warn(err);
+            }
+        }
+
+        // Request Geolocation
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                () => {
+                    checkPermissions();
+                },
+                (err) => {
+                    console.warn(err);
+                    checkPermissions();
+                },
+                { enableHighAccuracy: false, timeout: 5000 }
+            );
+        } else {
+            checkPermissions();
+        }
+    };
+
+    useEffect(() => {
+        checkPermissions();
+        window.addEventListener('focus', checkPermissions);
+        return () => {
+            window.removeEventListener('focus', checkPermissions);
+        };
+    }, []);
+
     // Toast state management
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -307,6 +395,82 @@ export default function Authenticated({
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+            {permissionsGranted === false && (
+                <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center p-4 bg-slate-950/80 dark:bg-slate-950/90 backdrop-blur-md text-white">
+                    <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-slate-800 dark:text-white border border-slate-100 dark:border-slate-700/50 text-center flex flex-col items-center space-y-6 animate-bounce-in">
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-xl animate-pulse"></div>
+                            <div className="relative w-16 h-16 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                                Izin Akses Diperlukan
+                            </h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                                Aplikasi HRIS Geolocation mewajibkan akses <b>Lokasi (GPS)</b> dan <b>Notifikasi</b> untuk dapat memantau presensi dan memberikan pemberitahuan sistem secara real-time.
+                            </p>
+                        </div>
+
+                        <div className="w-full space-y-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 text-left">
+                            <div className="flex items-center justify-between text-xs sm:text-sm">
+                                <span className="font-semibold flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                    Notifikasi Push
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                    notifState === 'granted' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400' :
+                                    notifState === 'denied' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-400' :
+                                    'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400'
+                                }`}>
+                                    {notifState === 'granted' ? 'Diizinkan' : notifState === 'denied' ? 'Ditolak' : 'Belum Diizinkan'}
+                                </span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-xs sm:text-sm border-t border-slate-100 dark:border-slate-800 pt-3">
+                                <span className="font-semibold flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    Lokasi Presensi (GPS)
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                    geoState === 'granted' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400' :
+                                    geoState === 'denied' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-400' :
+                                    'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400'
+                                }`}>
+                                    {geoState === 'granted' ? 'Diizinkan' : geoState === 'denied' ? 'Ditolak' : 'Belum Diizinkan'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {(notifState === 'denied' || geoState === 'denied') ? (
+                            <div className="text-xs text-rose-500 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50 p-3.5 rounded-2xl text-left leading-relaxed">
+                                <p className="font-bold flex items-center gap-1.5 mb-1 text-rose-600 dark:text-rose-400">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    Akses Izin Ditolak
+                                </p>
+                                Anda telah memblokir akses lokasi atau notifikasi di browser Anda. Mohon buka pengaturan browser (klik ikon gembok di sebelah kiri URL), ubah izin Notifikasi & Lokasi menjadi <b>"Izinkan" (Allow)</b>, lalu muat ulang halaman ini.
+                            </div>
+                        ) : (
+                            <button
+                                onClick={requestPermissions}
+                                disabled={checkingPermissions}
+                                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-[0.98] text-sm flex items-center justify-center gap-2"
+                            >
+                                {checkingPermissions ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                        <span>Memproses...</span>
+                                    </>
+                                ) : (
+                                    <span>Aktifkan Izin Notifikasi & GPS</span>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
             {/* OVERLAY (mobile only) */}
             <div
                 onClick={() => setSidebarOpen(false)}

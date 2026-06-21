@@ -6,6 +6,7 @@ import { addToOfflineQueue } from '../utils/offlineStore';
 export default function AttendanceScanner({ existingRecord, geofences = [] }: { existingRecord?: any, geofences?: any[] }) {
     const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
+    const [isRefreshingLocation, setIsRefreshingLocation] = useState(false);
     
     // Geofence validation state
     const [nearestGeofence, setNearestGeofence] = useState<{ name: string, distance: number, radius: number, valid: boolean } | null>(null);
@@ -193,51 +194,59 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
         });
     }, [location]);
 
-    useEffect(() => {
-        // Start geolocation
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const isMocked = (position.coords as any).mocked || (position as any).mocked || false;
-                    setLocation({
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    });
-                    
-                    // Trigger distance update
-                    if (geofences.length > 0) {
-                        let closest = null;
-                        let minInfo = null;
-                        
-                        for (const gf of geofences) {
-                            const d = calculateDistance(position.coords.latitude, position.coords.longitude, parseFloat(gf.latitude), parseFloat(gf.longitude));
-                            if (closest === null || d < closest) {
-                                closest = d;
-                                minInfo = { name: gf.name, distance: d, radius: gf.radius, valid: d <= gf.radius };
-                            }
-                        }
-                        setNearestGeofence(minInfo);
-                    } else {
-                        // If no geofences configured, system might allow anyway or require one.
-                        // For now we assume valid if none configured (backend will final check)
-                        setNearestGeofence({ name: 'Tanpa Pembatasan', distance: 0, radius: 999999, valid: true });
-                    }
-
-                    setData(d => ({
-                        ...d,
-                        latitude: String(position.coords.latitude),
-                        longitude: String(position.coords.longitude),
-                        is_mocked: isMocked
-                    }));
-                },
-                (error) => {
-                    setLocationError("Gagal mendapatkan lokasi GPS: " + error.message);
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        } else {
+    const refreshLocation = useCallback(() => {
+        setIsRefreshingLocation(true);
+        setLocationError(null);
+        
+        if (!navigator.geolocation) {
             setLocationError("Browser ini tidak mendukung Geolocation.");
+            setIsRefreshingLocation(false);
+            return;
         }
+        
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const isMocked = (position.coords as any).mocked || (position as any).mocked || false;
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                setLocation({ lat, lng });
+                
+                if (geofences.length > 0) {
+                    let closest = null;
+                    let minInfo = null;
+                    
+                    for (const gf of geofences) {
+                        const d = calculateDistance(lat, lng, parseFloat(gf.latitude), parseFloat(gf.longitude));
+                        if (closest === null || d < closest) {
+                            closest = d;
+                            minInfo = { name: gf.name, distance: d, radius: gf.radius, valid: d <= gf.radius };
+                        }
+                    }
+                    setNearestGeofence(minInfo);
+                } else {
+                    setNearestGeofence({ name: 'Tanpa Pembatasan', distance: 0, radius: 999999, valid: true });
+                }
+
+                setData(d => ({
+                    ...d,
+                    latitude: String(lat),
+                    longitude: String(lng),
+                    is_mocked: isMocked
+                }));
+                
+                setIsRefreshingLocation(false);
+            },
+            (error) => {
+                setLocationError("Gagal mendapatkan lokasi GPS: " + error.message);
+                setIsRefreshingLocation(false);
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+    }, [geofences, setData]);
+
+    useEffect(() => {
+        refreshLocation();
 
         // Only start camera if not already fully checked out
         const isCheckedOut = existingRecord && existingRecord.check_out;
@@ -252,7 +261,7 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                 streamRef.current = null;
             }
         };
-    }, []);
+    }, [refreshLocation]);
 
     const capturePhoto = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
@@ -411,6 +420,26 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                     <div className="absolute top-2 right-2 z-[400] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded shadow-sm dark:text-white border dark:border-gray-700">
                         Peta Lokasi & Geofence
                     </div>
+                    {location && (
+                        <button
+                            type="button"
+                            onClick={refreshLocation}
+                            disabled={isRefreshingLocation}
+                            className="absolute bottom-2 right-2 z-[400] flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-[10px] sm:text-xs font-bold rounded-lg shadow-md transition-all active:scale-95"
+                        >
+                            {isRefreshingLocation ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                                    <span>Mengakuratkan...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    <span>Akuratkan GPS</span>
+                                </>
+                            )}
+                        </button>
+                    )}
                     {!location && (
                         <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
                             <span className="text-xs bg-slate-900/80 dark:bg-gray-800/90 text-white dark:text-gray-200 px-3 py-1.5 rounded-lg shadow-md font-medium text-center max-w-[80%]">
