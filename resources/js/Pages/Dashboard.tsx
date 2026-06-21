@@ -132,7 +132,7 @@ export default function Dashboard({
 
         if (successCount > 0) {
             setSyncSuccess(true);
-            router.reload({ preserveScroll: true });
+            router.reload({ preserveScroll: true } as any);
             setTimeout(() => setSyncSuccess(false), 5000);
         }
     };

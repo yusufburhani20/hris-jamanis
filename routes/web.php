@@ -51,6 +51,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/leaves', [LeaveController::class, 'store'])->name('leaves.store');
     Route::delete('/leaves/{leave}', [LeaveController::class, 'destroy'])->name('leaves.destroy');
 
+    // --- SHIFT EXCHANGES ROUTES ---
+    Route::get('/shift-exchanges', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'index'])->name('shift-exchanges.index');
+    Route::post('/shift-exchanges', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'store'])->name('shift-exchanges.store');
+    Route::delete('/shift-exchanges/{shiftExchange}', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'destroy'])->name('shift-exchanges.destroy');
+
     // --- OVERTIME REQUESTS ROUTES ---
     Route::get('/overtimes', [\App\Http\Controllers\OvertimeRequestController::class, 'index'])->name('overtimes.index');
     Route::post('/overtimes', [\App\Http\Controllers\OvertimeRequestController::class, 'store'])->name('overtimes.store');
@@ -98,6 +103,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/leaves', [LeaveController::class, 'index'])->name('leaves.index');
         Route::post('/leaves/{leave}/approve', [LeaveController::class, 'approve'])->name('leaves.approve');
         Route::post('/leaves/{leave}/reject', [LeaveController::class, 'reject'])->name('leaves.reject');
+
+        // Admin Shift Exchanges Approval Desk
+        Route::get('/shift-exchanges', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'index'])->name('shift-exchanges.index');
+        Route::post('/shift-exchanges/{shiftExchange}/approve', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'approve'])->name('shift-exchanges.approve');
+        Route::post('/shift-exchanges/{shiftExchange}/reject', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'reject'])->name('shift-exchanges.reject');
 
         // Admin Overtime Approval Desk
         Route::get('/overtimes', [\App\Http\Controllers\OvertimeRequestController::class, 'index'])->name('overtimes.index');

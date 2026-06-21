@@ -52,21 +52,53 @@ class Payroll extends Model
             ->get();
 
         $lateCount = $attendances->where('status', 'terlambat')->count();
-        $overtimeCount = $attendances->where('status', 'lembur')->count();
 
-        // Count manual approved overtime requests
-        $manualOvertimeCount = OvertimeRequest::where('user_id', $userId)
+        // Calculate automatic overtime hours from check-out times past shift/geofence end time
+        $attendanceOvertimeHours = 0;
+        foreach ($attendances as $att) {
+            $statusVal = is_string($att->status) ? $att->status : $att->status->value;
+            if ($statusVal === 'lembur' && $att->check_out) {
+                $attDate = Carbon::parse($att->date);
+                $activeShift = $user->activeShift($attDate);
+                $endTimeStr = null;
+
+                if ($activeShift) {
+                    $endTimeStr = $activeShift->end_time;
+                } else {
+                    $geofence = \App\Models\Geofence::where('is_active', true)->first();
+                    if ($geofence && $geofence->work_end_time) {
+                        $endTimeStr = $geofence->work_end_time;
+                    }
+                }
+
+                if ($endTimeStr) {
+                    try {
+                        $checkOut = Carbon::createFromFormat('H:i:s', $att->check_out);
+                        $shiftEnd = Carbon::createFromFormat('H:i:s', $endTimeStr);
+                        
+                        if ($checkOut->greaterThan($shiftEnd)) {
+                            $diffInMinutes = $checkOut->diffInMinutes($shiftEnd);
+                            $attendanceOvertimeHours += round($diffInMinutes / 60, 2);
+                        }
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::warning("Error parsing checkout/shift time in Payroll: " . $e->getMessage());
+                    }
+                }
+            }
+        }
+
+        // Count manual approved overtime requests hours
+        $manualOvertimeHours = OvertimeRequest::where('user_id', $userId)
             ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
             ->where('status', 'approved')
-            ->count();
+            ->sum('hours');
 
-        $overtimeCount += $manualOvertimeCount;
+        $totalOvertimeHours = $attendanceOvertimeHours + $manualOvertimeHours;
 
         $presentCount = $attendances->whereIn('status', ['hadir', 'terlambat', 'lembur', 'pulang_awal'])->count();
 
         // Get dynamic settings
         $latePenalty = floatval(Setting::get('payroll_late_penalty', 50000));
-        $overtimeRate = floatval(Setting::get('payroll_overtime_rate', 100000));
         $fixedAllowance = floatval(Setting::get('payroll_allowance', 500000));
         $absentPenalty = floatval(Setting::get('payroll_absent_penalty', 100000));
         
@@ -105,7 +137,10 @@ class Payroll extends Model
 
         // Deductions: Late penalty + Absent penalty
         $deductions = ($lateCount * $latePenalty) + ($absentCount * $absentPenalty);
-        $overtimePay = $overtimeCount * $overtimeRate;
+        
+        // Overtime rate: Gaji Pokok / 27 / 10
+        $hourlyOvertimeRate = $basicSalary / 27 / 10;
+        $overtimePay = $totalOvertimeHours * $hourlyOvertimeRate;
 
         $netSalary = $basicSalary + $allowances + $overtimePay - $deductions;
         if ($netSalary < 0) {
