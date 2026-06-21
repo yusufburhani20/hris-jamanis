@@ -54,10 +54,10 @@ git clean -fd
 
 if [ -n "$GITHUB_USER" ] && [ -n "$GITHUB_TOKEN" ]; then
     echo "      Menggunakan token GitHub untuk autentikasi..."
-    git remote set-url origin "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/hris.git"
+    git remote set-url origin "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/hris-jamanis.git"
     git pull origin main
     # Kembalikan remote URL bersih agar token tidak tersimpan di server
-    git remote set-url origin "https://github.com/${GITHUB_USER}/hris.git"
+    git remote set-url origin "https://github.com/${GITHUB_USER}/hris-jamanis.git"
 else
     echo "      Menarik tanpa token (SSH key / HTTPS publik)..."
     git pull origin main

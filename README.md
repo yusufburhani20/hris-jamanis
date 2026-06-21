@@ -61,7 +61,7 @@ Ikuti langkah-langkah di bawah ini untuk memasang aplikasi HRIS Enterprise pada 
 ### Langkah 1: Kloning Repositori
 Kloning kode sumber aplikasi dari repositori GitHub:
 ```bash
-git clone https://github.com/yusufburhani20/hris.git
+git clone https://github.com/yusufburhani20/hris-jamanis.git
 cd hris
 ```
 
@@ -214,7 +214,7 @@ Metode deployment di VPS Ubuntu/Debian menggunakan aaPanel:
 2.  **Kloning Repositori:**
     Masuk ke terminal VPS Anda dan lakukan kloning ke folder web aaPanel:
     ```bash
-    git clone https://github.com/yusufburhani20/hris.git /www/wwwroot/hris
+    git clone https://github.com/yusufburhani20/hris-jamanis.git /www/wwwroot/hris
     cd /www/wwwroot/hris
     ```
 3.  **Pengaturan Hak Akses (Permissions):**
