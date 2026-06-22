@@ -21,6 +21,8 @@
         .status-terlambat { background: #fef3c7; color: #92400e; }
         .status-pulang_awal { background: #ffedd5; color: #9a3412; }
         .status-lembur { background: #e0e7ff; color: #3730a3; }
+        .late-badge { background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 9px; font-weight: bold; padding: 2px 5px; display: inline-block; }
+        .ot-badge { background: #e0e7ff; color: #3730a3; border-radius: 6px; font-size: 9px; font-weight: bold; padding: 2px 5px; display: inline-block; }
         
         .photo-link { color: #4f46e5; text-decoration: none; font-size: 9px; }
         .footer { position: fixed; bottom: 0; width: 100%; text-align: right; font-size: 9px; color: #aaa; }
@@ -38,12 +40,14 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 15%">Tanggal</th>
-                        <th style="width: 10%">Masuk</th>
-                        <th style="width: 10%">Pulang</th>
-                        <th style="width: 15%">Status</th>
-                        <th style="width: 30%">Keterangan</th>
-                        <th style="width: 20%">Foto Selfie</th>
+                        <th style="width: 12%">Tanggal</th>
+                        <th style="width: 9%">Masuk</th>
+                        <th style="width: 9%">Pulang</th>
+                        <th style="width: 13%">Status</th>
+                        <th style="width: 10%">Terlambat</th>
+                        <th style="width: 10%">Lembur</th>
+                        <th style="width: 22%">Keterangan</th>
+                        <th style="width: 15%">Foto Selfie</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -56,8 +60,25 @@
                                 <span class="status-badge status-{{ is_object($record->status) && method_exists($record->status, 'value') ? $record->status->value : $record->status }}">
                                     {{ is_object($record->status) && method_exists($record->status, 'label') ? $record->status->label() : ucfirst(str_replace('_', ' ', $record->status)) }}
                                 </span>
-                                @if($record->time_details)
-                                    <br><small style="color: #666; font-size: 8px; font-weight: bold; display: block; margin-top: 3px;">⏳ {{ $record->time_details }}</small>
+                            </td>
+                            <td>
+                                @if($record->late_details)
+                                    <span class="late-badge">⏰ {{ $record->late_details['text'] }}</span>
+                                    <br><small style="color:#666; font-size:8px;">
+                                        {{ $record->late_details['hours'] > 0 ? $record->late_details['hours'].'j ' : '' }}{{ $record->late_details['minutes'] }}m
+                                    </small>
+                                @else
+                                    <span style="color:#ccc;">—</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($record->overtime_details)
+                                    <span class="ot-badge">🌙 {{ $record->overtime_details['text'] }}</span>
+                                    <br><small style="color:#666; font-size:8px;">
+                                        {{ $record->overtime_details['hours'] > 0 ? $record->overtime_details['hours'].'j ' : '' }}{{ $record->overtime_details['minutes'] }}m
+                                    </small>
+                                @else
+                                    <span style="color:#ccc;">—</span>
                                 @endif
                             </td>
                             <td>{{ $record->system_notes }}</td>

@@ -41,6 +41,34 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
         const [bulkEndDate, setBulkEndDate] = useState<string>('');
 
         const todayStr = new Date().toISOString().slice(0, 10);
+
+        // Helper: tambah 1 hari ke string tanggal (YYYY-MM-DD), timezone-safe
+        const addOneDay = (dateStr: string): string => {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dt = new Date(y, m - 1, d + 1);
+            const yy = dt.getFullYear();
+            const mm = String(dt.getMonth() + 1).padStart(2, '0');
+            const dd = String(dt.getDate()).padStart(2, '0');
+            return `${yy}-${mm}-${dd}`;
+        };
+
+        // Hitung tanggal mulai default: hari setelah jadwal shift terakhir yang memiliki tanggal selesai.
+        // Jika shift terakhir tidak memiliki batas tanggal (null), kembalikan today.
+        const getNextAvailableDate = (employeeId: string): string => {
+            if (!employeeId) return todayStr;
+            const emp = employees.find(e => String(e.id) === employeeId);
+            if (!emp || !emp.shifts || emp.shifts.length === 0) return todayStr;
+            // Filter hanya shift yang memiliki end_date
+            const withEnd = emp.shifts.filter(s => s.pivot.end_date);
+            if (withEnd.length === 0) return todayStr; // ada shift tanpa batas waktu
+            // Ambil end_date terbesar
+            const maxEnd = withEnd.reduce((max, s) => {
+                return s.pivot.end_date! > max ? s.pivot.end_date! : max;
+            }, withEnd[0].pivot.end_date!);
+            const nextDay = addOneDay(maxEnd);
+            return nextDay >= todayStr ? nextDay : todayStr;
+        };
+
         const getShiftStatus = (startDateStr: string, endDateStr: string | null) => {
             if (startDateStr <= todayStr && (!endDateStr || endDateStr >= todayStr)) {
                 return 'active';
@@ -192,10 +220,11 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
     };
 
     const openAssignModal = (employeeId?: number) => {
+        const empIdStr = employeeId ? String(employeeId) : '';
         setAssignData({
-            user_id: employeeId ? String(employeeId) : '',
+            user_id: empIdStr,
             shift_id: shifts.length > 0 ? String(shifts[0].id) : '',
-            start_date: new Date().toISOString().slice(0, 10),
+            start_date: getNextAvailableDate(empIdStr),
             end_date: '',
         });
         setShowAssignModal(true);
@@ -610,11 +639,18 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                             </button>
                         </div>
                         <form onSubmit={handleAssignShift} className="p-6 space-y-4">
-                            <div>
+                             <div>
                                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Pilih Karyawan</label>
                                 <select
                                     value={assignData.user_id}
-                                    onChange={(e) => setAssignData('user_id', e.target.value)}
+                                    onChange={(e) => {
+                                        const newEmpId = e.target.value;
+                                        setAssignData(prev => ({
+                                            ...prev,
+                                            user_id: newEmpId,
+                                            start_date: getNextAvailableDate(newEmpId),
+                                        }));
+                                    }}
                                     className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                     required
                                 >

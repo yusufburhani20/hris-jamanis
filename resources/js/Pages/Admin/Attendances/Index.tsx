@@ -29,6 +29,8 @@ interface Attendance {
     time_details?: string | null;
     accuracy?: number | string | null;
     checkout_accuracy?: number | string | null;
+    late_details?: { hours: number; minutes: number; text: string } | null;
+    overtime_details?: { hours: number; minutes: number; text: string } | null;
 }
 
 export default function AttendanceIndex({ auth, attendances, users, filters }: PageProps<{ attendances: Attendance[], users: User[], filters: { start_date?: string, end_date?: string, user_id?: string, month?: string } }>) {
@@ -230,6 +232,8 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Check In</th>
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Check Out</th>
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Status & Verif</th>
+                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Terlambat</th>
+                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Lembur</th>
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Notes</th>
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white text-center">Photo</th>
                                     </tr>
@@ -277,14 +281,6 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                           'bg-gray-100 text-gray-800'}`}>
                                                         {record.status.replace('_', ' ').toUpperCase()}
                                                     </span>
-                                                    {record.time_details && (
-                                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                                                            <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                            {record.time_details}
-                                                        </span>
-                                                    )}
                                                     <span className={`inline-flex text-[10px] uppercase font-black rounded-full px-2 py-0.5 w-max border ${record.verification_status === 'valid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                                                         {record.verification_status.replace('_', ' ')}
                                                     </span>
@@ -303,6 +299,42 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                     )}
                                                 </div>
                                             </td>
+                                            {/* Kolom Terlambat */}
+                                            <td className="px-6 py-4">
+                                                {record.late_details ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 rounded-full px-2.5 py-0.5 w-max">
+                                                            ⏰ {record.late_details.text}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400">
+                                                            {record.late_details.hours > 0
+                                                                ? `${record.late_details.hours} jam ${record.late_details.minutes} menit`
+                                                                : `${record.late_details.minutes} menit`
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
+                                                )}
+                                            </td>
+                                            {/* Kolom Lembur */}
+                                            <td className="px-6 py-4">
+                                                {record.overtime_details ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50 rounded-full px-2.5 py-0.5 w-max">
+                                                            🌙 {record.overtime_details.text}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400">
+                                                            {record.overtime_details.hours > 0
+                                                                ? `${record.overtime_details.hours} jam ${record.overtime_details.minutes} menit`
+                                                                : `${record.overtime_details.minutes} menit`
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 text-xs text-gray-500 dark:text-gray-400 max-w-xs truncate" title={record.system_notes || ''}>
                                                 {record.system_notes || '-'}
                                             </td>
@@ -319,7 +351,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                     ))}
                                     {attendances.length === 0 && (
                                         <tr>
-                                            <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                            <td colSpan={9} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                                 No attendance records found.
                                             </td>
                                         </tr>
