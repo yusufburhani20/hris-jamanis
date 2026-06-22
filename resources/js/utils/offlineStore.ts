@@ -6,6 +6,7 @@ export interface OfflineAttendance {
     photo_base64?: string;
     offline_device_time: string;
     is_mocked?: boolean;
+    accuracy?: number;
 }
 
 const DB_NAME = 'hris_offline_db';

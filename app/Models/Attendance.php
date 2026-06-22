@@ -17,6 +17,8 @@ class Attendance extends Model
         'verification_status' => VerificationStatus::class,
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
+        'accuracy' => 'float',
+        'checkout_accuracy' => 'float',
         'is_mocked' => 'boolean',
     ];
     

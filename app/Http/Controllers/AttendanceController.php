@@ -52,6 +52,7 @@ class AttendanceController extends Controller
             'photo_base64' => 'required_without:photo|string',
             'is_mocked' => 'nullable|boolean',
             'offline_device_time' => 'nullable|string',
+            'accuracy' => 'nullable|numeric',
         ]);
 
         // Strict Spoofing Check
@@ -126,6 +127,7 @@ class AttendanceController extends Controller
                 'status' => $status,
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
+                'accuracy' => $request->input('accuracy'),
                 'photo_path' => $path,
                 'ip_address' => $request->ip(),
                 'device_id' => $request->header('User-Agent'),
@@ -149,6 +151,7 @@ class AttendanceController extends Controller
             'photo_base64' => 'nullable|string',
             'is_mocked' => 'nullable|boolean',
             'offline_device_time' => 'nullable|string',
+            'accuracy' => 'nullable|numeric',
         ]);
 
         // Strict Spoofing Check
@@ -208,10 +211,10 @@ class AttendanceController extends Controller
             $notes .= " (No Shift, EffEnd: " . $effectiveEnd->format('H:i') . ")";
         }
 
-        if ($deviceTime->greaterThan($effectiveEnd)) {
+        if ($deviceTime->greaterThan($effectiveEnd->copy()->addMinutes(60))) {
             $notes .= " (Lembur)";
             $newStatus = 'lembur';
-        } elseif ($deviceTime->lessThan((clone $effectiveEnd)->subMinutes(30))) {
+        } elseif ($deviceTime->lessThan($effectiveEnd->copy()->subMinutes(30))) {
             // Toleransi pulang awal: lebih dari 30 menit sebelum effective end
             $notes .= " (Pulang Lebih Awal)";
             $newStatus = 'pulang_awal';
@@ -249,6 +252,7 @@ class AttendanceController extends Controller
             'system_notes' => $notes,
             'verification_status' => $verificationStatus,
             'checkout_photo_path' => $checkoutPath,
+            'checkout_accuracy' => $request->input('accuracy'),
             'is_mocked' => false,
             'is_offline' => $existing->is_offline || $isOffline,
             'offline_device_time' => $isOffline ? $deviceTime->toDateTimeString() : $existing->offline_device_time,

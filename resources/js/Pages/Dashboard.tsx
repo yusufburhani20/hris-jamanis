@@ -153,6 +153,7 @@ export default function Dashboard({
                     photo_base64: item.photo_base64,
                     offline_device_time: item.offline_device_time,
                     is_mocked: item.is_mocked,
+                    accuracy: item.accuracy,
                 }, {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'

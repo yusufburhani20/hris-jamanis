@@ -37,11 +37,12 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [cameraError, setCameraError] = useState<string | null>(null);
     
-    const { data, setData, post, processing, errors } = useForm<{ latitude: string, longitude: string, photo: File | null, is_mocked: boolean }>({
+    const { data, setData, post, processing, errors } = useForm<{ latitude: string, longitude: string, photo: File | null, is_mocked: boolean, accuracy: string }>({
         latitude: '',
         longitude: '',
         photo: null,
         is_mocked: false,
+        accuracy: '',
     });
 
     // Start Webcam
@@ -232,7 +233,8 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                     ...d,
                     latitude: String(lat),
                     longitude: String(lng),
-                    is_mocked: isMocked
+                    is_mocked: isMocked,
+                    accuracy: String(position.coords.accuracy)
                 }));
                 
                 setIsRefreshingLocation(false);
@@ -323,6 +325,7 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                 photo_base64: photoPreview || undefined,
                 offline_device_time: localDeviceTime,
                 is_mocked: data.is_mocked,
+                accuracy: data.accuracy ? parseFloat(data.accuracy) : undefined
             };
 
             try {
@@ -420,6 +423,20 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                     <div className="absolute top-2 right-2 z-[400] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded shadow-sm dark:text-white border dark:border-gray-700">
                         Peta Lokasi & Geofence
                     </div>
+                    {location && data.accuracy && (
+                        <div className="absolute top-2 left-2 z-[400] bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded shadow-sm dark:text-white border dark:border-gray-700 flex items-center gap-1.5 select-none shadow-md">
+                            <span className={`w-2 h-2 rounded-full inline-block ${
+                                Number(data.accuracy) <= 15 ? 'bg-emerald-500 animate-pulse' :
+                                Number(data.accuracy) <= 50 ? 'bg-amber-500' :
+                                'bg-rose-500 animate-ping'
+                            }`}></span>
+                            <span>Akurasi GPS: {Math.round(Number(data.accuracy))}m ({
+                                Number(data.accuracy) <= 15 ? 'Sangat Baik' :
+                                Number(data.accuracy) <= 50 ? 'Cukup Baik' :
+                                'Kurang Akurat (Cari Ruang Terbuka)'
+                            })</span>
+                        </div>
+                    )}
                     {location && (
                         <button
                             type="button"

@@ -16,6 +16,8 @@ interface Attendance {
     system_notes: string | null;
     is_mocked: boolean;
     time_details?: string | null;
+    accuracy?: number | string | null;
+    checkout_accuracy?: number | string | null;
 }
 
 export default function History({ auth, attendances, filters }: PageProps<{ attendances: Attendance[], filters: { start_date?: string, end_date?: string } }>) {
@@ -184,11 +186,33 @@ export default function History({ auth, attendances, filters }: PageProps<{ atte
                                                     year: 'numeric'
                                                 })}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-mono font-semibold">
-                                                {record.check_in ? record.check_in : '-'}
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm text-gray-600 dark:text-gray-300 font-mono font-semibold">{record.check_in || '-'}</span>
+                                                    {record.check_in && record.accuracy && (
+                                                        <span className={`text-[10px] font-extrabold flex items-center gap-0.5 mt-0.5 ${
+                                                            Number(record.accuracy) <= 15 ? 'text-emerald-600 dark:text-emerald-400' :
+                                                            Number(record.accuracy) <= 50 ? 'text-amber-600 dark:text-amber-400' :
+                                                            'text-rose-600 dark:text-rose-400'
+                                                        }`} title="Akurasi koordinat GPS saat Check-In">
+                                                            🎯 {Math.round(Number(record.accuracy))}m
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 font-mono font-semibold">
-                                                {record.check_out ? record.check_out : '-'}
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm text-gray-600 dark:text-gray-300 font-mono font-semibold">{record.check_out || '-'}</span>
+                                                    {record.check_out && record.checkout_accuracy && (
+                                                        <span className={`text-[10px] font-extrabold flex items-center gap-0.5 mt-0.5 ${
+                                                            Number(record.checkout_accuracy) <= 15 ? 'text-emerald-600 dark:text-emerald-400' :
+                                                            Number(record.checkout_accuracy) <= 50 ? 'text-amber-600 dark:text-amber-400' :
+                                                            'text-rose-600 dark:text-rose-400'
+                                                        }`} title="Akurasi koordinat GPS saat Check-Out">
+                                                            🎯 {Math.round(Number(record.checkout_accuracy))}m
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col space-y-1">
