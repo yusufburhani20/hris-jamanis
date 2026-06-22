@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hris-pwa-cache-v14';
+const CACHE_NAME = 'hris-pwa-cache-v15';
 const ASSETS_TO_CACHE = [
     '/images/icon-192.png',
     '/images/icon-512.png',
