@@ -167,19 +167,21 @@ class CourierShipmentController extends Controller
     {
         $validated = $request->validate([
             'notes' => 'nullable|string|max:500',
+            'destination_branch_id' => 'required|exists:branches,id',
         ]);
 
         $user = Auth::user();
+        $branch = Branch::findOrFail($validated['destination_branch_id']);
 
         // Create the shipment
         $shipment = Shipment::create([
-            'title' => 'Perjalanan Mandiri - ' . $user->name,
+            'title' => 'Perjalanan Mandiri Ke ' . $branch->name,
             'origin_name' => 'Jamanis',
-            'destination_name' => 'Perjalanan Mandiri',
+            'destination_name' => $branch->name,
             'origin_lat' => -7.2478,
             'origin_lng' => 108.1472,
-            'destination_lat' => -7.2478,
-            'destination_lng' => 108.1472,
+            'destination_lat' => $branch->latitude,
+            'destination_lng' => $branch->longitude,
             'courier_id' => $user->id,
             'courier_name' => $user->name,
             'courier_lat' => -7.2478,
@@ -193,8 +195,8 @@ class CourierShipmentController extends Controller
         ShipmentLog::create([
             'shipment_id' => $shipment->id,
             'status' => 'in_transit',
-            'title' => 'Sopir memulai perjalanan logistik mandiri',
-            'description' => "Perjalanan mandiri dimulai dari Jamanis.",
+            'title' => 'Mulai Perjalanan Mandiri',
+            'description' => "Perjalanan mandiri dimulai menuju " . $branch->name . ".",
             'latitude' => -7.2478,
             'longitude' => 108.1472,
         ]);
