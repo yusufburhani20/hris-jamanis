@@ -288,9 +288,102 @@ export default function Dashboard({
                                     <span>Buka Kamera Absen</span>
                                 </Link>
                             )}
+                            {!isStandalone && (
+                                <button
+                                    onClick={() => {
+                                        if (isIOS) {
+                                            setShowInstallGuide(true);
+                                            setHideInstallBanner(false);
+                                            localStorage.removeItem('hideInstallBanner');
+                                        } else {
+                                            handleInstallClick();
+                                        }
+                                    }}
+                                    className="group flex items-center justify-center gap-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl px-5 py-3 border border-white/20 transition-all duration-200 active:scale-95 text-sm"
+                                >
+                                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                    <span>Instal Aplikasi PWA</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
+
+                {/* PWA Install Banner */}
+                {!isStandalone && !hideInstallBanner && (
+                    <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-2xl p-5 shadow-lg border border-indigo-400/20 relative overflow-hidden">
+                        <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+                        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-purple-500/10 rounded-full blur-xl pointer-events-none" />
+                        
+                        <button 
+                            onClick={() => {
+                                setHideInstallBanner(true);
+                                localStorage.setItem('hideInstallBanner', 'true');
+                            }}
+                            className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
+                            title="Sembunyikan Pengingat"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+
+                        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-white/10 backdrop-blur-md rounded-xl shrink-0">
+                                    <svg className="w-6 h-6 text-indigo-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold flex flex-wrap items-center gap-2">
+                                        Instal Aplikasi HRIS
+                                        <span className="px-2 py-0.5 bg-indigo-500/30 rounded-full text-[9px] font-bold uppercase tracking-wider text-indigo-200 border border-indigo-400/20">PWA</span>
+                                    </h4>
+                                    <p className="text-xs text-indigo-100/90 mt-1 leading-relaxed">
+                                        Akses menu absensi GPS &amp; Selfie lebih cepat, responsif, dan stabil langsung dari Layar Utama HP Anda.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="w-full sm:w-auto shrink-0 mt-1 sm:mt-0">
+                                {isIOS ? (
+                                    <button
+                                        onClick={() => setShowInstallGuide(!showInstallGuide)}
+                                        className="w-full sm:w-auto px-4 py-2.5 bg-amber-400 hover:bg-amber-500 active:scale-[0.98] text-slate-900 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+                                    >
+                                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.48C4.25 17 2.94 12.45 4.7 9.39C5.57 7.87 7.13 6.91 8.82 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.1 16.67C20.08 16.74 19.67 18.11 18.71 19.5M15.97 4.17C16.63 3.37 17.07 2.28 16.95 1C16 1.04 14.9 1.6 14.24 2.38C13.68 3.04 13.19 4.14 13.34 5.39C14.39 5.47 15.4 4.88 15.97 4.17Z"/>
+                                        </svg>
+                                        <span>{showInstallGuide ? "Tutup Petunjuk" : "Petunjuk Instal iPhone"}</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={handleInstallClick}
+                                        className="w-full sm:w-auto px-4 py-2.5 bg-amber-400 hover:bg-amber-500 active:scale-[0.98] text-slate-900 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+                                    >
+                                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                        <span>Instal Sekarang</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* iPhone / iOS Safari PWA Installation Instructions */}
+                        {isIOS && showInstallGuide && (
+                            <div className="mt-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 text-xs space-y-3 animate-fade-in text-indigo-50 leading-relaxed">
+                                <p className="font-bold text-amber-300 flex items-center gap-1.5">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    Langkah Instalasi PWA di iOS iPhone:
+                                </p>
+                                <ol className="list-decimal list-inside space-y-2 pl-1">
+                                    <li>Buka browser <span className="font-bold text-white">Safari</span> di perangkat iPhone Anda.</li>
+                                    <li>Pastikan Anda mengakses halaman ini dengan koneksi HTTPS: <code className="bg-indigo-900/40 px-1 py-0.5 rounded font-mono text-[10px] text-white">https://hris.konfigin.my.id</code></li>
+                                    <li>Ketuk tombol <span className="font-bold text-white inline-flex items-center gap-0.5">Bagikan (Share) <svg className="w-3.5 h-3.5 inline text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></span> pada menu navigasi bawah Safari.</li>
+                                    <li>Gulir daftar menu ke bawah dan ketuk opsi <span className="font-bold text-amber-350">Tambahkan ke Layar Utama</span> (Add to Home Screen).</li>
+                                    <li>Beri nama aplikasi (misal: HRIS), lalu klik <span className="font-bold text-amber-350">Tambah</span> (Add) di kanan atas.</li>
+                                    <li>Aplikasi HRIS kini terinstal di layar utama iPhone Anda dan dapat digunakan layaknya aplikasi asli.</li>
+                                </ol>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {role === 'admin' ? (
                     // ────────────────────────────────────────────────────────
@@ -607,81 +700,7 @@ export default function Dashboard({
                         {/* Attendance Today Checklist */}
                         <div className="lg:col-span-2 space-y-6">
                             
-                            {/* PWA Install Banner */}
-                            {!isStandalone && !hideInstallBanner && (
-                                <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-2xl p-5 shadow-lg border border-indigo-400/20 relative overflow-hidden">
-                                    <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-                                    <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-purple-500/10 rounded-full blur-xl pointer-events-none" />
-                                    
-                                    <button 
-                                        onClick={() => {
-                                            setHideInstallBanner(true);
-                                            localStorage.setItem('hideInstallBanner', 'true');
-                                        }}
-                                        className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
-                                        title="Sembunyikan Pengingat"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                                    </button>
 
-                                    <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-3 bg-white/10 backdrop-blur-md rounded-xl shrink-0">
-                                                <svg className="w-6 h-6 text-indigo-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-bold flex flex-wrap items-center gap-2">
-                                                    Instal Aplikasi HRIS
-                                                    <span className="px-2 py-0.5 bg-indigo-500/30 rounded-full text-[9px] font-bold uppercase tracking-wider text-indigo-200 border border-indigo-400/20">PWA</span>
-                                                </h4>
-                                                <p className="text-xs text-indigo-100/90 mt-1 leading-relaxed">
-                                                    Akses menu absensi GPS &amp; Selfie lebih cepat, responsif, dan stabil langsung dari Layar Utama HP Anda.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="w-full sm:w-auto shrink-0 mt-1 sm:mt-0">
-                                            {isIOS ? (
-                                                <button
-                                                    onClick={() => setShowInstallGuide(!showInstallGuide)}
-                                                    className="w-full sm:w-auto px-4 py-2.5 bg-amber-400 hover:bg-amber-500 active:scale-[0.98] text-slate-900 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
-                                                >
-                                                    <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                                                        <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.48C4.25 17 2.94 12.45 4.7 9.39C5.57 7.87 7.13 6.91 8.82 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.1 16.67C20.08 16.74 19.67 18.11 18.71 19.5M15.97 4.17C16.63 3.37 17.07 2.28 16.95 1C16 1.04 14.9 1.6 14.24 2.38C13.68 3.04 13.19 4.14 13.34 5.39C14.39 5.47 15.4 4.88 15.97 4.17Z"/>
-                                                    </svg>
-                                                    <span>{showInstallGuide ? "Tutup Petunjuk" : "Petunjuk Instal iPhone"}</span>
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={handleInstallClick}
-                                                    className="w-full sm:w-auto px-4 py-2.5 bg-amber-400 hover:bg-amber-500 active:scale-[0.98] text-slate-900 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
-                                                >
-                                                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                                    <span>Instal Sekarang</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* iPhone / iOS Safari PWA Installation Instructions */}
-                                    {isIOS && showInstallGuide && (
-                                        <div className="mt-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 text-xs space-y-3 animate-fade-in text-indigo-50 leading-relaxed">
-                                            <p className="font-bold text-amber-300 flex items-center gap-1.5">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                Langkah Instalasi PWA di iOS iPhone:
-                                            </p>
-                                            <ol className="list-decimal list-inside space-y-2 pl-1">
-                                                <li>Buka browser <span className="font-bold text-white">Safari</span> di perangkat iPhone Anda.</li>
-                                                <li>Pastikan Anda mengakses halaman ini dengan koneksi HTTPS: <code className="bg-indigo-900/40 px-1 py-0.5 rounded font-mono text-[10px] text-white">https://hris.konfigin.my.id</code></li>
-                                                <li>Ketuk tombol <span className="font-bold text-white inline-flex items-center gap-0.5">Bagikan (Share) <svg className="w-3.5 h-3.5 inline text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></span> pada menu navigasi bawah Safari.</li>
-                                                <li>Gulir daftar menu ke bawah dan ketuk opsi <span className="font-bold text-amber-350">Tambahkan ke Layar Utama</span> (Add to Home Screen).</li>
-                                                <li>Beri nama aplikasi (misal: HRIS), lalu klik <span className="font-bold text-amber-350">Tambah</span> (Add) di kanan atas.</li>
-                                                <li>Aplikasi HRIS kini terinstal di layar utama iPhone Anda dan dapat digunakan layaknya aplikasi asli.</li>
-                                            </ol>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
 
                             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700/50 p-6">
                                 <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Status Absensi Hari Ini</h3>
