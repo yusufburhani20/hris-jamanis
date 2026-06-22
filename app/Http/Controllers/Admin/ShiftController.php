@@ -110,16 +110,7 @@ class ShiftController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        // Resolve any overlaps with existing shifts
-        $this->resolveOverlappingShifts($request->user_id, $request->start_date, $request->end_date);
-
-        // Insert new assignment
-        UserShift::create([
-            'user_id' => $request->user_id,
-            'shift_id' => $request->shift_id,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-        ]);
+        $this->resolveAndInsertShifts($request->user_id, $request->shift_id, $request->start_date, $request->end_date);
 
         return redirect()->back()->with('success', 'Shift berhasil ditugaskan ke karyawan.');
     }
@@ -138,16 +129,7 @@ class ShiftController extends Controller
         ]);
 
         foreach ($request->user_ids as $userId) {
-            // Resolve any overlaps with existing shifts for this employee
-            $this->resolveOverlappingShifts($userId, $request->start_date, $request->end_date);
-
-            // Assign new shift
-            UserShift::create([
-                'user_id' => $userId,
-                'shift_id' => $request->shift_id,
-                'start_date' => $request->start_date,
-                'end_date' => $request->end_date,
-            ]);
+            $this->resolveAndInsertShifts($userId, $request->shift_id, $request->start_date, $request->end_date);
         }
 
         return redirect()->back()->with('success', 'Shift kerja berhasil ditugaskan ke karyawan terpilih secara massal.');
@@ -168,68 +150,111 @@ class ShiftController extends Controller
     }
 
     /**
-     * Resolve overlapping shift schedules for a user.
+     * Update an existing shift assignment.
      */
-    private function resolveOverlappingShifts($userId, $startDate, $endDate = null)
+    public function updateAssignment(Request $request)
+    {
+        $request->validate([
+            'user_shift_id' => 'required|exists:user_shifts,id',
+            'shift_id' => 'required|exists:shifts,id',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+        ]);
+
+        $userShift = UserShift::findOrFail($request->user_shift_id);
+
+        $this->resolveAndInsertShifts(
+            $userShift->user_id, 
+            $request->shift_id, 
+            $request->start_date, 
+            $request->end_date, 
+            $userShift->id
+        );
+
+        return redirect()->back()->with('success', 'Penugasan shift berhasil diperbarui.');
+    }
+
+    /**
+     * Resolve shift intervals such that existing shifts cannot be overwritten.
+     */
+    private function resolveAndInsertShifts($userId, $shiftId, $startDate, $endDate = null, $excludeUserShiftId = null)
     {
         $S_n = \Carbon\Carbon::parse($startDate);
-        $E_n = $endDate ? \Carbon\Carbon::parse($endDate) : null;
+        $E_n = $endDate ? \Carbon\Carbon::parse($endDate) : \Carbon\Carbon::parse('9999-12-31');
 
-        // Query all shifts for this user that overlap with the new assignment
-        $overlappingShifts = UserShift::where('user_id', $userId)
-            ->where(function($query) use ($startDate, $endDate) {
-                $query->where(function($q) use ($endDate) {
-                    if ($endDate !== null) {
-                        $q->where('start_date', '<=', $endDate);
-                    }
-                })
-                ->where(function($q) use ($startDate) {
-                    $q->whereNull('end_date')
-                      ->orWhere('end_date', '>=', $startDate);
-                });
-            })
-            ->get();
+        if ($S_n->gt($E_n)) {
+            return;
+        }
 
-        foreach ($overlappingShifts as $shift) {
-            $S_e = \Carbon\Carbon::parse($shift->start_date);
-            $E_e = $shift->end_date ? \Carbon\Carbon::parse($shift->end_date) : null;
+        // Fetch existing user shifts that are not the one we are editing
+        $query = UserShift::where('user_id', $userId);
+        if ($excludeUserShiftId !== null) {
+            $query->where('id', '!=', $excludeUserShiftId);
+        }
+        $existingShifts = $query->orderBy('start_date', 'asc')->get();
 
-            // Case 1: The new shift completely covers the existing shift.
-            if ($S_n->lte($S_e) && ($E_n === null || ($E_e !== null && $E_e->lte($E_n)))) {
-                $shift->delete();
+        // Represent our new shift range as a list of intervals
+        $intervals = [
+            [$S_n, $E_n]
+        ];
+
+        foreach ($existingShifts as $existing) {
+            $S_e = \Carbon\Carbon::parse($existing->start_date);
+            $E_e = $existing->end_date ? \Carbon\Carbon::parse($existing->end_date) : \Carbon\Carbon::parse('9999-12-31');
+
+            $nextIntervals = [];
+
+            foreach ($intervals as $interval) {
+                list($S_x, $E_x) = $interval;
+
+                // Check for overlap:
+                // No overlap if: E_e < S_x OR S_e > E_x
+                if ($E_e->lt($S_x) || $S_e->gt($E_x)) {
+                    $nextIntervals[] = [$S_x, $E_x];
+                    continue;
+                }
+
+                // If there is an overlap, subtract [S_e, E_e] from [S_x, E_x]
+                // 1. Part before the overlap: if S_x < S_e
+                if ($S_x->lt($S_e)) {
+                    $nextIntervals[] = [$S_x, $S_e->copy()->subDay()];
+                }
+
+                // 2. Part after the overlap: if E_x > E_e
+                if ($E_x->gt($E_e)) {
+                    $nextIntervals[] = [$E_e->copy()->addDay(), $E_x];
+                }
             }
-            // Case 2: The new shift is strictly inside the existing shift.
-            elseif ($S_e->lt($S_n) && $E_n !== null && ($E_e === null || $E_n->lt($E_e))) {
-                $prevEndDate = $S_n->copy()->subDay()->toDateString();
-                $nextStartDate = $E_n->copy()->addDay()->toDateString();
 
-                // Duplicate the existing shift for the post-new-shift period
+            $intervals = $nextIntervals;
+        }
+
+        // We will insert/update remaining intervals
+        $reusedRecord = $excludeUserShiftId ? UserShift::find($excludeUserShiftId) : null;
+
+        foreach ($intervals as $index => $interval) {
+            list($S, $E) = $interval;
+            $finalEndDate = $E->toDateString() === '9999-12-31' ? null : $E->toDateString();
+
+            if ($reusedRecord && $index === 0) {
+                $reusedRecord->update([
+                    'shift_id' => $shiftId,
+                    'start_date' => $S->toDateString(),
+                    'end_date' => $finalEndDate,
+                ]);
+            } else {
                 UserShift::create([
                     'user_id' => $userId,
-                    'shift_id' => $shift->shift_id,
-                    'start_date' => $nextStartDate,
-                    'end_date' => $E_e ? $E_e->toDateString() : null,
+                    'shift_id' => $shiftId,
+                    'start_date' => $S->toDateString(),
+                    'end_date' => $finalEndDate,
                 ]);
+            }
+        }
 
-                // Update the original existing shift to end before the new shift
-                $shift->update([
-                    'end_date' => $prevEndDate,
-                ]);
-            }
-            // Case 3: The new shift overlaps the start of the existing shift.
-            elseif ($S_n->lte($S_e) && $E_n !== null && $E_n->gte($S_e) && ($E_e === null || $E_n->lt($E_e))) {
-                $nextStartDate = $E_n->copy()->addDay()->toDateString();
-                $shift->update([
-                    'start_date' => $nextStartDate,
-                ]);
-            }
-            // Case 4: The new shift overlaps the end of the existing shift.
-            else {
-                $prevEndDate = $S_n->copy()->subDay()->toDateString();
-                $shift->update([
-                    'end_date' => $prevEndDate,
-                ]);
-            }
+        // If it was an edit but no intervals remained, delete the original record
+        if ($reusedRecord && count($intervals) === 0) {
+            $reusedRecord->delete();
         }
     }
 }

@@ -118,6 +118,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('shifts', ShiftController::class)->except(['show']);
         Route::post('/shifts/assign', [ShiftController::class, 'assign'])->name('shifts.assign');
         Route::post('/shifts/assign-bulk', [ShiftController::class, 'assignBulk'])->name('shifts.assignBulk');
+        Route::post('/shifts/update-assignment', [ShiftController::class, 'updateAssignment'])->name('shifts.update-assignment');
         Route::post('/shifts/remove-assignment', [ShiftController::class, 'removeAssignment'])->name('shifts.remove-assignment');
 
         // Admin Payroll Management

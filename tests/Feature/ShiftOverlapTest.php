@@ -53,11 +53,11 @@ class ShiftOverlapTest extends TestCase
     /**
      * Test Case 1: The new shift completely covers the existing shift.
      * E.g., [S_n, E_n] contains [S_e, E_e].
-     * Exists: June 5 - June 15
-     * New: June 1 - June 20
-     * Result: Exists is deleted.
+     * Exists: June 5 - June 15 (Shift A)
+     * New: June 1 - June 20 (Shift B)
+     * Result: Existing is preserved, and the new shift is split into June 1-4 and June 16-20.
      */
-    public function test_new_shift_completely_covers_existing()
+    public function test_new_shift_completely_covers_existing_preserves_existing()
     {
         UserShift::create([
             'user_id' => $this->employee->id,
@@ -75,25 +75,37 @@ class ShiftOverlapTest extends TestCase
 
         $response->assertStatus(302);
         
+        // Existing shift is preserved
+        $this->assertDatabaseHas('user_shifts', [
+            'user_id' => $this->employee->id,
+            'shift_id' => $this->shiftA->id,
+            'start_date' => '2026-06-05',
+            'end_date' => '2026-06-15',
+        ]);
+
+        // New shift is split around existing shift
         $this->assertDatabaseHas('user_shifts', [
             'user_id' => $this->employee->id,
             'shift_id' => $this->shiftB->id,
             'start_date' => '2026-06-01',
-            'end_date' => '2026-06-20',
+            'end_date' => '2026-06-04',
         ]);
 
-        $this->assertDatabaseMissing('user_shifts', [
-            'shift_id' => $this->shiftA->id,
+        $this->assertDatabaseHas('user_shifts', [
+            'user_id' => $this->employee->id,
+            'shift_id' => $this->shiftB->id,
+            'start_date' => '2026-06-16',
+            'end_date' => '2026-06-20',
         ]);
     }
 
     /**
      * Test Case 2: The new shift is strictly inside the existing shift (split).
-     * Exists: June 1 - Indefinite (null)
-     * New: June 10 - June 20
-     * Result: Exists is split into June 1 - June 9, and June 21 - Indefinite (null).
+     * Exists: June 1 - Indefinite (null) (Shift A)
+     * New: June 10 - June 20 (Shift B)
+     * Result: Existing is preserved, new shift cannot be created (fully covered).
      */
-    public function test_new_shift_inside_existing_splits_existing()
+    public function test_new_shift_inside_existing_is_fully_blocked()
     {
         UserShift::create([
             'user_id' => $this->employee->id,
@@ -111,34 +123,25 @@ class ShiftOverlapTest extends TestCase
 
         $response->assertStatus(302);
 
-        // Verify the split parts and the new assignment
+        // Existing shift remains unchanged
         $this->assertDatabaseHas('user_shifts', [
             'user_id' => $this->employee->id,
             'shift_id' => $this->shiftA->id,
             'start_date' => '2026-06-01',
-            'end_date' => '2026-06-09',
-        ]);
-
-        $this->assertDatabaseHas('user_shifts', [
-            'user_id' => $this->employee->id,
-            'shift_id' => $this->shiftB->id,
-            'start_date' => '2026-06-10',
-            'end_date' => '2026-06-20',
-        ]);
-
-        $this->assertDatabaseHas('user_shifts', [
-            'user_id' => $this->employee->id,
-            'shift_id' => $this->shiftA->id,
-            'start_date' => '2026-06-21',
             'end_date' => null,
+        ]);
+
+        // No new shift B was created
+        $this->assertDatabaseMissing('user_shifts', [
+            'shift_id' => $this->shiftB->id,
         ]);
     }
 
     /**
      * Test Case 3: The new shift overlaps the start of the existing shift.
-     * Exists: June 10 - June 20
-     * New: June 5 - June 15
-     * Result: Exists is pushed to June 16 - June 20.
+     * Exists: June 10 - June 20 (Shift A)
+     * New: June 5 - June 15 (Shift B)
+     * Result: Existing is preserved, new shift B is pulled to June 5 - June 9.
      */
     public function test_new_shift_overlaps_start_of_existing()
     {
@@ -158,26 +161,28 @@ class ShiftOverlapTest extends TestCase
 
         $response->assertStatus(302);
 
+        // Existing is preserved
         $this->assertDatabaseHas('user_shifts', [
             'user_id' => $this->employee->id,
             'shift_id' => $this->shiftA->id,
-            'start_date' => '2026-06-16',
+            'start_date' => '2026-06-10',
             'end_date' => '2026-06-20',
         ]);
 
+        // New shift is truncated to before existing start
         $this->assertDatabaseHas('user_shifts', [
             'user_id' => $this->employee->id,
             'shift_id' => $this->shiftB->id,
             'start_date' => '2026-06-05',
-            'end_date' => '2026-06-15',
+            'end_date' => '2026-06-09',
         ]);
     }
 
     /**
      * Test Case 4: The new shift overlaps the end of the existing shift.
-     * Exists: June 5 - June 15
-     * New: June 10 - June 20
-     * Result: Exists is pulled to June 5 - June 9.
+     * Exists: June 5 - June 15 (Shift A)
+     * New: June 10 - June 20 (Shift B)
+     * Result: Existing is preserved, new shift B is pushed to June 16 - June 20.
      */
     public function test_new_shift_overlaps_end_of_existing()
     {
@@ -197,18 +202,68 @@ class ShiftOverlapTest extends TestCase
 
         $response->assertStatus(302);
 
+        // Existing is preserved
         $this->assertDatabaseHas('user_shifts', [
             'user_id' => $this->employee->id,
             'shift_id' => $this->shiftA->id,
             'start_date' => '2026-06-05',
-            'end_date' => '2026-06-09',
+            'end_date' => '2026-06-15',
         ]);
 
+        // New shift is adjusted to start after existing end
         $this->assertDatabaseHas('user_shifts', [
             'user_id' => $this->employee->id,
             'shift_id' => $this->shiftB->id,
-            'start_date' => '2026-06-10',
+            'start_date' => '2026-06-16',
             'end_date' => '2026-06-20',
+        ]);
+    }
+
+    /**
+     * Test Case 5: Edit an existing shift assignment.
+     * Exists: June 1 - June 5 (Shift A, ID 1), June 10 - June 15 (Shift A, ID 2)
+     * Edit ID 2: to Shift B, June 3 - June 12
+     * Result: Exists ID 1 (June 1-5) is preserved. Edited assignment is adjusted to June 6 - June 12.
+     */
+    public function test_edit_shift_assignment_adjusts_around_other_existing()
+    {
+        $existing1 = UserShift::create([
+            'user_id' => $this->employee->id,
+            'shift_id' => $this->shiftA->id,
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-05',
+        ]);
+
+        $existing2 = UserShift::create([
+            'user_id' => $this->employee->id,
+            'shift_id' => $this->shiftA->id,
+            'start_date' => '2026-06-10',
+            'end_date' => '2026-06-15',
+        ]);
+
+        $response = $this->actingAs($this->admin)->post(route('admin.shifts.update-assignment'), [
+            'user_shift_id' => $existing2->id,
+            'shift_id' => $this->shiftB->id,
+            'start_date' => '2026-06-03',
+            'end_date' => '2026-06-12',
+        ]);
+
+        $response->assertStatus(302);
+
+        // First existing shift is preserved
+        $this->assertDatabaseHas('user_shifts', [
+            'id' => $existing1->id,
+            'shift_id' => $this->shiftA->id,
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-05',
+        ]);
+
+        // Second shift (edited) is adjusted to start from June 6th (after first shift ends)
+        $this->assertDatabaseHas('user_shifts', [
+            'id' => $existing2->id,
+            'shift_id' => $this->shiftB->id,
+            'start_date' => '2026-06-06',
+            'end_date' => '2026-06-12',
         ]);
     }
 }

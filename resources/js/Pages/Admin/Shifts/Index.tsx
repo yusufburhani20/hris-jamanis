@@ -34,6 +34,7 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
         const [showShiftModal, setShowShiftModal] = useState(false);
         const [editingShift, setEditingShift] = useState<Shift | null>(null);
         const [showAssignModal, setShowAssignModal] = useState(false);
+        const [showEditAssignModal, setShowEditAssignModal] = useState(false);
         const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
         const [bulkShiftId, setBulkShiftId] = useState<string>(shifts.length > 0 ? String(shifts[0].id) : '');
         const [bulkStartDate, setBulkStartDate] = useState<string>(new Date().toISOString().slice(0, 10));
@@ -47,6 +48,33 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                 return 'upcoming';
             }
             return 'past';
+        };
+
+        const { data: editAssignData, setData: setEditAssignData, post: postEditAssign, processing: processingEditAssign, errors: editAssignErrors, reset: resetEditAssign } = useForm({
+            user_shift_id: '',
+            shift_id: '',
+            start_date: '',
+            end_date: '',
+        });
+
+        const handleEditAssignSubmit = (e: React.FormEvent) => {
+            e.preventDefault();
+            postEditAssign(route('admin.shifts.update-assignment'), {
+                onSuccess: () => {
+                    resetEditAssign();
+                    setShowEditAssignModal(false);
+                },
+            });
+        };
+
+        const openEditAssignModal = (sh: any) => {
+            setEditAssignData({
+                user_shift_id: String(sh.pivot.id),
+                shift_id: String(sh.id),
+                start_date: sh.pivot.start_date,
+                end_date: sh.pivot.end_date || '',
+            });
+            setShowEditAssignModal(true);
         };
 
     // Form state for creating/updating Shift
@@ -399,6 +427,13 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                                                         }
                                                                                     </div>
                                                                                     <button
+                                                                                        onClick={() => openEditAssignModal(sh)}
+                                                                                        className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline p-1 flex-shrink-0 transition-colors"
+                                                                                        title="Edit Penugasan"
+                                                                                    >
+                                                                                        Edit
+                                                                                    </button>
+                                                                                    <button
                                                                                         onClick={() => handleRemoveAssignment(sh.pivot.id)}
                                                                                         className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline p-1 flex-shrink-0 transition-colors"
                                                                                         title="Batalkan Penugasan"
@@ -609,6 +644,80 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                     className="flex-1 justify-center py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/20"
                                 >
                                     Tugaskan Shift
+                                </PrimaryButton>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Edit Assign Shift */}
+            {showEditAssignModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700 transform transition-all scale-100 animate-scale-up">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/50 dark:bg-slate-850">
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white">Edit Penugasan Shift</h3>
+                            <button
+                                onClick={() => { setShowEditAssignModal(false); resetEditAssign(); }}
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <form onSubmit={handleEditAssignSubmit} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Pilih Jam Shift</label>
+                                <select
+                                    value={editAssignData.shift_id}
+                                    onChange={(e) => setEditAssignData('shift_id', e.target.value)}
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    required
+                                >
+                                    <option value="" disabled>-- Pilih Shift --</option>
+                                    {shifts.map((sh) => (
+                                        <option key={sh.id} value={sh.id}>{sh.name} [{sh.code}] ({sh.start_time.slice(0, 5)} - {sh.end_time.slice(0, 5)})</option>
+                                    ))}
+                                </select>
+                                {editAssignErrors.shift_id && <p className="text-red-500 text-xs mt-1">{editAssignErrors.shift_id}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Mulai Berlaku Tanggal</label>
+                                <input
+                                    type="date"
+                                    value={editAssignData.start_date}
+                                    onChange={(e) => setEditAssignData('start_date', e.target.value)}
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    required
+                                />
+                                {editAssignErrors.start_date && <p className="text-red-500 text-xs mt-1">{editAssignErrors.start_date}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Berakhir Tanggal (Opsional)</label>
+                                <input
+                                    type="date"
+                                    value={editAssignData.end_date}
+                                    onChange={(e) => setEditAssignData('end_date', e.target.value)}
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                />
+                                {editAssignErrors.end_date && <p className="text-red-500 text-xs mt-1">{editAssignErrors.end_date}</p>}
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowEditAssignModal(false); resetEditAssign(); }}
+                                    className="flex-1 border border-slate-200 dark:border-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs uppercase tracking-wide py-3 rounded-xl transition-all"
+                                >
+                                    Batal
+                                </button>
+                                <PrimaryButton
+                                    type="submit"
+                                    disabled={processingEditAssign}
+                                    className="flex-1 justify-center py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/20"
+                                >
+                                    Simpan Perubahan
                                 </PrimaryButton>
                             </div>
                         </form>
