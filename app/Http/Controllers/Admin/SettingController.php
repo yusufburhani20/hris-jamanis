@@ -202,6 +202,14 @@ class SettingController extends Controller
             return response()->json(['status' => 'error', 'message' => 'User tidak terotentikasi.'], 401);
         }
 
+        $subscriptions = \App\Models\PushSubscription::where('user_id', $user->id)->get();
+        if ($subscriptions->isEmpty()) {
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Perangkat Anda belum terdaftar untuk menerima push notifikasi. Harap pastikan Anda membuka website menggunakan HTTPS, telah mengizinkan notifikasi di browser, dan mengaktifkan izin notifikasi pada sistem operasi HP Anda.'
+            ]);
+        }
+
         try {
             app(\App\Services\WebPushService::class)->sendToUser(
                 $user->id,
