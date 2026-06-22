@@ -32,38 +32,28 @@
     <body class="font-sans antialiased">
         @inertia
 
-        <!-- PWA Service Worker Registration -->
+        <!-- PWA Service Worker Decommission (Disabling offline cache to prevent cache lock during development) -->
         <script>
             if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/sw.js?v=15')
-                        .then(reg => {
-                            console.log('Service Worker registered with scope:', reg.scope);
-                            
-                            // Check for updates to the service worker
-                            reg.addEventListener('updatefound', () => {
-                                const newWorker = reg.installing;
-                                if (newWorker) {
-                                    newWorker.addEventListener('statechange', () => {
-                                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                            console.log('New Service Worker version installed. Reloading...');
-                                            window.location.reload();
-                                        }
-                                    });
-                                }
-                            });
-                        })
-                        .catch(err => console.error('Service Worker registration failed:', err));
-                });
-
-                // Force reload when new service worker takes control
-                let refreshing = false;
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    if (!refreshing) {
-                        refreshing = true;
-                        window.location.reload();
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    for (let registration of registrations) {
+                        registration.unregister().then(success => {
+                            if (success) {
+                                console.log('[PWA] Service Worker unregistered successfully.');
+                                window.location.reload();
+                            }
+                        });
                     }
                 });
+
+                // Clear PWA caches
+                if ('caches' in window) {
+                    caches.keys().then(names => {
+                        for (let name of names) {
+                            caches.delete(name);
+                        }
+                    });
+                }
             }
         </script>
     </body>
