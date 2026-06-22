@@ -50,6 +50,21 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
             return 'past';
         };
 
+        const checkOverlap = (empShifts: any[], newStart: string, newEnd: string | null, excludeId?: string) => {
+            if (!newStart) return false;
+            const S_n = newStart;
+            const E_n = newEnd || '9999-12-31';
+
+            return empShifts.some(sh => {
+                if (excludeId && String(sh.pivot.id) === excludeId) return false;
+                const S_e = sh.pivot.start_date;
+                const E_e = sh.pivot.end_date || '9999-12-31';
+
+                // Overlap: S_e <= E_n && S_n <= E_e
+                return S_e <= E_n && S_n <= E_e;
+            });
+        };
+
         const { data: editAssignData, setData: setEditAssignData, post: postEditAssign, processing: processingEditAssign, errors: editAssignErrors, reset: resetEditAssign } = useForm({
             user_shift_id: '',
             shift_id: '',
@@ -327,11 +342,31 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                         <button
                                             onClick={handleAssignBulk}
                                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase px-4 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-600/20 active:scale-95 flex-shrink-0"
-                                            disabled={!bulkShiftId || !bulkStartDate}
+                                            disabled={
+                                                !bulkShiftId || 
+                                                !bulkStartDate || 
+                                                employees.some(emp => 
+                                                    selectedEmployeeIds.includes(emp.id) && 
+                                                    checkOverlap(emp.shifts || [], bulkStartDate, bulkEndDate)
+                                                )
+                                            }
                                         >
                                             Tugaskan Masal
                                         </button>
                                     </div>
+                                    {employees.some(emp => 
+                                        selectedEmployeeIds.includes(emp.id) && 
+                                        checkOverlap(emp.shifts || [], bulkStartDate, bulkEndDate)
+                                    ) && (
+                                        <div className="text-xs text-rose-500 font-bold bg-rose-50 dark:bg-rose-950/20 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/50 w-full mt-2 animate-fade-in">
+                                            ⚠️ Karyawan berikut memiliki bentrok jadwal: {
+                                                employees
+                                                    .filter(emp => selectedEmployeeIds.includes(emp.id) && checkOverlap(emp.shifts || [], bulkStartDate, bulkEndDate))
+                                                    .map(e => e.name)
+                                                    .join(', ')
+                                            }
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -630,22 +665,55 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                 {assignErrors.end_date && <p className="text-red-500 text-xs mt-1">{assignErrors.end_date}</p>}
                             </div>
 
-                            <div className="pt-4 flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowAssignModal(false); resetAssign(); }}
-                                    className="flex-1 border border-slate-200 dark:border-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs uppercase tracking-wide py-3 rounded-xl transition-all"
-                                >
-                                    Batal
-                                </button>
-                                <PrimaryButton
-                                    type="submit"
-                                    disabled={processingAssign}
-                                    className="flex-1 justify-center py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/20"
-                                >
-                                    Tugaskan Shift
-                                </PrimaryButton>
-                            </div>
+                             {(() => {
+                                 const selectedEmployeeObj = employees.find(emp => String(emp.id) === assignData.user_id);
+                                 const hasAssignOverlap = selectedEmployeeObj && checkOverlap(selectedEmployeeObj.shifts || [], assignData.start_date, assignData.end_date);
+                                 return (
+                                     <>
+                                         {selectedEmployeeObj && selectedEmployeeObj.shifts && selectedEmployeeObj.shifts.length > 0 && (
+                                             <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 text-xs space-y-1.5">
+                                                 <div className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Jadwal Terdaftar Karyawan:</div>
+                                                 {selectedEmployeeObj.shifts.map(s => (
+                                                     <div key={s.pivot.id} className="flex justify-between items-center text-slate-700 dark:text-slate-350">
+                                                         <span>📅 {s.name} ({s.code})</span>
+                                                         <span className="font-medium">
+                                                             {new Date(s.pivot.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                                             {' - '}
+                                                             {s.pivot.end_date 
+                                                                 ? new Date(s.pivot.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+                                                                 : 'Seterusnya'
+                                                             }
+                                                         </span>
+                                                     </div>
+                                                 ))}
+                                             </div>
+                                         )}
+
+                                         {hasAssignOverlap && (
+                                             <div className="text-xs text-rose-500 font-bold bg-rose-50 dark:bg-rose-950/20 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/50">
+                                                 ⚠️ Tanggal yang dipilih bentrok dengan jadwal yang sudah terdaftar!
+                                             </div>
+                                         )}
+
+                                         <div className="pt-4 flex gap-3">
+                                             <button
+                                                 type="button"
+                                                 onClick={() => { setShowAssignModal(false); resetAssign(); }}
+                                                 className="flex-1 border border-slate-200 dark:border-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs uppercase tracking-wide py-3 rounded-xl transition-all"
+                                             >
+                                                 Batal
+                                             </button>
+                                             <PrimaryButton
+                                                 type="submit"
+                                                 disabled={processingAssign || !!hasAssignOverlap}
+                                                 className="flex-1 justify-center py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/20"
+                                             >
+                                                 Tugaskan Shift
+                                             </PrimaryButton>
+                                         </div>
+                                     </>
+                                 );
+                             })()}
                         </form>
                     </div>
                 </div>
@@ -704,22 +772,60 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                 {editAssignErrors.end_date && <p className="text-red-500 text-xs mt-1">{editAssignErrors.end_date}</p>}
                             </div>
 
-                            <div className="pt-4 flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowEditAssignModal(false); resetEditAssign(); }}
-                                    className="flex-1 border border-slate-200 dark:border-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs uppercase tracking-wide py-3 rounded-xl transition-all"
-                                >
-                                    Batal
-                                </button>
-                                <PrimaryButton
-                                    type="submit"
-                                    disabled={processingEditAssign}
-                                    className="flex-1 justify-center py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/20"
-                                >
-                                    Simpan Perubahan
-                                </PrimaryButton>
-                            </div>
+                             {(() => {
+                                 const editedEmployeeObj = employees.find(emp => 
+                                     emp.shifts && emp.shifts.some(sh => String(sh.pivot.id) === editAssignData.user_shift_id)
+                                 );
+                                 const otherShifts = editedEmployeeObj && editedEmployeeObj.shifts 
+                                     ? editedEmployeeObj.shifts.filter(sh => String(sh.pivot.id) !== editAssignData.user_shift_id) 
+                                     : [];
+                                 const hasEditOverlap = checkOverlap(otherShifts, editAssignData.start_date, editAssignData.end_date);
+                                 return (
+                                     <>
+                                         {editedEmployeeObj && otherShifts.length > 0 && (
+                                             <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 text-xs space-y-1.5 font-sans">
+                                                 <div className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Jadwal Terdaftar Lainnya:</div>
+                                                 {otherShifts.map(s => (
+                                                     <div key={s.pivot.id} className="flex justify-between items-center text-slate-700 dark:text-slate-350">
+                                                         <span>📅 {s.name} ({s.code})</span>
+                                                         <span className="font-medium">
+                                                             {new Date(s.pivot.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                                             {' - '}
+                                                             {s.pivot.end_date 
+                                                                 ? new Date(s.pivot.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+                                                                 : 'Seterusnya'
+                                                             }
+                                                         </span>
+                                                     </div>
+                                                 ))}
+                                             </div>
+                                         )}
+
+                                         {hasEditOverlap && (
+                                             <div className="text-xs text-rose-500 font-bold bg-rose-50 dark:bg-rose-950/20 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/50">
+                                                 ⚠️ Tanggal yang dipilih bentrok dengan jadwal yang sudah terdaftar!
+                                             </div>
+                                         )}
+
+                                         <div className="pt-4 flex gap-3">
+                                             <button
+                                                 type="button"
+                                                 onClick={() => { setShowEditAssignModal(false); resetEditAssign(); }}
+                                                 className="flex-1 border border-slate-200 dark:border-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs uppercase tracking-wide py-3 rounded-xl transition-all"
+                                             >
+                                                 Batal
+                                             </button>
+                                             <PrimaryButton
+                                                 type="submit"
+                                                 disabled={processingEditAssign || !!hasEditOverlap}
+                                                 className="flex-1 justify-center py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/20"
+                                             >
+                                                 Simpan Perubahan
+                                             </PrimaryButton>
+                                         </div>
+                                     </>
+                                 );
+                             })()}
                         </form>
                     </div>
                 </div>
