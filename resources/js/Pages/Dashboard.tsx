@@ -250,25 +250,6 @@ export default function Dashboard({
 
             <div className="space-y-6">
 
-                {/* ── SECTION: Header Greeting & Clock ── */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50">
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">
-                            Selamat Datang Kembali, <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{user.name}</span>!
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-                            Status Akun: <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Aktif &amp; Terverifikasi</span>
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-3 self-end sm:self-auto">
-                        <div className="relative flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                        </div>
-                        <SystemClock />
-                    </div>
-                </div>
-
                 {/* ── SECTION: Offline Sync Banner ── */}
                 {offlineQueue.length > 0 && (
                     <div className="bg-gradient-to-r from-amber-500 to-orange-600 dark:from-amber-600 dark:to-orange-700 text-white rounded-2xl p-5 shadow-lg border border-amber-400/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -325,6 +306,11 @@ export default function Dashboard({
                     {/* Decorative blobs */}
                     <div className="absolute -top-24 -right-24 w-72 h-72 bg-white/5 rounded-full blur-3xl pointer-events-none" />
                     <div className="absolute -bottom-20 -left-16 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                    {/* Clock & Day display in the top right corner of the banner */}
+                    <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+                        <SystemClock light={true} />
+                    </div>
 
                     <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 p-6 sm:p-8">
                         <div>
