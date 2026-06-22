@@ -212,22 +212,21 @@ class Payroll extends Model
         $totalOvertimeHours = $attendanceOvertimeHours + floatval($manualOvertimeHours) + $unusedLeaveHours;
         $overtimePay        = $totalOvertimeHours * $hourlyRate;
 
-        // ── TUNJANGAN GLOBAL (dari setting, sama semua karyawan) ──────────
+        // ── TUNJANGAN GLOBAL ─────────────────────────────────────────────
         $presentCount  = $attendances->whereIn('status', ['hadir', 'terlambat', 'lembur', 'pulang_awal'])->count();
-        $tunjKesehatan = floatval(Setting::get('payroll_tunjangan_kesehatan', 0));
         $tunjKonsumsi  = floatval(Setting::get('payroll_tunjangan_konsumsi', 0));
 
-        // Tunjangan Jabatan, Masa Kerja, Bonus → 0 by default (diisi manual saat edit draft)
+        // Tunjangan Jabatan, Masa Kerja, Kesehatan, Bonus → 0 by default (diisi manual saat edit draft)
         $tunjJabatan    = 0;
         $tunjMasaKerja  = 0;
+        $tunjKesehatan  = 0;
         $bonus          = 0;
 
-        // ── POTONGAN GLOBAL ───────────────────────────────────────────────
-        $potonganAgniaCare = floatval(Setting::get('payroll_agnia_care', 0));
-        // BPJS → 0 by default (diisi via bulk apply action)
-        $potonganBpjs   = 0;
-        // Kasbon → 0 by default (diisi manual per karyawan saat edit draft)
-        $potonganKasbon = 0;
+        // ── POTONGAN ─────────────────────────────────────────────────────
+        // Agnia Care/Zakat, BPJS, Kasbon → 0 by default (diisi manual saat edit draft)
+        $potonganAgniaCare = 0;
+        $potonganBpjs      = 0;
+        $potonganKasbon    = 0;
 
         // ── TOTAL ALLOWANCES & DEDUCTIONS ────────────────────────────────
         $allowances = $tunjJabatan + $tunjMasaKerja + $tunjKesehatan + $tunjKonsumsi + $bonus;

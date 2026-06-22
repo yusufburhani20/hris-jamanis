@@ -42,9 +42,7 @@ interface Payroll {
 
 interface PayrollSettings {
     payroll_leave_quota: string;
-    payroll_tunjangan_kesehatan: string;
     payroll_tunjangan_konsumsi: string;
-    payroll_agnia_care: string;
     payroll_biaya_konsumsi_per_hari: string;
     payroll_bpjs_amount: string;
     payroll_period_start_day: string;
@@ -92,9 +90,7 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
 
     const { data: settingsData, setData: setSettingsData, post: postSettings, processing: processingSettings } = useForm({
         payroll_leave_quota: payrollSettings.payroll_leave_quota,
-        payroll_tunjangan_kesehatan: payrollSettings.payroll_tunjangan_kesehatan,
         payroll_tunjangan_konsumsi: payrollSettings.payroll_tunjangan_konsumsi,
-        payroll_agnia_care: payrollSettings.payroll_agnia_care,
         payroll_biaya_konsumsi_per_hari: payrollSettings.payroll_biaya_konsumsi_per_hari,
         payroll_bpjs_amount: payrollSettings.payroll_bpjs_amount,
         payroll_period_start_day: payrollSettings.payroll_period_start_day,
@@ -270,15 +266,7 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                 {/* Tunjangan Global */}
                                 <div className="border-t border-dashed border-slate-200 dark:border-slate-700 pt-5">
                                     <h4 className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-3">💚 Tunjangan Global (Sama Semua Karyawan)</h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tunjangan Kesehatan (Rp)</label>
-                                            <input type="text"
-                                                value={formatNumberInput(settingsData.payroll_tunjangan_kesehatan)}
-                                                onChange={e => setSettingsData('payroll_tunjangan_kesehatan', parseNumberInput(e.target.value))}
-                                                required className={inputCls} placeholder="Contoh: 100.000"
-                                            />
-                                        </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tunjangan Konsumsi (Rp)</label>
                                             <input type="text"
@@ -288,21 +276,13 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                             />
                                         </div>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 mt-2">Tunjangan Jabatan & Tunjangan Masa Kerja diisi manual per karyawan saat edit draf.</p>
+                                    <p className="text-[10px] text-slate-400 mt-2">Tunjangan Jabatan, Tunjangan Masa Kerja, & Tunjangan Kesehatan diisi manual per karyawan saat edit draf.</p>
                                 </div>
 
                                 {/* Potongan Global */}
                                 <div className="border-t border-dashed border-slate-200 dark:border-slate-700 pt-5">
                                     <h4 className="text-xs font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-3">🔴 Potongan Global (Sama Semua Karyawan)</h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Agnia Care / Zakat (Rp)</label>
-                                            <input type="text"
-                                                value={formatNumberInput(settingsData.payroll_agnia_care)}
-                                                onChange={e => setSettingsData('payroll_agnia_care', parseNumberInput(e.target.value))}
-                                                required className={inputCls} placeholder="Contoh: 50.000"
-                                            />
-                                        </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Biaya Konsumsi / Hari Mangkir (Rp)</label>
                                             <input type="text"
@@ -320,7 +300,7 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                             />
                                         </div>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 mt-2">Kasbon diisi manual per karyawan saat edit draf. BPJS diterapkan via tombol "Terapkan BPJS" di tabel.</p>
+                                    <p className="text-[10px] text-slate-400 mt-2">Agnia Care/Zakat & Kasbon diisi manual per karyawan saat edit draf. BPJS diterapkan via tombol "Terapkan BPJS" di tabel.</p>
                                 </div>
 
                                 {/* Periode & Otomasi */}

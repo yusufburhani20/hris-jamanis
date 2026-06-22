@@ -33,10 +33,8 @@ class PayrollController extends Controller
             // Jatah libur & tarif
             'payroll_leave_quota'             => Setting::get('payroll_leave_quota', '3'),
             // Tunjangan global
-            'payroll_tunjangan_kesehatan'     => Setting::get('payroll_tunjangan_kesehatan', '0'),
             'payroll_tunjangan_konsumsi'      => Setting::get('payroll_tunjangan_konsumsi', '0'),
             // Potongan global
-            'payroll_agnia_care'              => Setting::get('payroll_agnia_care', '0'),
             'payroll_biaya_konsumsi_per_hari' => Setting::get('payroll_biaya_konsumsi_per_hari', '13000'),
             'payroll_bpjs_amount'             => Setting::get('payroll_bpjs_amount', '0'),
             // Periode & otomasi
@@ -120,9 +118,7 @@ class PayrollController extends Controller
     {
         $request->validate([
             'payroll_leave_quota'             => 'required|integer|min:0|max:15',
-            'payroll_tunjangan_kesehatan'     => 'required|numeric|min:0',
             'payroll_tunjangan_konsumsi'      => 'required|numeric|min:0',
-            'payroll_agnia_care'              => 'required|numeric|min:0',
             'payroll_biaya_konsumsi_per_hari' => 'required|numeric|min:0',
             'payroll_bpjs_amount'             => 'required|numeric|min:0',
             'payroll_period_start_day'        => 'required|integer|between:1,31',
@@ -132,9 +128,7 @@ class PayrollController extends Controller
         ]);
 
         Setting::set('payroll_leave_quota', $request->payroll_leave_quota);
-        Setting::set('payroll_tunjangan_kesehatan', $request->payroll_tunjangan_kesehatan);
         Setting::set('payroll_tunjangan_konsumsi', $request->payroll_tunjangan_konsumsi);
-        Setting::set('payroll_agnia_care', $request->payroll_agnia_care);
         Setting::set('payroll_biaya_konsumsi_per_hari', $request->payroll_biaya_konsumsi_per_hari);
         Setting::set('payroll_bpjs_amount', $request->payroll_bpjs_amount);
         Setting::set('payroll_period_start_day', $request->payroll_period_start_day);
