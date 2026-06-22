@@ -56,6 +56,9 @@
                                 <span class="status-badge status-{{ is_object($record->status) && method_exists($record->status, 'value') ? $record->status->value : $record->status }}">
                                     {{ is_object($record->status) && method_exists($record->status, 'label') ? $record->status->label() : ucfirst(str_replace('_', ' ', $record->status)) }}
                                 </span>
+                                @if($record->time_details)
+                                    <br><small style="color: #666; font-size: 8px; font-weight: bold; display: block; margin-top: 3px;">⏳ {{ $record->time_details }}</small>
+                                @endif
                             </td>
                             <td>{{ $record->system_notes }}</td>
                             <td>

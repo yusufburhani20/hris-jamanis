@@ -38,6 +38,9 @@
                         @else
                             {{ ucfirst(str_replace('_', ' ', $record->status)) }}
                         @endif
+                        @if($record->time_details)
+                            ({{ $record->time_details }})
+                        @endif
                     </td>
                     <td style="border: 1px solid #000000; text-align: center;">
                         @if($record->verification_status instanceof \App\Enums\VerificationStatus || (is_object($record->verification_status) && method_exists($record->verification_status, 'label')))

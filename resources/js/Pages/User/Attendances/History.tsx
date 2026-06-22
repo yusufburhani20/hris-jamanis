@@ -15,6 +15,7 @@ interface Attendance {
     verification_status: string;
     system_notes: string | null;
     is_mocked: boolean;
+    time_details?: string | null;
 }
 
 export default function History({ auth, attendances, filters }: PageProps<{ attendances: Attendance[], filters: { start_date?: string, end_date?: string } }>) {
@@ -190,14 +191,24 @@ export default function History({ auth, attendances, filters }: PageProps<{ atte
                                                 {record.check_out ? record.check_out : '-'}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`inline-flex text-xs font-bold rounded-full px-2.5 py-0.5 shadow-sm 
-                                                    ${record.status === 'hadir' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30' : 
-                                                      record.status === 'terlambat' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30' : 
-                                                      record.status === 'pulang_awal' ? 'bg-orange-50 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400 border border-orange-100 dark:border-orange-900/30' : 
-                                                      record.status === 'lembur' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/20 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30' : 
-                                                      'bg-gray-50 text-gray-700 border border-gray-100 dark:bg-gray-900/10 dark:text-gray-400 dark:border-gray-800'}`}>
-                                                    {record.status.replace('_', ' ').toUpperCase()}
-                                                </span>
+                                                <div className="flex flex-col space-y-1">
+                                                    <span className={`inline-flex text-xs font-bold rounded-full px-2.5 py-0.5 shadow-sm 
+                                                        ${record.status === 'hadir' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30' : 
+                                                          record.status === 'terlambat' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30' : 
+                                                          record.status === 'pulang_awal' ? 'bg-orange-50 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400 border border-orange-100 dark:border-orange-900/30' : 
+                                                          record.status === 'lembur' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/20 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30' : 
+                                                          'bg-gray-50 text-gray-700 border border-gray-100 dark:bg-gray-900/10 dark:text-gray-400 dark:border-gray-800'}`}>
+                                                        {record.status.replace('_', ' ').toUpperCase()}
+                                                    </span>
+                                                    {record.time_details && (
+                                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                                            <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            {record.time_details}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col space-y-1">

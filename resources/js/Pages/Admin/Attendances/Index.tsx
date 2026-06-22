@@ -26,6 +26,7 @@ interface Attendance {
     is_offline?: boolean;
     offline_device_time?: string | null;
     created_at?: string;
+    time_details?: string | null;
 }
 
 export default function AttendanceIndex({ auth, attendances, users, filters }: PageProps<{ attendances: Attendance[], users: User[], filters: { start_date?: string, end_date?: string, user_id?: string, month?: string } }>) {
@@ -248,6 +249,14 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                           'bg-gray-100 text-gray-800'}`}>
                                                         {record.status.replace('_', ' ').toUpperCase()}
                                                     </span>
+                                                    {record.time_details && (
+                                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                                            <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            {record.time_details}
+                                                        </span>
+                                                    )}
                                                     <span className={`inline-flex text-[10px] uppercase font-black rounded-full px-2 py-0.5 w-max border ${record.verification_status === 'valid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                                                         {record.verification_status.replace('_', ' ')}
                                                     </span>
