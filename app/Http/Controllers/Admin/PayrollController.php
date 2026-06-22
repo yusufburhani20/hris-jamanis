@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Payroll;
 use App\Models\User;
-use App\Models\Attendance;
+use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,9 +18,9 @@ class PayrollController extends Controller
     public function index(Request $request)
     {
         $month = intval($request->query('month', Carbon::now()->month));
-        $year = intval($request->query('year', Carbon::now()->year));
+        $year  = intval($request->query('year', Carbon::now()->year));
 
-        $payrolls = Payroll::with('user:id,name,email,nip,basic_salary')
+        $payrolls = Payroll::with('user:id,name,email,nip,basic_salary,jabatan')
             ->where('month', $month)
             ->where('year', $year)
             ->get();
@@ -30,21 +30,27 @@ class PayrollController extends Controller
             ->get();
 
         $settings = [
-            'payroll_late_penalty' => \App\Models\Setting::get('payroll_late_penalty', '50000'),
-            'payroll_allowance' => \App\Models\Setting::get('payroll_allowance', '500000'),
-            'payroll_absent_penalty' => \App\Models\Setting::get('payroll_absent_penalty', '100000'),
-            'payroll_working_days' => explode(',', \App\Models\Setting::get('payroll_working_days', 'Monday,Tuesday,Wednesday,Thursday,Friday')),
-            'payroll_period_start_day' => \App\Models\Setting::get('payroll_period_start_day', '26'),
-            'payroll_period_end_day' => \App\Models\Setting::get('payroll_period_end_day', '25'),
-            'payroll_auto_calculate_day' => \App\Models\Setting::get('payroll_auto_calculate_day', '26'),
-            'payroll_auto_calculate_enabled' => \App\Models\Setting::get('payroll_auto_calculate_enabled', '0'),
+            // Jatah libur & tarif
+            'payroll_leave_quota'             => Setting::get('payroll_leave_quota', '3'),
+            // Tunjangan global
+            'payroll_tunjangan_kesehatan'     => Setting::get('payroll_tunjangan_kesehatan', '0'),
+            'payroll_tunjangan_konsumsi'      => Setting::get('payroll_tunjangan_konsumsi', '0'),
+            // Potongan global
+            'payroll_agnia_care'              => Setting::get('payroll_agnia_care', '0'),
+            'payroll_biaya_konsumsi_per_hari' => Setting::get('payroll_biaya_konsumsi_per_hari', '13000'),
+            'payroll_bpjs_amount'             => Setting::get('payroll_bpjs_amount', '0'),
+            // Periode & otomasi
+            'payroll_period_start_day'        => Setting::get('payroll_period_start_day', '26'),
+            'payroll_period_end_day'          => Setting::get('payroll_period_end_day', '25'),
+            'payroll_auto_calculate_day'      => Setting::get('payroll_auto_calculate_day', '26'),
+            'payroll_auto_calculate_enabled'  => Setting::get('payroll_auto_calculate_enabled', '0'),
         ];
 
         return Inertia::render('Admin/Payrolls/Index', [
-            'payrolls' => $payrolls,
-            'employees' => $employees,
-            'currentMonth' => $month,
-            'currentYear' => $year,
+            'payrolls'        => $payrolls,
+            'employees'       => $employees,
+            'currentMonth'    => $month,
+            'currentYear'     => $year,
             'payrollSettings' => $settings,
         ]);
     }
@@ -52,17 +58,14 @@ class PayrollController extends Controller
     /**
      * Calculate and generate payroll draft for an employee.
      */
-    /**
-     * Calculate and generate payroll draft for an employee.
-     */
     public function calculate(Request $request)
     {
         $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'month' => 'required|integer|between:1,12',
-            'year' => 'required|integer|min:2020',
+            'user_id'    => 'required|exists:users,id',
+            'month'      => 'required|integer|between:1,12',
+            'year'       => 'required|integer|min:2020',
             'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
         ]);
 
         $this->performCalculation($request->user_id, $request->month, $request->year, $request->start_date, $request->end_date);
@@ -76,20 +79,21 @@ class PayrollController extends Controller
     public function calculateBulk(Request $request)
     {
         $request->validate([
-            'month' => 'required|integer|between:1,12',
-            'year' => 'required|integer|min:2020',
+            'month'      => 'required|integer|between:1,12',
+            'year'       => 'required|integer|min:2020',
             'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
         ]);
 
-        $month = $request->month;
-        $year = $request->year;
+        $month     = $request->month;
+        $year      = $request->year;
         $startDate = $request->start_date;
-        $endDate = $request->end_date;
+        $endDate   = $request->end_date;
 
         $employees = User::where('role', 'LIKE', '%employee%')
             ->orWhere('role', 'LIKE', '%driver%')
             ->get();
+
         if ($employees->isEmpty()) {
             return redirect()->back()->with('error', 'Tidak ada karyawan untuk dihitung.');
         }
@@ -115,30 +119,34 @@ class PayrollController extends Controller
     public function saveSettings(Request $request)
     {
         $request->validate([
-            'payroll_late_penalty' => 'required|numeric|min:0',
-            'payroll_allowance' => 'required|numeric|min:0',
-            'payroll_absent_penalty' => 'required|numeric|min:0',
-            'payroll_working_days' => 'required|array',
-            'payroll_period_start_day' => 'required|integer|between:1,31',
-            'payroll_period_end_day' => 'required|integer|between:1,31',
-            'payroll_auto_calculate_day' => 'required|integer|between:1,31',
-            'payroll_auto_calculate_enabled' => 'required|in:0,1',
+            'payroll_leave_quota'             => 'required|integer|min:0|max:15',
+            'payroll_tunjangan_kesehatan'     => 'required|numeric|min:0',
+            'payroll_tunjangan_konsumsi'      => 'required|numeric|min:0',
+            'payroll_agnia_care'              => 'required|numeric|min:0',
+            'payroll_biaya_konsumsi_per_hari' => 'required|numeric|min:0',
+            'payroll_bpjs_amount'             => 'required|numeric|min:0',
+            'payroll_period_start_day'        => 'required|integer|between:1,31',
+            'payroll_period_end_day'          => 'required|integer|between:1,31',
+            'payroll_auto_calculate_day'      => 'required|integer|between:1,31',
+            'payroll_auto_calculate_enabled'  => 'required|in:0,1',
         ]);
 
-        \App\Models\Setting::set('payroll_late_penalty', $request->payroll_late_penalty);
-        \App\Models\Setting::set('payroll_allowance', $request->payroll_allowance);
-        \App\Models\Setting::set('payroll_absent_penalty', $request->payroll_absent_penalty);
-        \App\Models\Setting::set('payroll_working_days', implode(',', $request->payroll_working_days));
-        \App\Models\Setting::set('payroll_period_start_day', $request->payroll_period_start_day);
-        \App\Models\Setting::set('payroll_period_end_day', $request->payroll_period_end_day);
-        \App\Models\Setting::set('payroll_auto_calculate_day', $request->payroll_auto_calculate_day);
-        \App\Models\Setting::set('payroll_auto_calculate_enabled', $request->payroll_auto_calculate_enabled);
+        Setting::set('payroll_leave_quota', $request->payroll_leave_quota);
+        Setting::set('payroll_tunjangan_kesehatan', $request->payroll_tunjangan_kesehatan);
+        Setting::set('payroll_tunjangan_konsumsi', $request->payroll_tunjangan_konsumsi);
+        Setting::set('payroll_agnia_care', $request->payroll_agnia_care);
+        Setting::set('payroll_biaya_konsumsi_per_hari', $request->payroll_biaya_konsumsi_per_hari);
+        Setting::set('payroll_bpjs_amount', $request->payroll_bpjs_amount);
+        Setting::set('payroll_period_start_day', $request->payroll_period_start_day);
+        Setting::set('payroll_period_end_day', $request->payroll_period_end_day);
+        Setting::set('payroll_auto_calculate_day', $request->payroll_auto_calculate_day);
+        Setting::set('payroll_auto_calculate_enabled', $request->payroll_auto_calculate_enabled);
 
         return redirect()->back()->with('success', 'Pengaturan parameter penggajian berhasil diperbarui.');
     }
 
     /**
-     * Update an existing payroll draft manually.
+     * Update an existing payroll draft manually (full breakdown fields).
      */
     public function update(Request $request, Payroll $payroll)
     {
@@ -147,29 +155,82 @@ class PayrollController extends Controller
         }
 
         $request->validate([
-            'allowances' => 'required|numeric|min:0',
-            'overtime_pay' => 'required|numeric|min:0',
-            'deductions' => 'required|numeric|min:0',
+            // Tunjangan manual
+            'tunjangan_jabatan'       => 'required|numeric|min:0',
+            'tunjangan_masa_kerja'    => 'required|numeric|min:0',
+            'bonus'                   => 'required|numeric|min:0',
+            // Lembur (override)
+            'overtime_pay'            => 'required|numeric|min:0',
+            // Potongan manual
+            'potongan_bpjs'           => 'required|numeric|min:0',
+            'potongan_kasbon'         => 'required|numeric|min:0',
         ]);
 
-        $basicSalary = floatval($payroll->basic_salary);
-        $allowances = floatval($request->allowances);
-        $overtimePay = floatval($request->overtime_pay);
-        $deductions = floatval($request->deductions);
+        $basicSalary          = floatval($payroll->basic_salary);
+        $tunjJabatan          = floatval($request->tunjangan_jabatan);
+        $tunjMasaKerja        = floatval($request->tunjangan_masa_kerja);
+        $tunjKesehatan        = floatval($payroll->tunjangan_kesehatan);
+        $tunjKonsumsi         = floatval($payroll->tunjangan_konsumsi);
+        $bonus                = floatval($request->bonus);
+        $overtimePay          = floatval($request->overtime_pay);
+        $potonganAgniaCare    = floatval($payroll->potongan_agnia_care);
+        $potonganBiayaKons    = floatval($payroll->potongan_biaya_konsumsi);
+        $potonganBpjs         = floatval($request->potongan_bpjs);
+        $potonganKehadiran    = floatval($payroll->potongan_kehadiran);
+        $potonganKasbon       = floatval($request->potongan_kasbon);
 
-        $netSalary = $basicSalary + $allowances + $overtimePay - $deductions;
-        if ($netSalary < 0) {
-            $netSalary = 0;
-        }
+        $allowances = $tunjJabatan + $tunjMasaKerja + $tunjKesehatan + $tunjKonsumsi + $bonus;
+        $deductions = $potonganAgniaCare + $potonganBiayaKons + $potonganBpjs + $potonganKehadiran + $potonganKasbon;
+        $netSalary  = max(0, $basicSalary + $allowances + $overtimePay - $deductions);
 
         $payroll->update([
-            'allowances' => $allowances,
-            'overtime_pay' => $overtimePay,
-            'deductions' => $deductions,
-            'net_salary' => $netSalary,
+            'tunjangan_jabatan'    => $tunjJabatan,
+            'tunjangan_masa_kerja' => $tunjMasaKerja,
+            'bonus'                => $bonus,
+            'allowances'           => $allowances,
+            'overtime_pay'         => $overtimePay,
+            'potongan_bpjs'        => $potonganBpjs,
+            'potongan_kasbon'      => $potonganKasbon,
+            'deductions'           => $deductions,
+            'net_salary'           => $netSalary,
         ]);
 
         return redirect()->back()->with('success', 'Draf gaji berhasil diperbarui secara manual.');
+    }
+
+    /**
+     * Apply BPJS deduction to selected payroll drafts (bulk action).
+     */
+    public function applyBpjs(Request $request)
+    {
+        $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'exists:payrolls,id',
+        ]);
+
+        $bpjsAmount = floatval(Setting::get('payroll_bpjs_amount', 0));
+        if ($bpjsAmount <= 0) {
+            return redirect()->back()->with('error', 'Nominal BPJS belum diatur di pengaturan penggajian.');
+        }
+
+        $payrolls = Payroll::whereIn('id', $request->ids)->where('status', 'draft')->get();
+        $updated  = 0;
+
+        foreach ($payrolls as $p) {
+            $basicSalary       = floatval($p->basic_salary);
+            $potonganBpjsBaru  = $bpjsAmount;
+            $deductions        = floatval($p->deductions) - floatval($p->potongan_bpjs) + $potonganBpjsBaru;
+            $netSalary         = max(0, $basicSalary + floatval($p->allowances) + floatval($p->overtime_pay) - $deductions);
+
+            $p->update([
+                'potongan_bpjs' => $potonganBpjsBaru,
+                'deductions'    => $deductions,
+                'net_salary'    => $netSalary,
+            ]);
+            $updated++;
+        }
+
+        return redirect()->back()->with('success', "BPJS sebesar Rp " . number_format($bpjsAmount, 0, ',', '.') . " berhasil diterapkan ke {$updated} karyawan.");
     }
 
     /**
@@ -178,11 +239,10 @@ class PayrollController extends Controller
     public function pay(Payroll $payroll)
     {
         $payroll->update([
-            'status' => 'paid',
+            'status'  => 'paid',
             'paid_at' => now(),
         ]);
 
-        // Send Email & PWA payslip notification
         $notifEnabled = \App\Models\Setting::get('notif_payroll_paid_enabled', '1') === '1';
         if ($notifEnabled) {
             try {
@@ -215,14 +275,14 @@ class PayrollController extends Controller
     public function payBulk(Request $request)
     {
         $request->validate([
-            'month' => 'required|integer|between:1,12',
-            'year' => 'required|integer|min:2020',
-            'ids' => 'nullable|array',
-            'ids.*' => 'exists:payrolls,id',
+            'month'  => 'required|integer|between:1,12',
+            'year'   => 'required|integer|min:2020',
+            'ids'    => 'nullable|array',
+            'ids.*'  => 'exists:payrolls,id',
         ]);
 
         $month = $request->month;
-        $year = $request->year;
+        $year  = $request->year;
 
         $query = Payroll::with('user')
             ->where('month', $month)
@@ -241,11 +301,10 @@ class PayrollController extends Controller
 
         foreach ($payrolls as $payroll) {
             $payroll->update([
-                'status' => 'paid',
+                'status'  => 'paid',
                 'paid_at' => now(),
             ]);
 
-            // Send Email & PWA payslip notification
             $notifEnabled = \App\Models\Setting::get('notif_payroll_paid_enabled', '1') === '1';
             if ($notifEnabled) {
                 try {
@@ -253,7 +312,7 @@ class PayrollController extends Controller
                         \Illuminate\Support\Facades\Mail::to($payroll->user->email)->send(new \App\Mail\PayslipNotification($payroll));
                     }
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error("Email sending failed in bulk for payroll ID {$payroll->id}: " . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::error("Email bulk failed for payroll ID {$payroll->id}: " . $e->getMessage());
                 }
 
                 try {
@@ -264,7 +323,7 @@ class PayrollController extends Controller
                         ['url' => '/payrolls']
                     );
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::warning("PWA payroll bulk notification failed for User ID {$payroll->user_id}: " . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::warning("PWA bulk payroll failed for User ID {$payroll->user_id}: " . $e->getMessage());
                 }
             }
         }

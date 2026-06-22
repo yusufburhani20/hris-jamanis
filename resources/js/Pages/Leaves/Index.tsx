@@ -6,7 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 interface Leave {
     id: number;
     user_id: number;
-    type: 'cuti' | 'sakit' | 'izin';
+    type: 'cuti' | 'sakit' | 'izin' | 'izin_terlambat';
     start_date: string;
     end_date: string;
     reason: string;
@@ -72,8 +72,19 @@ export default function LeavesIndex({ leaves, role }: IndexProps) {
             cuti: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800',
             sakit: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200 dark:border-rose-800',
             izin: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800',
+            izin_terlambat: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800',
         };
         return config[type] || 'bg-slate-100 text-slate-800';
+    };
+
+    const typeLabel = (type: string) => {
+        const config: Record<string, string> = {
+            cuti: 'Cuti',
+            sakit: 'Sakit',
+            izin: 'Izin',
+            izin_terlambat: 'Izin Terlambat',
+        };
+        return config[type] || type;
     };
 
     const statusBadge = (status: string) => {
@@ -151,7 +162,7 @@ export default function LeavesIndex({ leaves, role }: IndexProps) {
                                             )}
                                             <td className="px-6 py-4">
                                                 <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${typeBadge(leave.type)}`}>
-                                                    {leave.type}
+                                                    {typeLabel(leave.type)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
@@ -250,6 +261,7 @@ export default function LeavesIndex({ leaves, role }: IndexProps) {
                                     <option value="cuti">Cuti Tahunan</option>
                                     <option value="sakit">Sakit (Butuh Surat Dokter)</option>
                                     <option value="izin">Izin Lainnya</option>
+                                    <option value="izin_terlambat">Izin Terlambat</option>
                                 </select>
                             </div>
 

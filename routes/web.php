@@ -125,6 +125,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/payrolls/calculate', [AdminPayrollController::class, 'calculate'])->name('payrolls.calculate');
         Route::post('/payrolls/calculate-bulk', [AdminPayrollController::class, 'calculateBulk'])->name('payrolls.calculateBulk');
         Route::post('/payrolls/settings', [AdminPayrollController::class, 'saveSettings'])->name('payrolls.saveSettings');
+        Route::post('/payrolls/apply-bpjs', [AdminPayrollController::class, 'applyBpjs'])->name('payrolls.applyBpjs');
         Route::put('/payrolls/{payroll}', [AdminPayrollController::class, 'update'])->name('payrolls.update');
         Route::post('/payrolls/{payroll}/pay', [AdminPayrollController::class, 'pay'])->name('payrolls.pay');
         Route::post('/payrolls/pay-bulk', [AdminPayrollController::class, 'payBulk'])->name('payrolls.payBulk');

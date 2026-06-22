@@ -183,26 +183,38 @@ class AttendanceController extends Controller
         $notes = $existing->system_notes . " | CheckOut: " . $geoCheck['notes'];
         $newStatus = $existing->status;
 
-        // ── SHIFT PENUGASAN INTEGRATION (PHASE 1) ──
+        // ── EARLY CHECK-IN RULE + SHIFT INTEGRATION ──
+        // Toleransi early check-in: jika masuk ≤ 60 menit sebelum shift,
+        // jam kerja dihitung dari check-in nyata (10 jam ke depan).
+        $earlyToleranceMinutes = 60;
         $activeShift = $user->activeShift($date);
+        $checkInTime = Carbon::createFromFormat('H:i:s', $existing->check_in);
+
         if ($activeShift) {
-            $endTime = Carbon::createFromFormat('H:i:s', $activeShift->end_time);
-            if ($deviceTime->greaterThan($endTime)) {
-                $notes .= " (Lembur)";
-                $newStatus = 'lembur';
-            } elseif ($deviceTime->lessThan($endTime)) {
-                $notes .= " (Pulang Lebih Awal)";
-                $newStatus = 'pulang_awal';
+            $shiftStart  = Carbon::createFromFormat('H:i:s', $activeShift->start_time);
+            $shiftEnd    = Carbon::createFromFormat('H:i:s', $activeShift->end_time);
+            $minsEarly   = $shiftStart->diffInMinutes($checkInTime, false); // negatif jika lebih awal
+
+            // Early check-in dalam toleransi → effective end = check_in + 10 jam
+            if ($minsEarly < 0 && abs($minsEarly) < $earlyToleranceMinutes) {
+                $effectiveEnd = $checkInTime->copy()->addHours(10);
+                $notes .= " (Masuk Awal, EffEnd: " . $effectiveEnd->format('H:i') . ")";
+            } else {
+                $effectiveEnd = $shiftEnd;
             }
-        } elseif ($geoCheck['geofence'] && $geoCheck['geofence']->work_end_time) {
-            $endTime = Carbon::createFromFormat('H:i:s', $geoCheck['geofence']->work_end_time);
-            if ($deviceTime->greaterThan($endTime)) {
-                $notes .= " (Lembur)";
-                $newStatus = 'lembur';
-            } elseif ($deviceTime->lessThan($endTime)) {
-                $notes .= " (Pulang Lebih Awal)";
-                $newStatus = 'pulang_awal';
-            }
+        } else {
+            // Tidak ada shift → selalu check_in + 10 jam
+            $effectiveEnd = $checkInTime->copy()->addHours(10);
+            $notes .= " (No Shift, EffEnd: " . $effectiveEnd->format('H:i') . ")";
+        }
+
+        if ($deviceTime->greaterThan($effectiveEnd)) {
+            $notes .= " (Lembur)";
+            $newStatus = 'lembur';
+        } elseif ($deviceTime->lessThan((clone $effectiveEnd)->subMinutes(30))) {
+            // Toleransi pulang awal: lebih dari 30 menit sebelum effective end
+            $notes .= " (Pulang Lebih Awal)";
+            $newStatus = 'pulang_awal';
         }
 
         $prevValid = is_string($existing->verification_status)

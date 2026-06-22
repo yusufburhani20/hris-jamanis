@@ -43,10 +43,16 @@ class LeaveController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'type' => 'required|in:cuti,sakit,izin',
-            'start_date' => 'required|date|after_or_equal:today',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'reason' => 'required|string|max:500',
+            'type'       => 'required|in:cuti,sakit,izin,izin_terlambat',
+            'start_date' => [
+                'required',
+                'date',
+                // izin_terlambat bisa untuk hari ini atau masa lalu (sudah terlambat baru minta izin)
+                // tipe lain harus hari ini atau ke depan
+                $request->type === 'izin_terlambat' ? 'before_or_equal:today' : 'after_or_equal:today',
+            ],
+            'end_date'   => 'required|date|after_or_equal:start_date',
+            'reason'     => 'required|string|max:500',
             'proof_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ]);
 
