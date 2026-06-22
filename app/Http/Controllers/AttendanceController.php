@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use App\Enums\AttendanceStatus;
 use App\Enums\VerificationStatus;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Setting;
 
 class AttendanceController extends Controller
 {
@@ -85,14 +86,15 @@ class AttendanceController extends Controller
 
         // ── SHIFT PENUGASAN INTEGRATION (PHASE 1) ──
         $activeShift = $user->activeShift($date);
+        $lateToleranceMinutes = (int) Setting::get('late_tolerance_minutes', 0);
         if ($activeShift) {
             $startTime = Carbon::createFromFormat('H:i:s', $activeShift->start_time);
-            if ($deviceTime->greaterThan($startTime)) {
+            if ($deviceTime->greaterThan($startTime->copy()->addMinutes($lateToleranceMinutes))) {
                 $status = 'terlambat';
             }
         } elseif ($geoCheck['geofence'] && $geoCheck['geofence']->work_start_time) {
             $startTime = Carbon::createFromFormat('H:i:s', $geoCheck['geofence']->work_start_time);
-            if ($deviceTime->greaterThan($startTime)) {
+            if ($deviceTime->greaterThan($startTime->copy()->addMinutes($lateToleranceMinutes))) {
                 $status = 'terlambat';
             }
         }
@@ -187,9 +189,9 @@ class AttendanceController extends Controller
         $newStatus = $existing->status;
 
         // ── EARLY CHECK-IN RULE + SHIFT INTEGRATION ──
-        // Toleransi early check-in: jika masuk ≤ 60 menit sebelum shift,
+        // Toleransi early check-in: jika masuk ≤ early check-in tolerance menit sebelum shift,
         // jam kerja dihitung dari check-in nyata (10 jam ke depan).
-        $earlyToleranceMinutes = 60;
+        $earlyToleranceMinutes = (int) Setting::get('early_checkin_tolerance_minutes', 60);
         $activeShift = $user->activeShift($date);
         $checkInTime = Carbon::createFromFormat('H:i:s', $existing->check_in);
 
@@ -199,7 +201,7 @@ class AttendanceController extends Controller
             $minsEarly   = $shiftStart->diffInMinutes($checkInTime, false); // negatif jika lebih awal
 
             // Early check-in dalam toleransi → effective end = check_in + 10 jam
-            if ($minsEarly < 0 && abs($minsEarly) < $earlyToleranceMinutes) {
+            if ($minsEarly < 0 && abs($minsEarly) <= $earlyToleranceMinutes) {
                 $effectiveEnd = $checkInTime->copy()->addHours(10);
                 $notes .= " (Masuk Awal, EffEnd: " . $effectiveEnd->format('H:i') . ")";
             } else {

@@ -162,7 +162,7 @@ class Payroll extends Model
         $potonganKehadiran = ($absentCount * $dailyRate) + ($lateHours * $hourlyRate);
 
         // ── HITUNG LEMBUR DARI ABSENSI (dengan early check-in rule) ──────
-        $earlyToleranceMinutes   = 60;
+        $earlyToleranceMinutes   = (int) Setting::get('early_checkin_tolerance_minutes', 60);
         $attendanceOvertimeHours = 0.0;
 
         foreach ($attendances as $att) {
@@ -180,7 +180,7 @@ class Payroll extends Model
                     $minsEarly  = $shiftStart->diffInMinutes($checkIn, false); // negatif jika lebih awal
 
                     // Early check-in dalam toleransi → effective end = check_in + 10 jam
-                    if ($minsEarly < 0 && abs($minsEarly) < $earlyToleranceMinutes) {
+                    if ($minsEarly < 0 && abs($minsEarly) <= $earlyToleranceMinutes) {
                         $effectiveEnd = $checkIn->copy()->addHours(10);
                     } else {
                         $effectiveEnd = Carbon::createFromFormat('H:i:s', $shift->end_time);

@@ -24,6 +24,10 @@ class SettingController extends Controller
                 'github_username'          => Setting::get('github_username', ''),
                 'github_token'             => Setting::get('github_token', ''),
                 
+                // Attendance parameter configurations
+                'late_tolerance_minutes'   => (int) Setting::get('late_tolerance_minutes', 0),
+                'early_checkin_tolerance_minutes' => (int) Setting::get('early_checkin_tolerance_minutes', 60),
+
                 // Notification keys
                 'push_checkin_reminder_enabled'  => Setting::get('push_checkin_reminder_enabled', '1') === '1',
                 'push_checkin_reminder_time'     => Setting::get('push_checkin_reminder_time', '07:45'),
@@ -51,6 +55,10 @@ class SettingController extends Controller
             'github_username'    => 'nullable|string|max:100',
             'github_token'       => 'nullable|string|max:255',
             
+            // Attendance parameter configuration validation
+            'late_tolerance_minutes'          => 'required|integer|min:0|max:1440',
+            'early_checkin_tolerance_minutes' => 'required|integer|min:0|max:1440',
+
             // Notification validation
             'push_checkin_reminder_enabled'  => 'nullable|boolean',
             'push_checkin_reminder_time'     => 'nullable|string|max:5',
@@ -70,6 +78,9 @@ class SettingController extends Controller
         Setting::set('report_location', $request->report_location);
         Setting::set('github_username', $request->github_username);
         Setting::set('github_token', $request->github_token);
+
+        Setting::set('late_tolerance_minutes', $request->late_tolerance_minutes);
+        Setting::set('early_checkin_tolerance_minutes', $request->early_checkin_tolerance_minutes);
 
         Setting::set('push_checkin_reminder_enabled', $request->push_checkin_reminder_enabled ? '1' : '0');
         Setting::set('push_checkin_reminder_time', $request->push_checkin_reminder_time ?? '07:45');

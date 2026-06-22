@@ -132,7 +132,8 @@ class Attendance extends Model
                 $shiftStart = Carbon::createFromFormat('H:i:s', $activeShift->start_time);
                 $shiftEnd = Carbon::createFromFormat('H:i:s', $activeShift->end_time);
                 $minsEarly = $shiftStart->diffInMinutes($checkIn, false);
-                if ($minsEarly < 0 && abs($minsEarly) < 60) {
+                $earlyToleranceMinutes = (int) \App\Models\Setting::get('early_checkin_tolerance_minutes', 60);
+                if ($minsEarly < 0 && abs($minsEarly) <= $earlyToleranceMinutes) {
                     $effectiveEnd = $checkIn->copy()->addHours(10);
                 } else {
                     $effectiveEnd = $shiftEnd;
@@ -191,9 +192,10 @@ class Attendance extends Model
             try {
                 $shiftStart = Carbon::createFromFormat('H:i:s', $activeShift->start_time);
                 $shiftEnd   = Carbon::createFromFormat('H:i:s', $activeShift->end_time);
-                // Jika check-in sangat awal (< 60 menit sebelum shift), gunakan durasi tetap 10 jam
+                // Jika check-in sangat awal (≤ early check-in tolerance menit sebelum shift), gunakan durasi tetap 10 jam
                 $minsEarly = $shiftStart->diffInMinutes($checkIn, false);
-                if ($minsEarly < 0 && abs($minsEarly) < 60) {
+                $earlyToleranceMinutes = (int) \App\Models\Setting::get('early_checkin_tolerance_minutes', 60);
+                if ($minsEarly < 0 && abs($minsEarly) <= $earlyToleranceMinutes) {
                     $effectiveEnd = $checkIn->copy()->addHours(10);
                 } else {
                     $effectiveEnd = $shiftEnd;
@@ -288,7 +290,8 @@ class Attendance extends Model
                     $shiftStart = Carbon::createFromFormat('H:i:s', $activeShift->start_time);
                     $shiftEnd = Carbon::createFromFormat('H:i:s', $activeShift->end_time);
                     $minsEarly = $shiftStart->diffInMinutes($checkIn, false); // negative if earlier
-                    if ($minsEarly < 0 && abs($minsEarly) < 60) {
+                    $earlyToleranceMinutes = (int) \App\Models\Setting::get('early_checkin_tolerance_minutes', 60);
+                    if ($minsEarly < 0 && abs($minsEarly) <= $earlyToleranceMinutes) {
                         $effectiveEnd = $checkIn->copy()->addHours(10);
                     } else {
                         $effectiveEnd = $shiftEnd;

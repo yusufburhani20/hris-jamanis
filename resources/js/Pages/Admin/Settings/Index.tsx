@@ -13,7 +13,8 @@ import {
     EnvelopeIcon,
     MapPinIcon,
     DocumentTextIcon,
-    BellIcon
+    BellIcon,
+    ClockIcon
 } from '@heroicons/react/24/outline';
 
 interface Settings {
@@ -35,6 +36,8 @@ interface Settings {
     notif_leave_status_enabled: boolean;
     notif_overtime_request_enabled: boolean;
     notif_overtime_status_enabled: boolean;
+    late_tolerance_minutes: number;
+    early_checkin_tolerance_minutes: number;
 }
 
 export default function SettingsIndex({ auth, settings }: PageProps<{ settings: Settings }>) {
@@ -64,6 +67,8 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
         notif_leave_status_enabled: settings.notif_leave_status_enabled ?? true,
         notif_overtime_request_enabled: settings.notif_overtime_request_enabled ?? true,
         notif_overtime_status_enabled: settings.notif_overtime_status_enabled ?? true,
+        late_tolerance_minutes: settings.late_tolerance_minutes ?? 0,
+        early_checkin_tolerance_minutes: settings.early_checkin_tolerance_minutes ?? 60,
     });
 
     // File selection state for preview
@@ -106,6 +111,8 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
             notif_leave_status_enabled: data.notif_leave_status_enabled,
             notif_overtime_request_enabled: data.notif_overtime_request_enabled,
             notif_overtime_status_enabled: data.notif_overtime_status_enabled,
+            late_tolerance_minutes: data.late_tolerance_minutes,
+            early_checkin_tolerance_minutes: data.early_checkin_tolerance_minutes,
         });
     };
 
@@ -302,6 +309,46 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
                                                 className="mt-2 block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2.5" 
                                             />
                                             {errors.school_email && <p className="text-red-500 text-[10px] mt-1">{errors.school_email}</p>}
+                                        </div>
+                                    </div>
+
+                                    {/* Parameter Toleransi Absensi */}
+                                    <div className="border-t border-slate-100 dark:border-slate-700/60 pt-5 space-y-4">
+                                        <div>
+                                            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Parameter Toleransi Absensi</h3>
+                                            <p className="text-xs text-slate-400">Atur batas toleransi keterlambatan masuk dan toleransi masuk lebih awal untuk penyesuaian jam kerja.</p>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                                    <ClockIcon className="w-4 h-4 text-slate-400" />
+                                                    <span>Toleransi Terlambat (Menit)</span>
+                                                </label>
+                                                <input 
+                                                    type="number" 
+                                                    value={data.late_tolerance_minutes} 
+                                                    onChange={e => setData('late_tolerance_minutes', parseInt(e.target.value) || 0)} 
+                                                    min="0"
+                                                    required 
+                                                    className="mt-2 block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2.5" 
+                                                />
+                                                {errors.late_tolerance_minutes && <p className="text-red-500 text-[10px] mt-1">{errors.late_tolerance_minutes}</p>}
+                                            </div>
+                                            <div>
+                                                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                                    <ClockIcon className="w-4 h-4 text-slate-400" />
+                                                    <span>Toleransi Masuk Awal (Menit)</span>
+                                                </label>
+                                                <input 
+                                                    type="number" 
+                                                    value={data.early_checkin_tolerance_minutes} 
+                                                    onChange={e => setData('early_checkin_tolerance_minutes', parseInt(e.target.value) || 0)} 
+                                                    min="0"
+                                                    required 
+                                                    className="mt-2 block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2.5" 
+                                                />
+                                                {errors.early_checkin_tolerance_minutes && <p className="text-red-500 text-[10px] mt-1">{errors.early_checkin_tolerance_minutes}</p>}
+                                            </div>
                                         </div>
                                     </div>
 
