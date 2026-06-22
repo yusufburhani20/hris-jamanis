@@ -23,6 +23,7 @@
         .status-lembur { background: #e0e7ff; color: #3730a3; }
         .late-badge { background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 9px; font-weight: bold; padding: 2px 5px; display: inline-block; }
         .ot-badge { background: #e0e7ff; color: #3730a3; border-radius: 6px; font-size: 9px; font-weight: bold; padding: 2px 5px; display: inline-block; }
+        .early-badge { background: #ffedd5; color: #9a3412; border-radius: 6px; font-size: 9px; font-weight: bold; padding: 2px 5px; display: inline-block; }
         
         .photo-link { color: #4f46e5; text-decoration: none; font-size: 9px; }
         .footer { position: fixed; bottom: 0; width: 100%; text-align: right; font-size: 9px; color: #aaa; }
@@ -41,12 +42,13 @@
                 <thead>
                     <tr>
                         <th style="width: 12%">Tanggal</th>
-                        <th style="width: 9%">Masuk</th>
-                        <th style="width: 9%">Pulang</th>
-                        <th style="width: 13%">Status</th>
-                        <th style="width: 10%">Terlambat</th>
-                        <th style="width: 10%">Lembur</th>
-                        <th style="width: 22%">Keterangan</th>
+                        <th style="width: 8%">Masuk</th>
+                        <th style="width: 8%">Pulang</th>
+                        <th style="width: 11%">Status</th>
+                        <th style="width: 9%">Terlambat</th>
+                        <th style="width: 9%">Pulang Awal</th>
+                        <th style="width: 9%">Lembur</th>
+                        <th style="width: 19%">Keterangan</th>
                         <th style="width: 15%">Foto Selfie</th>
                     </tr>
                 </thead>
@@ -66,6 +68,16 @@
                                     <span class="late-badge">⏰ {{ $record->late_details['text'] }}</span>
                                     <br><small style="color:#666; font-size:8px;">
                                         {{ $record->late_details['hours'] > 0 ? $record->late_details['hours'].'j ' : '' }}{{ $record->late_details['minutes'] }}m
+                                    </small>
+                                @else
+                                    <span style="color:#ccc;">—</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($record->early_leave_details)
+                                    <span class="early-badge">🏃 {{ $record->early_leave_details['text'] }}</span>
+                                    <br><small style="color:#666; font-size:8px;">
+                                        {{ $record->early_leave_details['hours'] > 0 ? $record->early_leave_details['hours'].'j ' : '' }}{{ $record->early_leave_details['minutes'] }}m
                                     </small>
                                 @else
                                     <span style="color:#ccc;">—</span>

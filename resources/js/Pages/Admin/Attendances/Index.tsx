@@ -31,6 +31,7 @@ interface Attendance {
     checkout_accuracy?: number | string | null;
     late_details?: { hours: number; minutes: number; text: string } | null;
     overtime_details?: { hours: number; minutes: number; text: string } | null;
+    early_leave_details?: { hours: number; minutes: number; text: string } | null;
 }
 
 export default function AttendanceIndex({ auth, attendances, users, filters }: PageProps<{ attendances: Attendance[], users: User[], filters: { start_date?: string, end_date?: string, user_id?: string, month?: string } }>) {
@@ -233,6 +234,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Check Out</th>
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Status & Verif</th>
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Terlambat</th>
+                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Pulang Awal</th>
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Lembur</th>
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Notes</th>
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white text-center">Photo</th>
@@ -317,6 +319,24 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                     <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
                                                 )}
                                             </td>
+                                            {/* Kolom Pulang Awal */}
+                                            <td className="px-6 py-4">
+                                                {record.early_leave_details ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-orange-800 bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 border border-orange-200 dark:border-orange-800/50 rounded-full px-2.5 py-0.5 w-max">
+                                                            🏃 {record.early_leave_details.text}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400">
+                                                            {record.early_leave_details.hours > 0
+                                                                ? `${record.early_leave_details.hours} jam ${record.early_leave_details.minutes} menit`
+                                                                : `${record.early_leave_details.minutes} menit`
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
+                                                )}
+                                            </td>
                                             {/* Kolom Lembur */}
                                             <td className="px-6 py-4">
                                                 {record.overtime_details ? (
@@ -351,7 +371,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                     ))}
                                     {attendances.length === 0 && (
                                         <tr>
-                                            <td colSpan={9} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                            <td colSpan={10} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                                 No attendance records found.
                                             </td>
                                         </tr>
