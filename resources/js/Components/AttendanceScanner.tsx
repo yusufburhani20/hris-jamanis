@@ -423,26 +423,6 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                     <div className="absolute top-2 right-2 z-[400] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded shadow-sm dark:text-white border dark:border-gray-700">
                         Peta Lokasi & Geofence
                     </div>
-                    {location && (
-                        <button
-                            type="button"
-                            onClick={refreshLocation}
-                            disabled={isRefreshingLocation}
-                            className="absolute bottom-2 right-2 z-[400] flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-[10px] sm:text-xs font-bold rounded-lg shadow-md transition-all active:scale-95"
-                        >
-                            {isRefreshingLocation ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
-                                    <span>Mengakuratkan...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                    <span>Akuratkan GPS</span>
-                                </>
-                            )}
-                        </button>
-                    )}
                     {!location && (
                         <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
                             <span className="text-xs bg-slate-900/80 dark:bg-gray-800/90 text-white dark:text-gray-200 px-3 py-1.5 rounded-lg shadow-md font-medium text-center max-w-[80%]">
@@ -452,24 +432,50 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                     )}
                 </div>
 
-                {/* GPS Accuracy Status Badge */}
-                {location && data.accuracy && (
-                    <div className="flex items-center justify-between p-3 rounded-lg border bg-slate-50 border-slate-200 dark:bg-gray-800/40 dark:border-gray-700 text-slate-700 dark:text-slate-350 select-none shadow-sm">
-                        <span className="text-xs font-bold flex items-center gap-1.5">
-                            <span className={`w-2.5 h-2.5 rounded-full inline-block ${
-                                Number(data.accuracy) <= 15 ? 'bg-emerald-500 animate-pulse' :
-                                Number(data.accuracy) <= 50 ? 'bg-amber-500' :
-                                'bg-rose-500'
-                            }`}></span>
-                            Akurasi GPS Anda
-                        </span>
-                        <span className="text-xs font-black">
-                            {Math.round(Number(data.accuracy))}m ({
-                                Number(data.accuracy) <= 15 ? 'Sangat Baik' :
-                                Number(data.accuracy) <= 50 ? 'Cukup Baik' :
-                                'Kurang Akurat'
-                            })
-                        </span>
+                {/* GPS Accuracy & Refresh GPS Action Block */}
+                {location && (
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg border bg-slate-50 border-slate-200 dark:bg-gray-800/40 dark:border-gray-700 text-slate-700 dark:text-slate-350 select-none shadow-sm">
+                        <div className="flex items-center gap-1.5">
+                            {data.accuracy ? (
+                                <>
+                                    <span className={`w-2.5 h-2.5 rounded-full inline-block ${
+                                        Number(data.accuracy) <= 15 ? 'bg-emerald-500 animate-pulse' :
+                                        Number(data.accuracy) <= 50 ? 'bg-amber-500' :
+                                        'bg-rose-500 animate-ping'
+                                    }`}></span>
+                                    <span className="text-xs font-bold">Akurasi GPS Anda:</span>
+                                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                                        {Math.round(Number(data.accuracy))}m ({
+                                            Number(data.accuracy) <= 15 ? 'Sangat Baik' :
+                                            Number(data.accuracy) <= 50 ? 'Cukup Baik' :
+                                            'Kurang Akurat'
+                                        })
+                                    </span>
+                                </>
+                            ) : (
+                                <span className="text-xs text-gray-500">Membaca akurasi GPS...</span>
+                            )}
+                        </div>
+                        <div>
+                            <button
+                                type="button"
+                                onClick={refreshLocation}
+                                disabled={isRefreshingLocation}
+                                className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs font-bold rounded-lg shadow transition-all active:scale-95"
+                            >
+                                {isRefreshingLocation ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                                        <span>Mengakuratkan...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        <span>Akuratkan GPS</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -567,6 +573,10 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                     <span>{isCheckedIn ? 'Kirim Absen Pulang (Check-Out)' : 'Kirim Absen Masuk (Check-In)'}</span>
                 )}
             </button>
+
+            <p className="text-center text-xs text-rose-500 font-bold mt-3 flex items-center justify-center gap-1.5 select-none animate-pulse">
+                ⚠️ Pastikan GPS (Akses Lokasi) pada perangkat Anda telah aktif!
+            </p>
         </form>
     );
 }
