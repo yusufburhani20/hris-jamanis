@@ -167,25 +167,25 @@ class CourierShipmentController extends Controller
     {
         $validated = $request->validate([
             'notes' => 'nullable|string|max:500',
-            'destination_branch_id' => 'required|exists:branches,id',
+            'origin_branch_id' => 'required|exists:branches,id',
         ]);
 
         $user = Auth::user();
-        $branch = Branch::findOrFail($validated['destination_branch_id']);
+        $branch = Branch::findOrFail($validated['origin_branch_id']);
 
         // Create the shipment
         $shipment = Shipment::create([
-            'title' => 'Perjalanan Mandiri Ke ' . $branch->name,
-            'origin_name' => 'Jamanis',
-            'destination_name' => $branch->name,
-            'origin_lat' => -7.2478,
-            'origin_lng' => 108.1472,
+            'title' => 'Perjalanan Mandiri - ' . $user->name,
+            'origin_name' => $branch->name,
+            'destination_name' => 'Perjalanan Mandiri',
+            'origin_lat' => $branch->latitude,
+            'origin_lng' => $branch->longitude,
             'destination_lat' => $branch->latitude,
             'destination_lng' => $branch->longitude,
             'courier_id' => $user->id,
             'courier_name' => $user->name,
-            'courier_lat' => -7.2478,
-            'courier_lng' => 108.1472,
+            'courier_lat' => $branch->latitude,
+            'courier_lng' => $branch->longitude,
             'status' => 'in_transit',
             'notes' => $validated['notes'] ?? 'Perjalanan logistik mandiri.',
             'is_self_initiated' => true,
@@ -196,9 +196,9 @@ class CourierShipmentController extends Controller
             'shipment_id' => $shipment->id,
             'status' => 'in_transit',
             'title' => 'Mulai Perjalanan Mandiri',
-            'description' => "Perjalanan mandiri dimulai menuju " . $branch->name . ".",
-            'latitude' => -7.2478,
-            'longitude' => 108.1472,
+            'description' => "Perjalanan mandiri dimulai dari " . $branch->name . ".",
+            'latitude' => $branch->latitude,
+            'longitude' => $branch->longitude,
         ]);
 
         return redirect()->route('courier.shipments.show', $shipment->id)

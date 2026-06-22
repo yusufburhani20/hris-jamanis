@@ -40,7 +40,7 @@ export default function CourierIndex({ auth, shipments, branches }: PageProps<{ 
     // useForm helper for starting a trip
     const { data, setData, post, processing, errors, reset } = useForm({
         notes: '',
-        destination_branch_id: '',
+        origin_branch_id: '',
     });
 
     // Categorize assignments
@@ -245,25 +245,25 @@ export default function CourierIndex({ auth, shipments, branches }: PageProps<{ 
                         <form onSubmit={handleSelfInitiateSubmit} className="p-6 space-y-4">
                             <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl text-xs space-y-2 border border-slate-100 dark:border-slate-800 select-none">
                                 <p className="font-bold text-indigo-600 dark:text-indigo-400">📍 Informasi Perjalanan Mandiri:</p>
-                                <p className="text-slate-500">Cabang asal akan otomatis diset ke <b>Jamanis</b>. Anda dapat mengambil foto checkpoint sepanjang jalan untuk memetakan lokasi pengantaran Anda secara otomatis.</p>
+                                <p className="text-slate-500">Tujuan akhir perjalanan akan otomatis diset ke <b>Perjalanan Mandiri</b>. Anda dapat memilih cabang asal dan mengambil foto checkpoint sepanjang jalan untuk mencatat pengiriman secara dinamis.</p>
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Cabang Tujuan</label>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Cabang Asal</label>
                                 <select
-                                    value={data.destination_branch_id}
-                                    onChange={e => setData('destination_branch_id', e.target.value)}
+                                    value={data.origin_branch_id}
+                                    onChange={e => setData('origin_branch_id', e.target.value)}
                                     required
                                     className="w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-900 text-sm dark:text-white focus:border-indigo-500 focus:ring-indigo-500"
                                 >
-                                    <option value="">-- Pilih Cabang Tujuan --</option>
+                                    <option value="">-- Pilih Cabang Asal --</option>
                                     {branches && branches.map(branch => (
                                         <option key={branch.id} value={branch.id}>
                                             {branch.name}
                                         </option>
                                     ))}
                                 </select>
-                                {errors.destination_branch_id && <p className="text-rose-500 text-xs mt-1">{errors.destination_branch_id}</p>}
+                                {errors.origin_branch_id && <p className="text-rose-500 text-xs mt-1">{errors.origin_branch_id}</p>}
                             </div>
 
                             <div>
