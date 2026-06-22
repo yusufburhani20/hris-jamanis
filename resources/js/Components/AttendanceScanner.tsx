@@ -401,30 +401,14 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
             <div className="flex-1 flex flex-col space-y-4">
                 {/* Geofence Status Badge */}
                 {location && nearestGeofence && (
-                    <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border transition-all ${nearestGeofence.valid ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400 font-bold' : 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-900/40 dark:border-rose-800 dark:text-rose-400'}`}>
+                    <div className={`flex items-center justify-between p-3 rounded-lg border transition-all ${nearestGeofence.valid ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400 font-bold' : 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-900/40 dark:border-rose-800 dark:text-rose-400 animate-pulse'}`}>
                         <div className="flex items-center">
-                            <MapPinIcon className="w-5 h-5 mr-2 text-current" />
-                            <div className="flex flex-col">
-                                <span className="text-sm">{nearestGeofence.name}</span>
-                                {data.accuracy && (
-                                    <span className="text-[10px] opacity-90 font-semibold flex items-center gap-1 mt-0.5 select-none">
-                                        <span className={`w-2 h-2 rounded-full inline-block ${
-                                            Number(data.accuracy) <= 15 ? 'bg-emerald-500 animate-pulse' :
-                                            Number(data.accuracy) <= 50 ? 'bg-amber-500' :
-                                            'bg-rose-500 animate-ping'
-                                        }`}></span>
-                                        Akurasi GPS: {Math.round(Number(data.accuracy))}m ({
-                                            Number(data.accuracy) <= 15 ? 'Sangat Baik' :
-                                            Number(data.accuracy) <= 50 ? 'Cukup Baik' :
-                                            'Kurang Akurat (Cari Ruang Terbuka)'
-                                        })
-                                    </span>
-                                )}
-                            </div>
+                            <MapPinIcon className="w-5 h-5 mr-2" />
+                            <span className="text-sm">{nearestGeofence.name}</span>
                         </div>
-                        <div className="text-left sm:text-right mt-2 sm:mt-0">
+                        <div className="text-right">
                             <div className="text-xs uppercase opacity-80">{nearestGeofence.valid ? 'Area Terdeteksi' : 'Di Luar Area'}</div>
-                            <div className="text-[10px] sm:text-xs font-semibold">Jarak: {Math.round(nearestGeofence.distance)}m (Maks: {nearestGeofence.radius}m)</div>
+                            <div className="text-[10px] sm:text-xs">Jarak: {Math.round(nearestGeofence.distance)}m (Maks: {nearestGeofence.radius}m)</div>
                         </div>
                     </div>
                 )}
@@ -467,6 +451,27 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                         </div>
                     )}
                 </div>
+
+                {/* GPS Accuracy Status Badge */}
+                {location && data.accuracy && (
+                    <div className="flex items-center justify-between p-3 rounded-lg border bg-slate-50 border-slate-200 dark:bg-gray-800/40 dark:border-gray-700 text-slate-700 dark:text-slate-350 select-none shadow-sm">
+                        <span className="text-xs font-bold flex items-center gap-1.5">
+                            <span className={`w-2.5 h-2.5 rounded-full inline-block ${
+                                Number(data.accuracy) <= 15 ? 'bg-emerald-500 animate-pulse' :
+                                Number(data.accuracy) <= 50 ? 'bg-amber-500' :
+                                'bg-rose-500'
+                            }`}></span>
+                            Akurasi GPS Anda
+                        </span>
+                        <span className="text-xs font-black">
+                            {Math.round(Number(data.accuracy))}m ({
+                                Number(data.accuracy) <= 15 ? 'Sangat Baik' :
+                                Number(data.accuracy) <= 50 ? 'Cukup Baik' :
+                                'Kurang Akurat'
+                            })
+                        </span>
+                    </div>
+                )}
 
                 {/* Location Status Badge (Only if no lock yet) */}
                 {!location && (
