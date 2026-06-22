@@ -106,6 +106,7 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
     const { data: editData, setData: setEditData, put: putPayroll, processing: processingEdit, errors: editErrors } = useForm({
         tunjangan_jabatan: '',
         tunjangan_masa_kerja: '',
+        tunjangan_kesehatan: '',
         bonus: '',
         overtime_pay: '',
         potongan_bpjs: '',
@@ -136,6 +137,7 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
         setEditData({
             tunjangan_jabatan: String(Math.round(parseFloat(payroll.tunjangan_jabatan || '0'))),
             tunjangan_masa_kerja: String(Math.round(parseFloat(payroll.tunjangan_masa_kerja || '0'))),
+            tunjangan_kesehatan: String(Math.round(parseFloat(payroll.tunjangan_kesehatan || '0'))),
             bonus: String(Math.round(parseFloat(payroll.bonus || '0'))),
             overtime_pay: String(Math.round(parseFloat(payroll.overtime_pay))),
             potongan_bpjs: String(Math.round(parseFloat(payroll.potongan_bpjs || '0'))),
@@ -628,6 +630,15 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                                 <input type="text"
                                                     value={formatNumberInput(editData.tunjangan_masa_kerja)}
                                                     onChange={e => setEditData('tunjangan_masa_kerja', parseNumberInput(e.target.value))}
+                                                    required className="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-xs py-2.5 font-mono"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Tunjangan Kesehatan (Rp)</label>
+                                                <input type="text"
+                                                    value={formatNumberInput(editData.tunjangan_kesehatan)}
+                                                    onChange={e => setEditData('tunjangan_kesehatan', parseNumberInput(e.target.value))}
                                                     required className="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-xs py-2.5 font-mono"
                                                     placeholder="0"
                                                 />

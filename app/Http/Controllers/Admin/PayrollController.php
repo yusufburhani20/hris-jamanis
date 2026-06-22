@@ -158,6 +158,7 @@ class PayrollController extends Controller
             // Tunjangan manual
             'tunjangan_jabatan'       => 'required|numeric|min:0',
             'tunjangan_masa_kerja'    => 'required|numeric|min:0',
+            'tunjangan_kesehatan'     => 'required|numeric|min:0',
             'bonus'                   => 'required|numeric|min:0',
             // Lembur (override)
             'overtime_pay'            => 'required|numeric|min:0',
@@ -170,7 +171,7 @@ class PayrollController extends Controller
         $basicSalary          = floatval($payroll->basic_salary);
         $tunjJabatan          = floatval($request->tunjangan_jabatan);
         $tunjMasaKerja        = floatval($request->tunjangan_masa_kerja);
-        $tunjKesehatan        = floatval($payroll->tunjangan_kesehatan);
+        $tunjKesehatan        = floatval($request->tunjangan_kesehatan);
         $tunjKonsumsi         = floatval($payroll->tunjangan_konsumsi);
         $bonus                = floatval($request->bonus);
         $overtimePay          = floatval($request->overtime_pay);
@@ -187,6 +188,7 @@ class PayrollController extends Controller
         $payroll->update([
             'tunjangan_jabatan'    => $tunjJabatan,
             'tunjangan_masa_kerja' => $tunjMasaKerja,
+            'tunjangan_kesehatan'  => $tunjKesehatan,
             'bonus'                => $bonus,
             'allowances'           => $allowances,
             'overtime_pay'         => $overtimePay,
