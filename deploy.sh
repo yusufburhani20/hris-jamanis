@@ -88,7 +88,20 @@ fi
 
 # ---- 6. Optimasi Cache Laravel ----
 echo ""
-echo "[6/7] Memperbarui cache konfigurasi, rute, dan tampilan Laravel..."
+echo "[6/7] Memperbarui cache konfigurasi, rute, tampilan, dan link storage..."
+
+# Cek dan perbaiki symlink storage jika rusak atau hilang
+if [ -L public/storage ] && [ ! -e public/storage ]; then
+    echo "      ⚠️  Menemukan symlink public/storage yang rusak. Menghapus dan membuat ulang..."
+    rm public/storage
+    php artisan storage:link || true
+elif [ ! -e public/storage ]; then
+    echo "      Membuat symlink public/storage..."
+    php artisan storage:link || true
+else
+    echo "      Symlink public/storage aktif dan valid."
+fi
+
 php artisan config:clear
 php artisan route:clear
 php artisan view:clear
