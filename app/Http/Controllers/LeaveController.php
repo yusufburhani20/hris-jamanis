@@ -58,7 +58,7 @@ class LeaveController extends Controller
 
         $proofPath = null;
         if ($request->hasFile('proof_file')) {
-            $proofPath = $request->file('proof_file')->store('leaves_proof', 'public');
+            $proofPath = \App\Helpers\ImageHelper::compressAndStore($request->file('proof_file'), 'leaves_proof');
         }
 
         $leave = Leave::create([

@@ -65,7 +65,7 @@ class CourierShipmentController extends Controller
         ]);
 
         if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store('checkpoint_photos', 'public');
+            $path = \App\Helpers\ImageHelper::compressAndStore($request->file('photo'), 'checkpoint_photos');
 
             $shipment->update([
                 'status' => 'in_transit',
@@ -107,7 +107,7 @@ class CourierShipmentController extends Controller
 
         if ($request->hasFile('delivery_photo')) {
             // Store file inside public disk under 'delivery_photos'
-            $path = $request->file('delivery_photo')->store('delivery_photos', 'public');
+            $path = \App\Helpers\ImageHelper::compressAndStore($request->file('delivery_photo'), 'delivery_photos');
             
             // Update Shipment state
             $shipment->update([
@@ -223,7 +223,7 @@ class CourierShipmentController extends Controller
         ]);
 
         if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store('checkpoint_photos', 'public');
+            $path = \App\Helpers\ImageHelper::compressAndStore($request->file('photo'), 'checkpoint_photos');
 
             // Update courier current position
             $shipment->update([

@@ -104,22 +104,17 @@ class AttendanceController extends Controller
 
         $path = null;
         if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store('attendances/checkin', 'public');
+            $path = \App\Helpers\ImageHelper::compressAndStore($request->file('photo'), 'attendances/checkin');
         } elseif ($request->filled('photo_base64')) {
             $base64Data = $request->input('photo_base64');
             if (preg_match('/^data:image\/(\w+);base64,/', $base64Data, $type)) {
                 $base64Data = substr($base64Data, strpos($base64Data, ',') + 1);
-                $ext = strtolower($type[1]);
-            } else {
-                $ext = 'png';
             }
             $image = base64_decode($base64Data);
             if ($image === false) {
                 return back()->with('error', 'Gagal memproses foto selfie.');
             }
-            $filename = 'offline_' . uniqid() . '.' . $ext;
-            $path = 'attendances/checkin/' . $filename;
-            \Illuminate\Support\Facades\Storage::disk('public')->put($path, $image);
+            $path = \App\Helpers\ImageHelper::compressAndStore($image, 'attendances/checkin');
         }
 
         Attendance::updateOrCreate(
@@ -248,21 +243,15 @@ class AttendanceController extends Controller
 
         $checkoutPath = null;
         if ($request->hasFile('photo')) {
-            $checkoutPath = $request->file('photo')->store('attendances/checkout', 'public');
+            $checkoutPath = \App\Helpers\ImageHelper::compressAndStore($request->file('photo'), 'attendances/checkout');
         } elseif ($request->filled('photo_base64')) {
             $base64Data = $request->input('photo_base64');
             if (preg_match('/^data:image\/(\w+);base64,/', $base64Data, $type)) {
                 $base64Data = substr($base64Data, strpos($base64Data, ',') + 1);
-                $ext = strtolower($type[1]);
-            } else {
-                $ext = 'png';
             }
             $image = base64_decode($base64Data);
             if ($image !== false) {
-                $filename = 'offline_' . uniqid() . '.' . $ext;
-                $path = 'attendances/checkout/' . $filename;
-                \Illuminate\Support\Facades\Storage::disk('public')->put($path, $image);
-                $checkoutPath = $path;
+                $checkoutPath = \App\Helpers\ImageHelper::compressAndStore($image, 'attendances/checkout');
             }
         }
 

@@ -41,7 +41,7 @@ class ProfileController extends Controller
             if ($user->avatar) {
                 Storage::delete('public/' . $user->avatar);
             }
-            $path = $request->file('avatar')->store('avatars', 'public');
+            $path = \App\Helpers\ImageHelper::compressAndStore($request->file('avatar'), 'avatars');
             $user->avatar = $path;
         }
 

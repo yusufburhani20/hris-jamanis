@@ -62,7 +62,7 @@ class UserController extends Controller
 
         $avatarPath = null;
         if ($request->hasFile('avatar')) {
-            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+            $avatarPath = \App\Helpers\ImageHelper::compressAndStore($request->file('avatar'), 'avatars');
         }
 
         User::create([
@@ -119,7 +119,7 @@ class UserController extends Controller
             if ($user->avatar) {
                 Storage::disk('public')->delete($user->avatar);
             }
-            $updateData['avatar'] = $request->file('avatar')->store('avatars', 'public');
+            $updateData['avatar'] = \App\Helpers\ImageHelper::compressAndStore($request->file('avatar'), 'avatars');
         }
 
         $user->update($updateData);
