@@ -695,6 +695,68 @@ export default function Dashboard({
                                 </div>
                             </div>
 
+                            {/* ── SECTION: Active Shift Card ── */}
+                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700/50 p-6 flex flex-col">
+                                <div className="flex items-center gap-3 mb-4 shrink-0">
+                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 rounded-xl">
+                                        <ClockIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Shift Aktif Hari Ini</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Informasi jam kerja Anda</p>
+                                    </div>
+                                </div>
+
+                                {activeShift ? (
+                                    <div className="space-y-4">
+                                        <div className="bg-slate-50 dark:bg-slate-700/25 rounded-xl p-4 space-y-3 border border-slate-100 dark:border-slate-700/40">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Nama Shift</p>
+                                                    <p className="text-base font-black text-slate-800 dark:text-slate-200 mt-0.5 leading-tight">{activeShift.name}</p>
+                                                </div>
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 uppercase tracking-wider">
+                                                    {activeShift.code}
+                                                </span>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/40">
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Jam Masuk</p>
+                                                    <p className="text-xs font-black text-slate-750 dark:text-slate-300 mt-0.5">
+                                                        {activeShift.start_time ? activeShift.start_time.substring(0, 5) : '-'} WIB
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Jam Pulang</p>
+                                                    <p className="text-xs font-black text-slate-750 dark:text-slate-300 mt-0.5">
+                                                        {activeShift.end_time ? activeShift.end_time.substring(0, 5) : '-'} WIB
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-start gap-2.5 text-xs text-slate-500 dark:text-slate-400 bg-indigo-50/50 dark:bg-indigo-950/20 p-3 rounded-xl border border-indigo-100/40 dark:border-indigo-950/50">
+                                            <CalendarIcon className="w-4 h-4 text-indigo-555 dark:text-indigo-400 shrink-0 mt-0.5" />
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">Masa Berlaku Shift</p>
+                                                <p className="text-[10px] mt-0.5 text-slate-500 dark:text-slate-400 leading-normal font-medium">
+                                                    {activeShift.pivot?.start_date ? new Date(activeShift.pivot.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} s/d {activeShift.pivot?.end_date ? new Date(activeShift.pivot.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Seterusnya'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="border border-dashed border-amber-200 dark:border-amber-900/40 rounded-xl p-5 text-center bg-amber-50/30 dark:bg-amber-950/10 space-y-2">
+                                        <ExclamationTriangleIcon className="w-8 h-8 text-amber-500 mx-auto animate-pulse" />
+                                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Belum Ada Shift Aktif</h4>
+                                        <p className="text-[11px] text-slate-550 dark:text-slate-400 leading-relaxed font-medium">
+                                            Jadwal shift Anda belum terdaftar hari ini. Silakan hubungi Admin atau HRD untuk pengaturan penugasan shift Anda.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Personal History of last 5 days */}
                             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700/50 overflow-hidden flex flex-col">
                                 <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700/50">
@@ -742,67 +804,6 @@ export default function Dashboard({
                             </div>
                         </div>
 
-                        {/* ── SECTION: Active Shift Card ── */}
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700/50 p-6 flex flex-col h-fit">
-                            <div className="flex items-center gap-3 mb-4 shrink-0">
-                                <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 rounded-xl">
-                                    <ClockIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Shift Aktif Hari Ini</h3>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">Informasi jam kerja Anda</p>
-                                </div>
-                            </div>
-
-                            {activeShift ? (
-                                <div className="space-y-4">
-                                    <div className="bg-slate-50 dark:bg-slate-700/25 rounded-xl p-4 space-y-3 border border-slate-100 dark:border-slate-700/40">
-                                        <div className="flex justify-between items-start gap-2">
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Nama Shift</p>
-                                                <p className="text-base font-black text-slate-800 dark:text-slate-200 mt-0.5 leading-tight">{activeShift.name}</p>
-                                            </div>
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 uppercase tracking-wider">
-                                                {activeShift.code}
-                                            </span>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/40">
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Jam Masuk</p>
-                                                <p className="text-xs font-black text-slate-750 dark:text-slate-300 mt-0.5">
-                                                    {activeShift.start_time ? activeShift.start_time.substring(0, 5) : '-'} WIB
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Jam Pulang</p>
-                                                <p className="text-xs font-black text-slate-750 dark:text-slate-300 mt-0.5">
-                                                    {activeShift.end_time ? activeShift.end_time.substring(0, 5) : '-'} WIB
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-start gap-2.5 text-xs text-slate-500 dark:text-slate-400 bg-indigo-50/50 dark:bg-indigo-950/20 p-3 rounded-xl border border-indigo-100/40 dark:border-indigo-950/50">
-                                        <CalendarIcon className="w-4 h-4 text-indigo-550 dark:text-indigo-400 shrink-0 mt-0.5" />
-                                        <div className="min-w-0">
-                                            <p className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">Masa Berlaku Shift</p>
-                                            <p className="text-[10px] mt-0.5 text-slate-500 dark:text-slate-400 leading-normal font-medium">
-                                                {activeShift.pivot?.start_date ? new Date(activeShift.pivot.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} s/d {activeShift.pivot?.end_date ? new Date(activeShift.pivot.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Seterusnya'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="border border-dashed border-amber-200 dark:border-amber-900/40 rounded-xl p-5 text-center bg-amber-50/30 dark:bg-amber-950/10 space-y-2">
-                                    <ExclamationTriangleIcon className="w-8 h-8 text-amber-500 mx-auto animate-pulse" />
-                                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Belum Ada Shift Aktif</h4>
-                                    <p className="text-[11px] text-slate-550 dark:text-slate-400 leading-relaxed font-medium">
-                                        Jadwal shift Anda belum terdaftar hari ini. Silakan hubungi Admin atau HRD untuk pengaturan penugasan shift Anda.
-                                    </p>
-                                </div>
-                            )}
-                        </div>
 
                         {/* Authorized Geofences Locations */}
                         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700/50 p-6 flex flex-col h-fit">
