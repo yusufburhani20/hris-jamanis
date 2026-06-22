@@ -558,7 +558,7 @@ export default function Dashboard({
                                                                 <div className="flex items-center gap-2">
                                                                     <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-500 overflow-hidden">
                                                                         {log.user?.avatar ? (
-                                                                            <img src={log.user.avatar} className="w-full h-full object-cover" />
+                                                                            <img src={log.user.avatar.startsWith('http') ? log.user.avatar : `/storage/${log.user.avatar}`} className="w-full h-full object-cover" />
                                                                         ) : (
                                                                             log.user?.name?.charAt(0)
                                                                         )}
@@ -647,7 +647,7 @@ export default function Dashboard({
                                         {activeUsers && activeUsers.length > 0 ? activeUsers.map((user: any) => (
                                             <div key={user.id} className="flex items-center gap-3 px-3 py-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                                                 <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-slate-700 flex items-center justify-center font-bold text-indigo-600 text-xs shrink-0 overflow-hidden">
-                                                    {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : user.name.charAt(0)}
+                                                    {user.avatar ? <img src={user.avatar.startsWith('http') ? user.avatar : `/storage/${user.avatar}`} className="w-full h-full object-cover" /> : user.name.charAt(0)}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{user.name}</p>
@@ -670,7 +670,7 @@ export default function Dashboard({
                                         {lastLogins && lastLogins.map((user: any) => (
                                             <div key={user.id} className="flex items-center gap-3 px-3 py-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                                                 <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-500 text-xs shrink-0 overflow-hidden">
-                                                    {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : user.name.charAt(0)}
+                                                    {user.avatar ? <img src={user.avatar.startsWith('http') ? user.avatar : `/storage/${user.avatar}`} className="w-full h-full object-cover" /> : user.name.charAt(0)}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{user.name}</p>

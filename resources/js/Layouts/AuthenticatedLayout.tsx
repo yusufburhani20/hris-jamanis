@@ -659,7 +659,7 @@ export default function Authenticated({
                 <div className="border-t border-slate-100 dark:border-slate-700/60 p-4 flex-shrink-0">
                     <div className="flex items-center gap-3 px-2 py-1.5">
                         {user.avatar ? (
-                            <img src={user.avatar} alt="User Avatar" className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-slate-200 dark:border-slate-600" />
+                            <img src={user.avatar_url || (user.avatar.startsWith('http') ? user.avatar : `/storage/${user.avatar}`)} alt="User Avatar" className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-slate-200 dark:border-slate-600" />
                         ) : (
                             <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm flex-shrink-0">
                                 {user.name.charAt(0)}
@@ -728,7 +728,7 @@ export default function Authenticated({
                             <Dropdown.Trigger>
                                 <button className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                                     {user.avatar ? (
-                                        <img src={user.avatar} alt="User Avatar" className="w-8 h-8 rounded-full object-cover" />
+                                        <img src={user.avatar_url || (user.avatar.startsWith('http') ? user.avatar : `/storage/${user.avatar}`)} alt="User Avatar" className="w-8 h-8 rounded-full object-cover" />
                                     ) : (
                                         <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">
                                             {user.name.charAt(0)}
