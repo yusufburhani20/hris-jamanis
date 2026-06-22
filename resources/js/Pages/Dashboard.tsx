@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { PageProps } from '@/types';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getOfflineQueue, deleteFromOfflineQueue, OfflineAttendance } from '@/utils/offlineStore';
@@ -71,6 +72,50 @@ export default function Dashboard({
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
     const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
+
+    const { auth } = usePage<PageProps>().props;
+    const user = auth.user as any;
+    const userRoles = user.role ? user.role.split(',').map((r: string) => r.trim()) : [];
+    const isDriver = userRoles.includes('driver');
+
+    const [isSharing, setIsSharing] = useState(user.driver_is_sharing_location || false);
+
+    const updateGlobalGPS = (sharingState: boolean) => {
+        if (!navigator.geolocation) return;
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                axios.post(route('courier.update-location'), {
+                    latitude,
+                    longitude,
+                    is_sharing: sharingState
+                }).then(() => {
+                    router.reload({ preserveScroll: true } as any);
+                }).catch(err => console.error("Error broadcasting GPS:", err));
+            },
+            (error) => {
+                console.warn("Telemetry GPS warning:", error.message);
+                axios.post(route('courier.update-location'), {
+                    latitude: 0,
+                    longitude: 0,
+                    is_sharing: sharingState
+                }).then(() => {
+                    router.reload({ preserveScroll: true } as any);
+                }).catch(err => console.error("Error broadcasting GPS:", err));
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    };
+
+    const handleSharingToggle = (val: boolean) => {
+        setIsSharing(val);
+        updateGlobalGPS(val);
+    };
 
     // PWA Installation States
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -640,6 +685,49 @@ export default function Dashboard({
                         
                         {/* Attendance Today Checklist */}
                         <div className="lg:col-span-2 space-y-6">
+                            
+                            {/* ── DRIVER GPS LIVE TRACKING CARD ── */}
+                            {isDriver && (
+                                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700/50 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-3 rounded-xl shrink-0 ${
+                                            isSharing ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                        }`}>
+                                            <span className={`relative flex h-6 w-6 items-center justify-center`}>
+                                                {isSharing && (
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                )}
+                                                <svg className="w-6 h-6 shrink-0 relative" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Pelacakan GPS Logistik (GPS Live)</h4>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                                {isSharing 
+                                                    ? '🟢 Lokasi Anda sedang dibagikan secara real-time ke Admin untuk memantau pengiriman barang.' 
+                                                    : '🔴 Pelacakan lokasi dinonaktifkan. Aktifkan agar Admin dapat melihat posisi Anda saat bertugas.'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 self-end sm:self-center">
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                            {isSharing ? 'Bagi Lokasi' : 'Berhenti'}
+                                        </span>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isSharing}
+                                                onChange={e => handleSharingToggle(e.target.checked)}
+                                                className="sr-only peer cursor-pointer" 
+                                            />
+                                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
                             
 
 

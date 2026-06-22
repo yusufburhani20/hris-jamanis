@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hris-pwa-cache-v15';
+const CACHE_NAME = 'hris-pwa-cache-v16';
 const ASSETS_TO_CACHE = [
     '/images/icon-192.png',
     '/images/icon-512.png',
@@ -169,6 +169,16 @@ async function getOfflineHtmlResponse(request, cache) {
 
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
+
+    // Skip cache interception on local development hostnames to prevent cache locking
+    if (
+        self.location.hostname === 'localhost' || 
+        self.location.hostname === '127.0.0.1' || 
+        self.location.hostname.endsWith('.test') ||
+        self.location.hostname.includes('192.168.')
+    ) {
+        return;
+    }
 
     const url = new URL(event.request.url);
     

@@ -32,28 +32,38 @@
     <body class="font-sans antialiased">
         @inertia
 
-        <!-- PWA Service Worker Decommission (Disabling offline cache to prevent cache lock during development) -->
+        <!-- PWA Service Worker Registration -->
         <script>
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(registrations => {
-                    for (let registration of registrations) {
-                        registration.unregister().then(success => {
-                            if (success) {
-                                console.log('[PWA] Service Worker unregistered successfully.');
-                                window.location.reload();
-                            }
-                        });
-                    }
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js?v=16')
+                        .then(reg => {
+                            console.log('[PWA] Service Worker registered with scope:', reg.scope);
+                            
+                            // Check for updates to the service worker
+                            reg.addEventListener('updatefound', () => {
+                                const newWorker = reg.installing;
+                                if (newWorker) {
+                                    newWorker.addEventListener('statechange', () => {
+                                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                            console.log('[PWA] New Service Worker version installed. Reloading...');
+                                            window.location.reload();
+                                        }
+                                    });
+                                }
+                            });
+                        })
+                        .catch(err => console.error('[PWA] Service Worker registration failed:', err));
                 });
 
-                // Clear PWA caches
-                if ('caches' in window) {
-                    caches.keys().then(names => {
-                        for (let name of names) {
-                            caches.delete(name);
-                        }
-                    });
-                }
+                // Force reload when new service worker takes control
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!refreshing) {
+                        refreshing = true;
+                        window.location.reload();
+                    }
+                });
             }
         </script>
     </body>

@@ -231,10 +231,9 @@ export default function Authenticated({
         );
     };
 
-    const handleSharingToggle = (val: boolean) => {
-        setIsSharing(val);
-        updateGlobalGPS(val);
-    };
+    useEffect(() => {
+        setIsSharing(user.driver_is_sharing_location || false);
+    }, [user.driver_is_sharing_location]);
 
     useEffect(() => {
         let interval: any = null;
@@ -724,21 +723,6 @@ export default function Authenticated({
                     <div className="flex-1 lg:flex-none" />
 
                     <div className="flex items-center gap-2">
-                        {isDriver && (
-                            <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-700/60 shadow-sm mr-1.5 select-none">
-                                <span className={`w-2 h-2 rounded-full ${isSharing ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                                <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">GPS Live</span>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={isSharing}
-                                        onChange={e => handleSharingToggle(e.target.checked)}
-                                        className="sr-only peer cursor-pointer" 
-                                    />
-                                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
-                                </label>
-                            </div>
-                        )}
                         <SystemClock />
                         <ThemeToggle />
 
