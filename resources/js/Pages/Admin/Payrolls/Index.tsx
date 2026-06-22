@@ -110,6 +110,7 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
         overtime_pay: '',
         potongan_bpjs: '',
         potongan_kasbon: '',
+        potongan_agnia_care: '',
     });
 
     const handleFilter = (e: React.FormEvent) => {
@@ -139,6 +140,7 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
             overtime_pay: String(Math.round(parseFloat(payroll.overtime_pay))),
             potongan_bpjs: String(Math.round(parseFloat(payroll.potongan_bpjs || '0'))),
             potongan_kasbon: String(Math.round(parseFloat(payroll.potongan_kasbon || '0'))),
+            potongan_agnia_care: String(Math.round(parseFloat(payroll.potongan_agnia_care || '0'))),
         });
         setIsEditModalOpen(true);
     };
@@ -655,7 +657,6 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                     <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-xl text-[10px] text-rose-600 dark:text-rose-400 space-y-1">
                                         <p className="font-bold">🔒 Dihitung Otomatis (tidak dapat diubah di sini):</p>
                                         <p>Potongan Kehadiran: {formatRupiah(editingPayroll.potongan_kehadiran)}</p>
-                                        <p>Agnia Care/Zakat: {formatRupiah(editingPayroll.potongan_agnia_care)}</p>
                                         <p>Biaya Konsumsi: {formatRupiah(editingPayroll.potongan_biaya_konsumsi)}</p>
                                     </div>
 
@@ -663,6 +664,15 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                     <div>
                                         <h4 className="text-xs font-extrabold text-rose-600 uppercase tracking-wider mb-3">🔴 Potongan Manual</h4>
                                         <div className="space-y-3">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Agnia Care / Zakat (Rp)</label>
+                                                <input type="text"
+                                                    value={formatNumberInput(editData.potongan_agnia_care)}
+                                                    onChange={e => setEditData('potongan_agnia_care', parseNumberInput(e.target.value))}
+                                                    required className="w-full rounded-xl border-rose-300 dark:border-rose-900 dark:bg-gray-900 dark:text-white text-xs py-2.5 font-mono"
+                                                    placeholder="0"
+                                                />
+                                            </div>
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">BPJS (Rp)</label>
                                                 <input type="text"

@@ -162,6 +162,7 @@ class PayrollController extends Controller
             // Lembur (override)
             'overtime_pay'            => 'required|numeric|min:0',
             // Potongan manual
+            'potongan_agnia_care'     => 'required|numeric|min:0',
             'potongan_bpjs'           => 'required|numeric|min:0',
             'potongan_kasbon'         => 'required|numeric|min:0',
         ]);
@@ -173,7 +174,7 @@ class PayrollController extends Controller
         $tunjKonsumsi         = floatval($payroll->tunjangan_konsumsi);
         $bonus                = floatval($request->bonus);
         $overtimePay          = floatval($request->overtime_pay);
-        $potonganAgniaCare    = floatval($payroll->potongan_agnia_care);
+        $potonganAgniaCare    = floatval($request->potongan_agnia_care);
         $potonganBiayaKons    = floatval($payroll->potongan_biaya_konsumsi);
         $potonganBpjs         = floatval($request->potongan_bpjs);
         $potonganKehadiran    = floatval($payroll->potongan_kehadiran);
@@ -189,6 +190,7 @@ class PayrollController extends Controller
             'bonus'                => $bonus,
             'allowances'           => $allowances,
             'overtime_pay'         => $overtimePay,
+            'potongan_agnia_care'  => $potonganAgniaCare,
             'potongan_bpjs'        => $potonganBpjs,
             'potongan_kasbon'      => $potonganKasbon,
             'deductions'           => $deductions,
