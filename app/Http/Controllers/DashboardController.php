@@ -141,11 +141,15 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get();
 
+            // Shift aktif hari ini
+            $activeShift = $user->activeShift();
+
             return Inertia::render('Dashboard', [
                 'role' => 'employee',
                 'todayAttendance' => $todayAttendance,
                 'geofences' => $activeGeofences,
                 'recentAttendances' => $recentAttendances,
+                'activeShift' => $activeShift,
             ]);
         }
     }
