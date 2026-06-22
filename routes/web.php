@@ -98,6 +98,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
         Route::post('/settings/deploy', [\App\Http\Controllers\Admin\SettingController::class, 'systemUpdate'])->name('settings.deploy');
         Route::get('/settings/logs', [\App\Http\Controllers\Admin\SettingController::class, 'updateLogs'])->name('settings.logs');
+        Route::post('/settings/test-push', [\App\Http\Controllers\Admin\SettingController::class, 'testPush'])->name('settings.test-push');
 
         // Admin Leave Approval Desk
         Route::get('/leaves', [LeaveController::class, 'index'])->name('leaves.index');

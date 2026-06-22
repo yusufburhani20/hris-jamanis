@@ -47,6 +47,31 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
     const [deployLogs, setDeployLogs] = useState<string>('Belum ada log pembaruan.');
     const [isDeploying, setIsDeploying] = useState<boolean>(false);
     const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+    const [testingPush, setTestingPush] = useState<boolean>(false);
+
+    const sendTestPush = async () => {
+        setTestingPush(true);
+        try {
+            const res = await fetch(route('admin.settings.test-push'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
+                }
+            });
+            const resData = await res.json();
+            if (resData.status === 'success') {
+                alert('Berhasil! ' + resData.message);
+            } else {
+                alert('Gagal: ' + resData.message);
+            }
+        } catch (err) {
+            console.error('Gagal mengirim test push:', err);
+            alert('Gagal mengirim push notifikasi. Silakan pastikan server Anda terhubung.');
+        } finally {
+            setTestingPush(false);
+        }
+    };
 
     const { data, setData, errors, processing } = useForm({
         school_name: settings.school_name || 'SALIRA ACADEMY',
@@ -709,6 +734,22 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
                                         </tbody>
                                     </table>
                                 </div>
+                            </div>
+
+                            {/* Test Push Notification */}
+                            <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div>
+                                    <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs">🧪 Uji Coba Push Notifikasi</h5>
+                                    <p className="text-[11px] text-slate-400 mt-1">Kirim sebuah push notifikasi uji coba langsung ke browser/perangkat Anda saat ini untuk memastikan sistem Web Push aktif.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={sendTestPush}
+                                    disabled={testingPush}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/10 disabled:opacity-50 flex items-center space-x-2"
+                                >
+                                    <span>{testingPush ? 'Mengirim...' : 'Kirim Notifikasi Uji Coba'}</span>
+                                </button>
                             </div>
 
                             {/* Submit button */}

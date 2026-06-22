@@ -194,4 +194,24 @@ class SettingController extends Controller
 
         return response()->json(['logs' => $content]);
     }
+
+    public function testPush()
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'User tidak terotentikasi.'], 401);
+        }
+
+        try {
+            app(\App\Services\WebPushService::class)->sendToUser(
+                $user->id,
+                '🔔 Tes Push Notifikasi',
+                'Halo ' . $user->name . '! Ini adalah push notifikasi uji coba manual dari sistem HRIS Anda.',
+                ['url' => '/admin/settings']
+            );
+            return response()->json(['status' => 'success', 'message' => 'Notifikasi uji coba berhasil dikirim ke perangkat Anda.']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Gagal mengirim notifikasi: ' . $e->getMessage()], 500);
+        }
+    }
 }
