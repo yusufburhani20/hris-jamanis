@@ -20,7 +20,7 @@ class PayrollController extends Controller
         $month = intval($request->query('month', Carbon::now()->month));
         $year  = intval($request->query('year', Carbon::now()->year));
 
-        $payrolls = Payroll::with('user:id,name,email,nip,basic_salary,jabatan')
+        $payrolls = Payroll::with('user:id,name,email,nip,basic_salary,role')
             ->where('month', $month)
             ->where('year', $year)
             ->get();

@@ -178,7 +178,15 @@
                     <tr>
                         <td class="meta-label">Jabatan</td>
                         <td class="meta-colon">:</td>
-                        <td class="meta-value">{{ $payroll->user->jabatan ?: '-' }}</td>
+                        <td class="meta-value">
+                            @if($payroll->user->role === 'admin')
+                                Admin HRIS
+                            @elseif($payroll->user->role === 'driver')
+                                Sopir / Driver
+                            @else
+                                Karyawan / Staff
+                            @endif
+                        </td>
                     </tr>
                 </table>
             </td>
