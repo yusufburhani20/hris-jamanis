@@ -40,8 +40,11 @@ class CourierShipmentController extends Controller
             ->where('id', $id)
             ->firstOrFail();
 
+        $branches = Branch::where('is_active', true)->orderBy('name', 'asc')->get();
+
         return Inertia::render('Courier/Shipments/Show', [
-            'shipment' => $shipment
+            'shipment' => $shipment,
+            'branches' => $branches
         ]);
     }
 
@@ -58,6 +61,7 @@ class CourierShipmentController extends Controller
             'photo' => 'required|image|max:5120', // Max 5MB
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
+            'start_from' => 'required|string|max:255',
         ]);
 
         if ($request->hasFile('photo')) {
@@ -74,7 +78,7 @@ class CourierShipmentController extends Controller
                 'shipment_id' => $shipment->id,
                 'status' => 'in_transit',
                 'title' => 'Mulai Perjalanan',
-                'description' => 'Driver memulai sesi perjalanan pengiriman barang.',
+                'description' => 'Driver memulai sesi perjalanan pengiriman barang dari ' . $request->start_from . '.',
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'photo_path' => $path,

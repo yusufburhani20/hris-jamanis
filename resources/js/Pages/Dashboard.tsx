@@ -307,11 +307,6 @@ export default function Dashboard({
                     <div className="absolute -top-24 -right-24 w-72 h-72 bg-white/5 rounded-full blur-3xl pointer-events-none" />
                     <div className="absolute -bottom-20 -left-16 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
 
-                    {/* Clock & Day display in the top right corner of the banner */}
-                    <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
-                        <SystemClock light={true} />
-                    </div>
-
                     <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 p-6 sm:p-8">
                         <div>
                             <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -333,7 +328,10 @@ export default function Dashboard({
                             </p>
                         </div>
 
-                        <div className="flex flex-col gap-3 min-w-[200px] items-stretch md:items-end">
+                        <div className="flex flex-col gap-3 min-w-[200px] items-stretch md:items-end z-20">
+                            <div className="mb-2">
+                                <SystemClock light={true} />
+                            </div>
                             <Link 
                                 href={route('attendances.scanner')} 
                                 className="group flex items-center justify-center gap-3 bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold rounded-xl px-5 py-3 shadow-lg shadow-amber-400/20 transition-all duration-200 active:scale-95 text-sm"

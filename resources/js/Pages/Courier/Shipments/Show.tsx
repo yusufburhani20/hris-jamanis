@@ -37,7 +37,13 @@ interface Shipment {
     logs: ShipmentLog[];
 }
 
-export default function CourierShow({ auth, shipment }: PageProps<{ shipment: Shipment }>) {
+interface Branch {
+    id: number;
+    name: string;
+    is_active: boolean;
+}
+
+export default function CourierShow({ auth, shipment, branches = [] }: PageProps<{ shipment: Shipment; branches?: Branch[] }>) {
     const [lat, setLat] = useState<number | null>(shipment.courier_lat);
     const [lng, setLng] = useState<number | null>(shipment.courier_lng);
     const [gpsLoading, setGpsLoading] = useState(false);
@@ -64,6 +70,7 @@ export default function CourierShow({ auth, shipment }: PageProps<{ shipment: Sh
         photo: null as File | null,
         latitude: '',
         longitude: '',
+        start_from: 'Gudang Utama (Pusat)',
     });
 
     const [startTripPreview, setStartTripPreview] = useState<string | null>(null);
@@ -418,6 +425,25 @@ export default function CourierShow({ auth, shipment }: PageProps<{ shipment: Sh
                                         />
                                     </label>
                                 )}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 text-left">
+                                    Mulai Pengiriman Dari (Gudang/Cabang)
+                                </label>
+                                <select
+                                    value={startTripForm.data.start_from}
+                                    onChange={e => startTripForm.setData('start_from', e.target.value)}
+                                    required
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-900 text-sm dark:text-white"
+                                >
+                                    <option value="Gudang Utama (Pusat)">Gudang Utama (Pusat)</option>
+                                    {branches.map(branch => (
+                                        <option key={branch.id} value={branch.name}>
+                                            Cabang {branch.name}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-400 bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
