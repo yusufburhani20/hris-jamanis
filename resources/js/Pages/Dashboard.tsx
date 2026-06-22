@@ -308,18 +308,17 @@ export default function Dashboard({
 
                     {/* iPhone / iOS Safari PWA Installation Instructions */}
                     {isIOS && showInstallGuide && (
-                        <div className="relative z-10 mx-6 sm:mx-8 mb-6 sm:mb-8 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 text-xs space-y-3 animate-fade-in text-indigo-50 leading-relaxed">
+                        <div className="relative z-10 mx-4 sm:mx-6 mb-4 sm:mb-6 p-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 text-[11px] space-y-2 animate-fade-in text-indigo-50 leading-relaxed">
                             <p className="font-bold text-amber-300 flex items-center gap-1.5">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 Langkah Instalasi PWA di iOS iPhone:
                             </p>
-                            <ol className="list-decimal list-inside space-y-2 pl-1">
-                                <li>Buka browser <span className="font-bold text-white">Safari</span> di perangkat iPhone Anda.</li>
-                                <li>Pastikan Anda mengakses halaman ini dengan koneksi HTTPS: <code className="bg-indigo-900/40 px-1 py-0.5 rounded font-mono text-[10px] text-white">https://hris.konfigin.my.id</code></li>
-                                <li>Ketuk tombol <span className="font-bold text-white inline-flex items-center gap-0.5">Bagikan (Share) <svg className="w-3.5 h-3.5 inline text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></span> pada menu navigasi bawah Safari.</li>
-                                <li>Gulir daftar menu ke bawah dan ketuk opsi <span className="font-bold text-amber-350">Tambahkan ke Layar Utama</span> (Add to Home Screen).</li>
-                                <li>Beri nama aplikasi (misal: HRIS), lalu klik <span className="font-bold text-amber-350">Tambah</span> (Add) di kanan atas.</li>
-                                <li>Aplikasi HRIS kini terinstal di layar utama iPhone Anda dan dapat digunakan layaknya aplikasi asli.</li>
+                            <ol className="list-decimal list-inside space-y-1 pl-1">
+                                <li>Buka browser <span className="font-bold text-white">Safari</span> di iPhone Anda.</li>
+                                <li>Pastikan link: <code className="bg-indigo-900/40 px-1 py-0.5 rounded font-mono text-[9px] text-white">https://hris.konfigin.my.id</code></li>
+                                <li>Ketuk tombol <span className="font-bold text-white inline-flex items-center gap-0.5">Bagikan (Share) <svg className="w-3 h-3 inline text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></span> di menu bawah Safari.</li>
+                                <li>Pilih opsi <span className="font-bold text-amber-300">Tambahkan ke Layar Utama</span> (Add to Home Screen).</li>
+                                <li>Beri nama aplikasi, lalu klik <span className="font-bold text-amber-350">Tambah</span> (Add) di kanan atas.</li>
                             </ol>
                         </div>
                     )}
