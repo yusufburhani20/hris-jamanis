@@ -30,7 +30,6 @@ interface Payroll {
 
 interface PayrollSettings {
     payroll_late_penalty: string;
-    payroll_overtime_rate: string;
     payroll_allowance: string;
     payroll_absent_penalty: string;
     payroll_working_days: string[];
@@ -82,7 +81,6 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
 
     const { data: settingsData, setData: setSettingsData, post: postSettings, processing: processingSettings } = useForm({
         payroll_late_penalty: payrollSettings.payroll_late_penalty,
-        payroll_overtime_rate: payrollSettings.payroll_overtime_rate,
         payroll_allowance: payrollSettings.payroll_allowance,
         payroll_absent_penalty: payrollSettings.payroll_absent_penalty,
         payroll_working_days: payrollSettings.payroll_working_days,
@@ -257,7 +255,7 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
 
                         {isSettingsOpen && (
                             <form onSubmit={handleSaveSettings} className="p-6 border-t border-slate-100 dark:border-slate-700/60 space-y-6">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Denda Terlambat (Rp)</label>
                                         <input
@@ -267,17 +265,6 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                             required
                                             className="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs py-2.5 font-mono"
                                             placeholder="Contoh: 50.000"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tarif Lembur (Rp / Hari)</label>
-                                        <input
-                                            type="text"
-                                            value={formatNumberInput(settingsData.payroll_overtime_rate)}
-                                            onChange={e => setSettingsData('payroll_overtime_rate', parseNumberInput(e.target.value))}
-                                            required
-                                            className="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs py-2.5 font-mono"
-                                            placeholder="Contoh: 100.000"
                                         />
                                     </div>
                                     <div>
@@ -303,6 +290,7 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                         />
                                     </div>
                                 </div>
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">ℹ️ Upah lembur dihitung otomatis berdasarkan rumus: <span className="font-mono font-bold">Gaji Pokok ÷ 27 ÷ 10</span> per jam lembur.</p>
 
                                 <div className="border-t border-dashed border-slate-200 dark:border-slate-700 pt-5">
                                     <h4 className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">

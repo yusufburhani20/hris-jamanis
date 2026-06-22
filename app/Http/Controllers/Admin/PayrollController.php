@@ -31,7 +31,6 @@ class PayrollController extends Controller
 
         $settings = [
             'payroll_late_penalty' => \App\Models\Setting::get('payroll_late_penalty', '50000'),
-            'payroll_overtime_rate' => \App\Models\Setting::get('payroll_overtime_rate', '100000'),
             'payroll_allowance' => \App\Models\Setting::get('payroll_allowance', '500000'),
             'payroll_absent_penalty' => \App\Models\Setting::get('payroll_absent_penalty', '100000'),
             'payroll_working_days' => explode(',', \App\Models\Setting::get('payroll_working_days', 'Monday,Tuesday,Wednesday,Thursday,Friday')),
@@ -117,7 +116,6 @@ class PayrollController extends Controller
     {
         $request->validate([
             'payroll_late_penalty' => 'required|numeric|min:0',
-            'payroll_overtime_rate' => 'required|numeric|min:0',
             'payroll_allowance' => 'required|numeric|min:0',
             'payroll_absent_penalty' => 'required|numeric|min:0',
             'payroll_working_days' => 'required|array',
@@ -128,7 +126,6 @@ class PayrollController extends Controller
         ]);
 
         \App\Models\Setting::set('payroll_late_penalty', $request->payroll_late_penalty);
-        \App\Models\Setting::set('payroll_overtime_rate', $request->payroll_overtime_rate);
         \App\Models\Setting::set('payroll_allowance', $request->payroll_allowance);
         \App\Models\Setting::set('payroll_absent_penalty', $request->payroll_absent_penalty);
         \App\Models\Setting::set('payroll_working_days', implode(',', $request->payroll_working_days));
