@@ -76,6 +76,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/courier/update-location', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'updateGlobalLocation'])->name('courier.update-location');
         Route::post('/courier/shipments/self-initiate', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'storeSelfInitiated'])->name('courier.shipments.self-initiate');
         Route::get('/courier/shipments/{shipment}', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'show'])->name('courier.shipments.show');
+        Route::post('/courier/shipments/{shipment}/start', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'startTrip'])->name('courier.shipments.start');
         Route::post('/courier/shipments/{shipment}/deliver', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'deliver'])->name('courier.shipments.deliver');
         Route::post('/courier/shipments/{shipment}/checkpoint', [\App\Http\Controllers\Courier\CourierShipmentController::class, 'addCheckpointPhoto'])->name('courier.shipments.checkpoint');
     });

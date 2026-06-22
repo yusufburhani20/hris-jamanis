@@ -46,6 +46,47 @@ class CourierShipmentController extends Controller
     }
 
     /**
+     * Start the shipment trip.
+     */
+    public function startTrip(Request $request, $id)
+    {
+        $shipment = Shipment::where('id', $id)
+            ->where('courier_id', Auth::id())
+            ->firstOrFail();
+
+        $request->validate([
+            'photo' => 'required|image|max:5120', // Max 5MB
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('checkpoint_photos', 'public');
+
+            $shipment->update([
+                'status' => 'in_transit',
+                'courier_lat' => $request->latitude,
+                'courier_lng' => $request->longitude,
+            ]);
+
+            // Add starting checkpoint log
+            ShipmentLog::create([
+                'shipment_id' => $shipment->id,
+                'status' => 'in_transit',
+                'title' => 'Mulai Perjalanan',
+                'description' => 'Driver memulai sesi perjalanan pengiriman barang.',
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'photo_path' => $path,
+            ]);
+
+            return redirect()->back()->with('success', 'Perjalanan berhasil dimulai! Navigator pelacakan aktif.');
+        }
+
+        return back()->withErrors(['photo' => 'Gagal mengunggah foto awal perjalanan.']);
+    }
+
+    /**
      * Mark the shipment as delivered with a photo proof.
      */
     public function deliver(Request $request, $id)
@@ -76,13 +117,14 @@ class CourierShipmentController extends Controller
             ShipmentLog::create([
                 'shipment_id' => $shipment->id,
                 'status' => 'delivered',
-                'title' => 'Paket Berhasil Diterima di Cabang',
-                'description' => 'Paket pengisian stok telah berhasil diserahterimakan kepada staf retail cabang. Bukti foto penerimaan telah diunggah oleh pengemudi.',
+                'title' => 'Sesi Perjalanan Selesai',
+                'description' => 'Driver telah menutup dan menyelesaikan seluruh rangkaian pengiriman hari ini.',
                 'latitude' => $request->latitude ?? $shipment->courier_lat,
                 'longitude' => $request->longitude ?? $shipment->courier_lng,
+                'photo_path' => $path,
             ]);
 
-            return redirect()->route('courier.shipments.index')->with('success', 'Paket berhasil diselesaikan dengan bukti foto!');
+            return redirect()->route('courier.shipments.index')->with('success', 'Perjalanan berhasil diselesaikan dan ditutup!');
         }
 
         return back()->withErrors(['delivery_photo' => 'Gagal mengunggah foto. Harap pilih gambar yang valid.']);
@@ -170,6 +212,7 @@ class CourierShipmentController extends Controller
             'photo' => 'required|image|max:5120', // Max 5MB
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
+            'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:500',
         ]);
 
@@ -186,16 +229,16 @@ class CourierShipmentController extends Controller
             ShipmentLog::create([
                 'shipment_id' => $shipment->id,
                 'status' => 'in_transit',
-                'title' => 'Checkpoint Perjalanan Mandiri',
-                'description' => $request->description ?? 'Driver mengunggah foto checkpoint lokasi di tengah perjalanan.',
+                'title' => 'Stop: ' . $request->title,
+                'description' => $request->description ?? 'Paket berhasil diserahterimakan / tiba di lokasi tujuan.',
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'photo_path' => $path,
             ]);
 
-            return redirect()->back()->with('success', 'Foto checkpoint lokasi berhasil disimpan ke log perjalanan!');
+            return redirect()->back()->with('success', 'Bukti pengiriman stop berhasil disimpan ke log perjalanan!');
         }
 
-        return back()->withErrors(['photo' => 'Gagal mengunggah foto checkpoint.']);
+        return back()->withErrors(['photo' => 'Gagal mengunggah foto bukti stop.']);
     }
 }

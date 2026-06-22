@@ -16,6 +16,7 @@ class ShipmentLog extends Model
         'description',
         'latitude',
         'longitude',
+        'photo_path',
     ];
 
     /**
