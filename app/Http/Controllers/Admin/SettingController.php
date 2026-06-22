@@ -38,6 +38,8 @@ class SettingController extends Controller
                 'notif_leave_status_enabled'     => Setting::get('notif_leave_status_enabled', '1') === '1',
                 'notif_overtime_request_enabled' => Setting::get('notif_overtime_request_enabled', '1') === '1',
                 'notif_overtime_status_enabled'  => Setting::get('notif_overtime_status_enabled', '1') === '1',
+                'notif_admin_checkin_enabled'    => Setting::get('notif_admin_checkin_enabled', '1') === '1',
+                'notif_admin_checkout_enabled'   => Setting::get('notif_admin_checkout_enabled', '1') === '1',
             ]
         ]);
     }
@@ -69,6 +71,8 @@ class SettingController extends Controller
             'notif_leave_status_enabled'     => 'nullable|boolean',
             'notif_overtime_request_enabled' => 'nullable|boolean',
             'notif_overtime_status_enabled'  => 'nullable|boolean',
+            'notif_admin_checkin_enabled'    => 'nullable|boolean',
+            'notif_admin_checkout_enabled'   => 'nullable|boolean',
         ]);
 
         Setting::set('school_name', $request->school_name);
@@ -91,6 +95,8 @@ class SettingController extends Controller
         Setting::set('notif_leave_status_enabled', $request->notif_leave_status_enabled ? '1' : '0');
         Setting::set('notif_overtime_request_enabled', $request->notif_overtime_request_enabled ? '1' : '0');
         Setting::set('notif_overtime_status_enabled', $request->notif_overtime_status_enabled ? '1' : '0');
+        Setting::set('notif_admin_checkin_enabled', $request->notif_admin_checkin_enabled ? '1' : '0');
+        Setting::set('notif_admin_checkout_enabled', $request->notif_admin_checkout_enabled ? '1' : '0');
 
         if ($request->hasFile('school_logo')) {
             // Delete old logo

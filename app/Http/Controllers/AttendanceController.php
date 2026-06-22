@@ -141,6 +141,24 @@ class AttendanceController extends Controller
             ]
         );
 
+        // Push notification to admins
+        if (Setting::get('notif_admin_checkin_enabled', '1') === '1') {
+            try {
+                $statusLabel = match($status) {
+                    'hadir' => 'Hadir',
+                    'terlambat' => 'Terlambat',
+                    default => ucfirst($status)
+                };
+                app(\App\Services\WebPushService::class)->sendToAdmins(
+                    '📢 Absen Masuk Baru',
+                    "{$user->name} baru saja melakukan absensi masuk pada jam {$deviceTime->format('H:i:s')} (Status: {$statusLabel}).",
+                    ['url' => '/admin/attendances']
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Push notif to admins (check-in) failed: ' . $e->getMessage());
+            }
+        }
+
         return back()->with('success', 'Presensi masuk berhasil.');
     }
 
@@ -259,6 +277,26 @@ class AttendanceController extends Controller
             'is_offline' => $existing->is_offline || $isOffline,
             'offline_device_time' => $isOffline ? $deviceTime->toDateTimeString() : $existing->offline_device_time,
         ]);
+
+        // Push notification to admins
+        if (Setting::get('notif_admin_checkout_enabled', '1') === '1') {
+            try {
+                $statusLabel = match($newStatus) {
+                    'hadir' => 'Hadir',
+                    'terlambat' => 'Terlambat',
+                    'lembur' => 'Lembur',
+                    'pulang_awal' => 'Pulang Lebih Awal',
+                    default => ucfirst($newStatus)
+                };
+                app(\App\Services\WebPushService::class)->sendToAdmins(
+                    '📢 Absen Pulang Baru',
+                    "{$user->name} baru saja melakukan absensi pulang pada jam {$deviceTime->format('H:i:s')} (Status: {$statusLabel}).",
+                    ['url' => '/admin/attendances']
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Push notif to admins (check-out) failed: ' . $e->getMessage());
+            }
+        }
 
         return back()->with('success', 'Presensi pulang berhasil.');
     }

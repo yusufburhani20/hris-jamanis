@@ -36,6 +36,8 @@ interface Settings {
     notif_leave_status_enabled: boolean;
     notif_overtime_request_enabled: boolean;
     notif_overtime_status_enabled: boolean;
+    notif_admin_checkin_enabled: boolean;
+    notif_admin_checkout_enabled: boolean;
     late_tolerance_minutes: number;
     early_checkin_tolerance_minutes: number;
 }
@@ -67,6 +69,8 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
         notif_leave_status_enabled: settings.notif_leave_status_enabled ?? true,
         notif_overtime_request_enabled: settings.notif_overtime_request_enabled ?? true,
         notif_overtime_status_enabled: settings.notif_overtime_status_enabled ?? true,
+        notif_admin_checkin_enabled: settings.notif_admin_checkin_enabled ?? true,
+        notif_admin_checkout_enabled: settings.notif_admin_checkout_enabled ?? true,
         late_tolerance_minutes: settings.late_tolerance_minutes ?? 0,
         early_checkin_tolerance_minutes: settings.early_checkin_tolerance_minutes ?? 60,
     });
@@ -111,6 +115,8 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
             notif_leave_status_enabled: data.notif_leave_status_enabled,
             notif_overtime_request_enabled: data.notif_overtime_request_enabled,
             notif_overtime_status_enabled: data.notif_overtime_status_enabled,
+            notif_admin_checkin_enabled: data.notif_admin_checkin_enabled,
+            notif_admin_checkout_enabled: data.notif_admin_checkout_enabled,
             late_tolerance_minutes: data.late_tolerance_minutes,
             early_checkin_tolerance_minutes: data.early_checkin_tolerance_minutes,
         });
@@ -654,6 +660,46 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
                                                             type="checkbox" 
                                                             checked={data.notif_overtime_status_enabled}
                                                             onChange={e => setData('notif_overtime_status_enabled', e.target.checked)}
+                                                            className="sr-only peer" 
+                                                        />
+                                                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                                                    </label>
+                                                </td>
+                                            </tr>
+
+                                            {/* Notif 8 */}
+                                            <tr>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">📢 Karyawan Check-in (Masuk)</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Semua Admin</td>
+                                                <td className="px-6 py-4 text-[11px] text-slate-400">Saat karyawan berhasil melakukan absensi masuk</td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={data.notif_admin_checkin_enabled}
+                                                            onChange={e => setData('notif_admin_checkin_enabled', e.target.checked)}
+                                                            className="sr-only peer" 
+                                                        />
+                                                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                                                    </label>
+                                                </td>
+                                            </tr>
+
+                                            {/* Notif 9 */}
+                                            <tr>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">📢 Karyawan Check-out (Pulang)</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Semua Admin</td>
+                                                <td className="px-6 py-4 text-[11px] text-slate-400">Saat karyawan berhasil melakukan absensi pulang</td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={data.notif_admin_checkout_enabled}
+                                                            onChange={e => setData('notif_admin_checkout_enabled', e.target.checked)}
                                                             className="sr-only peer" 
                                                         />
                                                         <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
