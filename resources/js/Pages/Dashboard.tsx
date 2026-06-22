@@ -279,15 +279,13 @@ export default function Dashboard({
                         </div>
 
                         <div className="flex flex-col gap-3 min-w-[200px] items-stretch md:items-end">
-                            {role === 'employee' && (
-                                <Link 
-                                    href={route('attendances.scanner')} 
-                                    className="group flex items-center justify-center gap-3 bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold rounded-xl px-5 py-3 shadow-lg shadow-amber-400/20 transition-all duration-200 active:scale-95 text-sm"
-                                >
-                                    <CameraIcon className="w-5 h-5 shrink-0" />
-                                    <span>Buka Kamera Absen</span>
-                                </Link>
-                            )}
+                            <Link 
+                                href={route('attendances.scanner')} 
+                                className="group flex items-center justify-center gap-3 bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold rounded-xl px-5 py-3 shadow-lg shadow-amber-400/20 transition-all duration-200 active:scale-95 text-sm"
+                            >
+                                <CameraIcon className="w-5 h-5 shrink-0" />
+                                <span>Buka Kamera Absen</span>
+                            </Link>
                             {!isStandalone && (
                                 <button
                                     onClick={() => {
