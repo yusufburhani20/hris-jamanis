@@ -25,7 +25,7 @@ class ShiftController extends Controller
                 $q->where(function($query) {
                     $query->whereNull('user_shifts.end_date')
                           ->orWhere('user_shifts.end_date', '>=', today());
-                })->latest('user_shifts.start_date');
+                })->orderBy('user_shifts.start_date', 'asc');
             }])
             ->get();
 
@@ -110,17 +110,8 @@ class ShiftController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        // Terminate any active shift that overlaps or ends after start_date
-        // Set their end_date to one day before the new start_date to maintain clean history
-        $newStartDate = $request->start_date;
-        $prevEndDate = date('Y-m-d', strtotime($newStartDate . ' -1 day'));
-
-        UserShift::where('user_id', $request->user_id)
-            ->where(function($q) use ($newStartDate) {
-                $q->whereNull('end_date')
-                  ->orWhere('end_date', '>=', $newStartDate);
-            })
-            ->update(['end_date' => $prevEndDate]);
+        // Resolve any overlaps with existing shifts
+        $this->resolveOverlappingShifts($request->user_id, $request->start_date, $request->end_date);
 
         // Insert new assignment
         UserShift::create([
@@ -146,17 +137,9 @@ class ShiftController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        $newStartDate = $request->start_date;
-        $prevEndDate = date('Y-m-d', strtotime($newStartDate . ' -1 day'));
-
         foreach ($request->user_ids as $userId) {
-            // Terminate active shifts for this employee
-            UserShift::where('user_id', $userId)
-                ->where(function($q) use ($newStartDate) {
-                    $q->whereNull('end_date')
-                      ->orWhere('end_date', '>=', $newStartDate);
-                })
-                ->update(['end_date' => $prevEndDate]);
+            // Resolve any overlaps with existing shifts for this employee
+            $this->resolveOverlappingShifts($userId, $request->start_date, $request->end_date);
 
             // Assign new shift
             UserShift::create([
@@ -182,5 +165,71 @@ class ShiftController extends Controller
         UserShift::findOrFail($request->user_shift_id)->delete();
 
         return redirect()->back()->with('success', 'Penugasan shift berhasil dibatalkan.');
+    }
+
+    /**
+     * Resolve overlapping shift schedules for a user.
+     */
+    private function resolveOverlappingShifts($userId, $startDate, $endDate = null)
+    {
+        $S_n = \Carbon\Carbon::parse($startDate);
+        $E_n = $endDate ? \Carbon\Carbon::parse($endDate) : null;
+
+        // Query all shifts for this user that overlap with the new assignment
+        $overlappingShifts = UserShift::where('user_id', $userId)
+            ->where(function($query) use ($startDate, $endDate) {
+                $query->where(function($q) use ($endDate) {
+                    if ($endDate !== null) {
+                        $q->where('start_date', '<=', $endDate);
+                    }
+                })
+                ->where(function($q) use ($startDate) {
+                    $q->whereNull('end_date')
+                      ->orWhere('end_date', '>=', $startDate);
+                });
+            })
+            ->get();
+
+        foreach ($overlappingShifts as $shift) {
+            $S_e = \Carbon\Carbon::parse($shift->start_date);
+            $E_e = $shift->end_date ? \Carbon\Carbon::parse($shift->end_date) : null;
+
+            // Case 1: The new shift completely covers the existing shift.
+            if ($S_n->lte($S_e) && ($E_n === null || ($E_e !== null && $E_e->lte($E_n)))) {
+                $shift->delete();
+            }
+            // Case 2: The new shift is strictly inside the existing shift.
+            elseif ($S_e->lt($S_n) && $E_n !== null && ($E_e === null || $E_n->lt($E_e))) {
+                $prevEndDate = $S_n->copy()->subDay()->toDateString();
+                $nextStartDate = $E_n->copy()->addDay()->toDateString();
+
+                // Duplicate the existing shift for the post-new-shift period
+                UserShift::create([
+                    'user_id' => $userId,
+                    'shift_id' => $shift->shift_id,
+                    'start_date' => $nextStartDate,
+                    'end_date' => $E_e ? $E_e->toDateString() : null,
+                ]);
+
+                // Update the original existing shift to end before the new shift
+                $shift->update([
+                    'end_date' => $prevEndDate,
+                ]);
+            }
+            // Case 3: The new shift overlaps the start of the existing shift.
+            elseif ($S_n->lte($S_e) && $E_n !== null && $E_n->gte($S_e) && ($E_e === null || $E_n->lt($E_e))) {
+                $nextStartDate = $E_n->copy()->addDay()->toDateString();
+                $shift->update([
+                    'start_date' => $nextStartDate,
+                ]);
+            }
+            // Case 4: The new shift overlaps the end of the existing shift.
+            else {
+                $prevEndDate = $S_n->copy()->subDay()->toDateString();
+                $shift->update([
+                    'end_date' => $prevEndDate,
+                ]);
+            }
+        }
     }
 }

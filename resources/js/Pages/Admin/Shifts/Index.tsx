@@ -31,12 +31,23 @@ interface IndexProps {
 }
 
 export default function ShiftsIndex({ shifts, employees }: IndexProps) {
-    const [showShiftModal, setShowShiftModal] = useState(false);
-    const [editingShift, setEditingShift] = useState<Shift | null>(null);
-    const [showAssignModal, setShowAssignModal] = useState(false);
-    const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
-    const [bulkShiftId, setBulkShiftId] = useState<string>(shifts.length > 0 ? String(shifts[0].id) : '');
-    const [bulkStartDate, setBulkStartDate] = useState<string>(new Date().toISOString().slice(0, 10));
+        const [showShiftModal, setShowShiftModal] = useState(false);
+        const [editingShift, setEditingShift] = useState<Shift | null>(null);
+        const [showAssignModal, setShowAssignModal] = useState(false);
+        const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
+        const [bulkShiftId, setBulkShiftId] = useState<string>(shifts.length > 0 ? String(shifts[0].id) : '');
+        const [bulkStartDate, setBulkStartDate] = useState<string>(new Date().toISOString().slice(0, 10));
+        const [bulkEndDate, setBulkEndDate] = useState<string>('');
+
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const getShiftStatus = (startDateStr: string, endDateStr: string | null) => {
+            if (startDateStr <= todayStr && (!endDateStr || endDateStr >= todayStr)) {
+                return 'active';
+            } else if (startDateStr > todayStr) {
+                return 'upcoming';
+            }
+            return 'past';
+        };
 
     // Form state for creating/updating Shift
     const { data: shiftData, setData: setShiftData, post: postShift, patch: patchShift, processing: processingShift, errors: shiftErrors, reset: resetShift } = useForm({
@@ -118,10 +129,12 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                 user_ids: selectedEmployeeIds,
                 shift_id: bulkShiftId,
                 start_date: bulkStartDate,
+                end_date: bulkEndDate || null,
             }, {
                 preserveScroll: true,
                 onSuccess: () => {
                     setSelectedEmployeeIds([]);
+                    setBulkEndDate('');
                 }
             });
         }
@@ -269,6 +282,17 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                 value={bulkStartDate}
                                                 onChange={(e) => setBulkStartDate(e.target.value)}
                                                 className="w-full text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-indigo-500 focus:border-indigo-500 py-2.5"
+                                                title="Tanggal Mulai"
+                                            />
+                                        </div>
+
+                                        <div className="flex-1 sm:flex-initial">
+                                            <input
+                                                type="date"
+                                                value={bulkEndDate}
+                                                onChange={(e) => setBulkEndDate(e.target.value)}
+                                                className="w-full text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-indigo-500 focus:border-indigo-500 py-2.5"
+                                                title="Tanggal Selesai (Opsional)"
                                             />
                                         </div>
                                         
@@ -302,8 +326,7 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                 />
                                             </th>
                                             <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase">Karyawan</th>
-                                            <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase">Shift Aktif Saat Ini</th>
-                                            <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase">Durasi Berlaku</th>
+                                            <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase" colSpan={2}>Jadwal Shift Kerja (Timeline)</th>
                                             <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase text-right">Aksi</th>
                                         </tr>
                                     </thead>
@@ -337,35 +360,60 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                             <div className="font-semibold text-slate-900 dark:text-white text-sm">{employee.name}</div>
                                                             <div className="text-xs text-slate-400">{employee.email}</div>
                                                         </td>
-                                                        <td className="px-4 py-4">
-                                                            {activeShift ? (
-                                                                <div>
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{activeShift.name}</span>
-                                                                        <span className="text-[9px] bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold px-1.5 py-0.2 rounded">
-                                                                            {activeShift.code}
-                                                                        </span>
-                                                                    </div>
-                                                                    <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">⏱️ {activeShift.start_time.slice(0, 5)} - {activeShift.end_time.slice(0, 5)}</p>
+                                                        <td className="px-4 py-4" colSpan={2}>
+                                                            {employee.shifts && employee.shifts.length > 0 ? (
+                                                                <div className="space-y-2 max-w-lg">
+                                                                    {employee.shifts.map((sh) => {
+                                                                        const status = getShiftStatus(sh.pivot.start_date, sh.pivot.end_date);
+                                                                        return (
+                                                                            <div 
+                                                                                key={sh.pivot.id} 
+                                                                                className={`flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-xl border transition-all ${
+                                                                                    status === 'active' 
+                                                                                    ? 'bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-150 dark:border-emerald-900/40 text-emerald-900 dark:text-emerald-350' 
+                                                                                    : 'bg-slate-50/50 dark:bg-slate-900/30 border-slate-100 dark:border-slate-700/60 text-slate-800 dark:text-slate-300'
+                                                                                }`}
+                                                                            >
+                                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                                    <span className={`text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full ${
+                                                                                        status === 'active'
+                                                                                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20'
+                                                                                        : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
+                                                                                    }`}>
+                                                                                        {status === 'active' ? 'Aktif' : 'Mendatang'}
+                                                                                    </span>
+                                                                                    <div className="font-bold text-sm">
+                                                                                        {sh.name} <span className="text-xs font-mono font-medium opacity-75">[{sh.code}]</span>
+                                                                                    </div>
+                                                                                    <span className="text-xs opacity-80">
+                                                                                        ⏱️ {sh.start_time.slice(0, 5)} - {sh.end_time.slice(0, 5)}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <div className="flex items-center justify-between sm:justify-end gap-3 mt-1.5 sm:mt-0">
+                                                                                    <div className="text-xs font-semibold opacity-75">
+                                                                                        🗓️ {new Date(sh.pivot.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                                                                        {' - '}
+                                                                                        {sh.pivot.end_date 
+                                                                                            ? new Date(sh.pivot.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                                                            : 'Seterusnya'
+                                                                                        }
+                                                                                    </div>
+                                                                                    <button
+                                                                                        onClick={() => handleRemoveAssignment(sh.pivot.id)}
+                                                                                        className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline p-1 flex-shrink-0 transition-colors"
+                                                                                        title="Batalkan Penugasan"
+                                                                                    >
+                                                                                        Hapus
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-xs text-rose-500 font-semibold bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded border border-rose-100 dark:border-rose-900/50">
+                                                                <span className="text-xs text-rose-500 font-semibold bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded border border-rose-100 dark:border-rose-900/50">
                                                                     Belum Ditugaskan
                                                                 </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-350">
-                                                            {activeShift ? (
-                                                                <div>
-                                                                    <div>Mulai: {new Date(activeShift.pivot.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                                                                    <div className="text-slate-400 dark:text-slate-500">
-                                                                        Selesai: {activeShift.pivot.end_date 
-                                                                            ? new Date(activeShift.pivot.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-                                                                            : 'Seterusnya (Tanpa Batas)'}
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-slate-400">-</span>
                                                             )}
                                                         </td>
                                                         <td className="px-4 py-4 text-right">
@@ -376,15 +424,6 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                                 >
                                                                     Tugaskan
                                                                 </button>
-                                                                {activeShift && (
-                                                                    <button
-                                                                        onClick={() => handleRemoveAssignment(activeShift.pivot.id)}
-                                                                        className="text-xs text-red-600 hover:text-red-900 dark:text-red-400 font-bold underline"
-                                                                        title="Batalkan Penugasan Shift"
-                                                                    >
-                                                                        Hapus
-                                                                    </button>
-                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>
