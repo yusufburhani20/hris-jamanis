@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import SystemClock from '@/Components/SystemClock';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import { useState, useEffect } from 'react';
@@ -248,6 +249,25 @@ export default function Dashboard({
             <Head title="Dashboard" />
 
             <div className="space-y-6">
+
+                {/* ── SECTION: Header Greeting & Clock ── */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+                            Selamat Datang Kembali, <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{user.name}</span>!
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                            Status Akun: <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Aktif &amp; Terverifikasi</span>
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                        <div className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </div>
+                        <SystemClock />
+                    </div>
+                </div>
 
                 {/* ── SECTION: Offline Sync Banner ── */}
                 {offlineQueue.length > 0 && (

@@ -3,7 +3,6 @@ import Dropdown from '@/Components/Dropdown';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState, useEffect } from 'react';
 import ThemeToggle from '@/Components/ThemeToggle';
-import SystemClock from '@/Components/SystemClock';
 import { usePushNotification } from '@/hooks/usePushNotification';
 
 export default function Authenticated({
@@ -723,7 +722,6 @@ export default function Authenticated({
                     <div className="flex-1 lg:flex-none" />
 
                     <div className="flex items-center gap-2">
-                        <SystemClock />
                         <ThemeToggle />
 
                         <Dropdown>
