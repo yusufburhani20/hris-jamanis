@@ -1,6 +1,6 @@
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import React, { useState } from 'react';
 import { EyeIcon } from '@heroicons/react/24/outline';
 
@@ -46,12 +46,49 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
         createdAt?: string
     } | null>(null);
 
-    const handleMonthChange = (val: string) => {
+    const getMonthOptions = () => {
+        const options = [];
+        const today = new Date();
+        // Generate last 12 months going backwards
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+            options.push({ value, label });
+        }
+        return options;
+    };
+
+    const applyFilter = (newUserId: string, newMonth: string, newStartDate: string, newEndDate: string) => {
+        router.get(route('admin.attendances.index'), {
+            start_date: newStartDate,
+            end_date: newEndDate,
+            user_id: newUserId,
+            month: newMonth
+        }, {
+            preserveState: true,
+            preserveScroll: true
+        });
+    };
+
+    const handleUserChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const val = e.target.value;
+        setUserId(val);
+        applyFilter(val, month, startDate, endDate);
+    };
+
+    const handleMonthSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const val = e.target.value;
         setMonth(val);
+        let nextStartDate = startDate;
+        let nextEndDate = endDate;
         if (val) {
+            nextStartDate = '';
+            nextEndDate = '';
             setStartDate('');
             setEndDate('');
         }
+        applyFilter(userId, val, nextStartDate, nextEndDate);
     };
 
     const handleCustomDateChange = (type: 'start' | 'end', val: string) => {
@@ -66,12 +103,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
     };
 
     const handleFilter = () => {
-        window.location.href = route('admin.attendances.index', { 
-            start_date: startDate, 
-            end_date: endDate,
-            user_id: userId,
-            month: month
-        });
+        applyFilter(userId, month, startDate, endDate);
     };
 
     const handleExport = (type: 'excel' | 'pdf') => {
@@ -118,8 +150,8 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Karyawan</label>
                                     <select 
                                         value={userId}
-                                        onChange={(e) => setUserId(e.target.value)}
-                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                                        onChange={handleUserChange}
+                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                     >
                                         <option value="">Semua Karyawan</option>
                                         {users && users.map(u => (
@@ -129,12 +161,16 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Pilih Bulan</label>
-                                    <input 
-                                        type="month" 
+                                    <select 
                                         value={month}
-                                        onChange={(e) => handleMonthChange(e.target.value)}
-                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
-                                    />
+                                        onChange={handleMonthSelectChange}
+                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    >
+                                        <option value="">Pilih Bulan...</option>
+                                        {getMonthOptions().map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tanggal Mulai</label>
