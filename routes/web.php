@@ -171,3 +171,14 @@ Route::get('/debug-payrolls', function() {
     return \App\Models\Payroll::select('id', 'user_id', 'overtime_pay', 'overtime_hours', 'absent_days', 'late_hours')->get();
 });
 
+Route::get('/debug-logs', function() {
+    $logPath = storage_path('logs/laravel.log');
+    if (!file_exists($logPath)) {
+        return "Log file not found.";
+    }
+    $lines = file($logPath);
+    $lastLines = array_slice($lines, -150);
+    return nl2br(implode("", $lastLines));
+});
+
+
