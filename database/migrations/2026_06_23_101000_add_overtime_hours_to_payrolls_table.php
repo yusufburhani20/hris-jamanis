@@ -12,8 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('payrolls', function (Blueprint $table) {
-            $table->unsignedInteger('absent_days')->default(0)->after('potongan_kehadiran');
-            $table->decimal('late_hours', 8, 2)->default(0)->after('absent_days');
+            if (!Schema::hasColumn('payrolls', 'overtime_hours')) {
+                $table->decimal('overtime_hours', 8, 2)->default(0)->after('overtime_pay');
+            }
         });
     }
 
@@ -23,7 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('payrolls', function (Blueprint $table) {
-            $table->dropColumn(['absent_days', 'late_hours']);
+            if (Schema::hasColumn('payrolls', 'overtime_hours')) {
+                $table->dropColumn('overtime_hours');
+            }
         });
     }
 };
