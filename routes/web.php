@@ -132,6 +132,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/payrolls/{payroll}', [AdminPayrollController::class, 'update'])->name('payrolls.update');
         Route::post('/payrolls/{payroll}/pay', [AdminPayrollController::class, 'pay'])->name('payrolls.pay');
         Route::post('/payrolls/pay-bulk', [AdminPayrollController::class, 'payBulk'])->name('payrolls.payBulk');
+        Route::post('/payrolls/destroy-bulk', [AdminPayrollController::class, 'destroyBulk'])->name('payrolls.destroyBulk');
         Route::delete('/payrolls/{payroll}', [AdminPayrollController::class, 'destroy'])->name('payrolls.destroy');
 
         // Admin Shipment CRUD & Tracking Controls

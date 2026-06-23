@@ -182,6 +182,15 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
         }
     };
 
+    const handleDeleteBulk = () => {
+        if (selectedPayrollIds.length === 0) { alert('Silakan pilih minimal satu karyawan untuk dihapus.'); return; }
+        if (confirm(`Apakah Anda yakin ingin menghapus ${selectedPayrollIds.length} draf gaji yang dipilih sekaligus?`)) {
+            router.post(route('admin.payrolls.destroyBulk'), {
+                ids: selectedPayrollIds
+            }, { preserveScroll: true, onSuccess: () => setSelectedPayrollIds([]) });
+        }
+    };
+
     const handleApplyBpjs = () => {
         if (selectedPayrollIds.length === 0) { alert('Silakan pilih minimal satu karyawan untuk diterapkan BPJS-nya.'); return; }
         const bpjs = formatRupiah(payrollSettings.payroll_bpjs_amount);
@@ -458,6 +467,11 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                         className="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow transition-all flex items-center gap-1.5">
                                         <CheckIcon className="w-4 h-4" />
                                         Tandai Lunas Masal ({selectedPayrollIds.length})
+                                    </button>
+                                    <button onClick={handleDeleteBulk}
+                                        className="px-4 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow transition-all flex items-center gap-1.5">
+                                        <TrashIcon className="w-4 h-4" />
+                                        Hapus Masal ({selectedPayrollIds.length})
                                     </button>
                                 </div>
                             )}

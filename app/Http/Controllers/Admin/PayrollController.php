@@ -334,6 +334,31 @@ class PayrollController extends Controller
     }
 
     /**
+     * Delete multiple payroll drafts (bulk action).
+     */
+    public function destroyBulk(Request $request)
+    {
+        $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'exists:payrolls,id',
+        ]);
+
+        $payrolls = Payroll::whereIn('id', $request->ids)->where('status', 'draft')->get();
+        
+        if ($payrolls->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada draf gaji terpilih yang dapat dihapus.');
+        }
+
+        $count = 0;
+        foreach ($payrolls as $p) {
+            $p->delete();
+            $count++;
+        }
+
+        return redirect()->back()->with('success', "{$count} draf gaji terpilih berhasil dihapus.");
+    }
+
+    /**
      * Delete payroll draft.
      */
     public function destroy(Payroll $payroll)
