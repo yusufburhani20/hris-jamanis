@@ -82,7 +82,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'nip' => 'nullable|string|max:50',
@@ -102,8 +102,15 @@ class UserController extends Controller
                 }
             ],
             'basic_salary' => 'nullable|numeric|min:0',
-            'avatar' => 'nullable|image|max:2048',
-        ]);
+        ];
+
+        if ($request->hasFile('avatar')) {
+            $rules['avatar'] = 'nullable|image|max:2048';
+        } else {
+            $rules['avatar'] = 'nullable|string';
+        }
+
+        $request->validate($rules);
 
         $updateData = [
             'name' => $request->name,

@@ -156,9 +156,11 @@ class PayrollController extends Controller
             'bonus'                   => 'required|numeric|min:0',
             // Lembur (override)
             'overtime_pay'            => 'required|numeric|min:0',
-            // Potongan manual
+            // Potongan manual/editable
             'potongan_agnia_care'     => 'required|numeric|min:0',
+            'potongan_biaya_konsumsi' => 'required|numeric|min:0',
             'potongan_bpjs'           => 'required|numeric|min:0',
+            'potongan_kehadiran'      => 'required|numeric|min:0',
             'potongan_kasbon'         => 'required|numeric|min:0',
         ]);
 
@@ -170,9 +172,9 @@ class PayrollController extends Controller
         $bonus                = floatval($request->bonus);
         $overtimePay          = floatval($request->overtime_pay);
         $potonganAgniaCare    = floatval($request->potongan_agnia_care);
-        $potonganBiayaKons    = floatval($payroll->potongan_biaya_konsumsi);
+        $potonganBiayaKons    = floatval($request->potongan_biaya_konsumsi);
         $potonganBpjs         = floatval($request->potongan_bpjs);
-        $potonganKehadiran    = floatval($payroll->potongan_kehadiran);
+        $potonganKehadiran    = floatval($request->potongan_kehadiran);
         $potonganKasbon       = floatval($request->potongan_kasbon);
 
         $allowances = $tunjJabatan + $tunjMasaKerja + $tunjKesehatan + $tunjKonsumsi + $bonus;
@@ -180,17 +182,19 @@ class PayrollController extends Controller
         $netSalary  = max(0, $basicSalary + $allowances + $overtimePay - $deductions);
 
         $payroll->update([
-            'tunjangan_jabatan'    => $tunjJabatan,
-            'tunjangan_masa_kerja' => $tunjMasaKerja,
-            'tunjangan_kesehatan'  => $tunjKesehatan,
-            'bonus'                => $bonus,
-            'allowances'           => $allowances,
-            'overtime_pay'         => $overtimePay,
-            'potongan_agnia_care'  => $potonganAgniaCare,
-            'potongan_bpjs'        => $potonganBpjs,
-            'potongan_kasbon'      => $potonganKasbon,
-            'deductions'           => $deductions,
-            'net_salary'           => $netSalary,
+            'tunjangan_jabatan'       => $tunjJabatan,
+            'tunjangan_masa_kerja'    => $tunjMasaKerja,
+            'tunjangan_kesehatan'     => $tunjKesehatan,
+            'bonus'                   => $bonus,
+            'allowances'              => $allowances,
+            'overtime_pay'            => $overtimePay,
+            'potongan_agnia_care'     => $potonganAgniaCare,
+            'potongan_biaya_konsumsi' => $potonganBiayaKons,
+            'potongan_bpjs'           => $potonganBpjs,
+            'potongan_kehadiran'      => $potonganKehadiran,
+            'potongan_kasbon'         => $potonganKasbon,
+            'deductions'              => $deductions,
+            'net_salary'              => $netSalary,
         ]);
 
         return redirect()->back()->with('success', 'Draf gaji berhasil diperbarui secara manual.');

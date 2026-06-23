@@ -16,7 +16,7 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
@@ -30,7 +30,14 @@ class ProfileUpdateRequest extends FormRequest
             'telegram_id' => ['nullable', 'string', 'max:100'],
             'nip' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string', 'max:500'],
-            'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ];
+
+        if ($this->hasFile('avatar')) {
+            $rules['avatar'] = ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'];
+        } else {
+            $rules['avatar'] = ['nullable', 'string'];
+        }
+
+        return $rules;
     }
 }

@@ -38,6 +38,8 @@ interface Payroll {
     user: User;
     start_date: string | null;
     end_date: string | null;
+    absent_days?: number;
+    late_hours?: string;
 }
 
 interface PayrollSettings {
@@ -108,6 +110,8 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
         potongan_bpjs: '',
         potongan_kasbon: '',
         potongan_agnia_care: '',
+        potongan_kehadiran: '',
+        potongan_biaya_konsumsi: '',
     });
 
     const handleFilter = (e: React.FormEvent) => {
@@ -139,6 +143,8 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
             potongan_bpjs: String(Math.round(parseFloat(payroll.potongan_bpjs || '0'))),
             potongan_kasbon: String(Math.round(parseFloat(payroll.potongan_kasbon || '0'))),
             potongan_agnia_care: String(Math.round(parseFloat(payroll.potongan_agnia_care || '0'))),
+            potongan_kehadiran: String(Math.round(parseFloat(payroll.potongan_kehadiran || '0'))),
+            potongan_biaya_konsumsi: String(Math.round(parseFloat(payroll.potongan_biaya_konsumsi || '0'))),
         });
         setIsEditModalOpen(true);
     };
@@ -522,9 +528,21 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                                 <div className="text-rose-600 font-mono text-xs font-bold">-{formatRupiah(payroll.deductions)}</div>
                                                 <div className="text-[10px] text-slate-400 space-y-0.5 mt-0.5">
                                                     {parseFloat(payroll.potongan_agnia_care) > 0 && <div>Agnia Care: {formatRupiah(payroll.potongan_agnia_care)}</div>}
-                                                    {parseFloat(payroll.potongan_biaya_konsumsi) > 0 && <div>Biaya Kons: {formatRupiah(payroll.potongan_biaya_konsumsi)}</div>}
+                                                    {parseFloat(payroll.potongan_biaya_konsumsi) > 0 && (
+                                                        <div>
+                                                            Biaya Kons: {formatRupiah(payroll.potongan_biaya_konsumsi)}
+                                                            {payroll.absent_days !== undefined && payroll.absent_days > 0 && ` (${payroll.absent_days} hari)`}
+                                                        </div>
+                                                    )}
                                                     {parseFloat(payroll.potongan_bpjs) > 0 && <div>BPJS: {formatRupiah(payroll.potongan_bpjs)}</div>}
-                                                    {parseFloat(payroll.potongan_kehadiran) > 0 && <div>Kehadiran: {formatRupiah(payroll.potongan_kehadiran)}</div>}
+                                                    {parseFloat(payroll.potongan_kehadiran) > 0 && (
+                                                        <div>
+                                                            Kehadiran: {formatRupiah(payroll.potongan_kehadiran)}
+                                                            {((payroll.absent_days && payroll.absent_days > 0) || (payroll.late_hours && parseFloat(payroll.late_hours) > 0)) && (
+                                                                ` (${payroll.absent_days || 0} hr, ${parseFloat(payroll.late_hours || '0')} jam)`
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     {parseFloat(payroll.potongan_kasbon) > 0 && <div>Kasbon: {formatRupiah(payroll.potongan_kasbon)}</div>}
                                                 </div>
                                             </td>
@@ -644,17 +662,42 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                         </div>
                                     </div>
 
-                                    {/* Info auto-calculated */}
-                                    <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-xl text-[10px] text-rose-600 dark:text-rose-400 space-y-1">
-                                        <p className="font-bold">🔒 Dihitung Otomatis (tidak dapat diubah di sini):</p>
-                                        <p>Potongan Kehadiran: {formatRupiah(editingPayroll.potongan_kehadiran)}</p>
-                                        <p>Biaya Konsumsi: {formatRupiah(editingPayroll.potongan_biaya_konsumsi)}</p>
-                                    </div>
-
-                                    {/* POTONGAN MANUAL */}
+                                    {/* POTONGAN */}
                                     <div>
-                                        <h4 className="text-xs font-extrabold text-rose-600 uppercase tracking-wider mb-3">🔴 Potongan Manual</h4>
+                                        <h4 className="text-xs font-extrabold text-rose-600 uppercase tracking-wider mb-3">🔴 Potongan Gaji</h4>
                                         <div className="space-y-3">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                                                    Potongan Kehadiran (Mangkir + Terlambat) (Rp)
+                                                </label>
+                                                <input type="text"
+                                                    value={formatNumberInput(editData.potongan_kehadiran)}
+                                                    onChange={e => setEditData('potongan_kehadiran', parseNumberInput(e.target.value))}
+                                                    required className="w-full rounded-xl border-rose-300 dark:border-rose-900 dark:bg-gray-900 dark:text-white text-xs py-2.5 font-mono"
+                                                    placeholder="0"
+                                                />
+                                                {editingPayroll.absent_days !== undefined && (
+                                                    <p className="text-[10px] text-slate-400 mt-1">
+                                                        Kalkulasi sistem: {editingPayroll.absent_days} hari mangkir, {parseFloat(editingPayroll.late_hours || '0')} jam terlambat.
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                                                    Biaya Konsumsi (Rp)
+                                                </label>
+                                                <input type="text"
+                                                    value={formatNumberInput(editData.potongan_biaya_konsumsi)}
+                                                    onChange={e => setEditData('potongan_biaya_konsumsi', parseNumberInput(e.target.value))}
+                                                    required className="w-full rounded-xl border-rose-300 dark:border-rose-900 dark:bg-gray-900 dark:text-white text-xs py-2.5 font-mono"
+                                                    placeholder="0"
+                                                />
+                                                {editingPayroll.absent_days !== undefined && (
+                                                    <p className="text-[10px] text-slate-400 mt-1">
+                                                        Kalkulasi sistem: {editingPayroll.absent_days} hari mangkir × {formatRupiah(payrollSettings.payroll_biaya_konsumsi_per_hari)}/hari.
+                                                    </p>
+                                                )}
+                                            </div>
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Agnia Care / Zakat (Rp)</label>
                                                 <input type="text"
