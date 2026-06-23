@@ -166,3 +166,8 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+Route::get('/debug-payrolls', function() {
+    return \App\Models\Payroll::select('id', 'user_id', 'overtime_pay', 'overtime_hours', 'absent_days', 'late_hours')->get();
+});
+
