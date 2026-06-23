@@ -72,7 +72,7 @@ class WebPushService
     /**
      * Send to a collection of subscriptions.
      */
-    private function dispatch($subscriptions, string $title, string $body, array $data = []): void
+    public function dispatch($subscriptions, string $title, string $body, array $data = []): void
     {
         if ($subscriptions->isEmpty()) {
             return;

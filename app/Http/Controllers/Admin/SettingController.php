@@ -12,7 +12,37 @@ class SettingController extends Controller
 {
     public function index()
     {
+        $pwa_devices_stats = [
+            'total' => \App\Models\PushSubscription::count(),
+            'staff' => \App\Models\PushSubscription::whereHas('user', function($q) {
+                $q->where('role', 'like', '%employee%')->orWhere('role', 'like', '%admin%');
+            })->count(),
+            'driver' => \App\Models\PushSubscription::whereHas('user', function($q) {
+                $q->where('role', 'like', '%driver%');
+            })->count(),
+        ];
+
+        $pwa_devices_list = \App\Models\PushSubscription::with('user')
+            ->latest('updated_at')
+            ->get()
+            ->groupBy('user_id')
+            ->map(function ($subs) {
+                $first = $subs->first();
+                $user = $first->user;
+                return [
+                    'user_id' => $user?->id,
+                    'name' => $user?->name ?? 'User Tidak Dikenal',
+                    'email' => $user?->email ?? '-',
+                    'phone' => $user?->phone ?? '-',
+                    'role' => $user?->role ?? '',
+                    'count' => $subs->count(),
+                    'last_active' => $first->updated_at ? $first->updated_at->diffForHumans() : '-',
+                ];
+            })->values();
+
         return Inertia::render('Admin/Settings/Index', [
+            'pwa_devices_stats' => $pwa_devices_stats,
+            'pwa_devices_list' => $pwa_devices_list,
             'settings' => [
                 'school_name'              => Setting::get('school_name', 'SALIRA ACADEMY'),
                 'school_address'           => Setting::get('school_address', ''),
@@ -202,27 +232,48 @@ class SettingController extends Controller
             return response()->json(['status' => 'error', 'message' => 'User tidak terotentikasi.'], 401);
         }
 
-        $subscriptionsCount = \App\Models\PushSubscription::count();
+        // Validate custom input
+        $request->validate([
+            'title'      => 'required|string|max:255',
+            'body'       => 'required|string|max:1000',
+            'target'     => 'nullable|string|in:all,staff,driver',
+            'action_url' => 'nullable|string|max:255',
+        ]);
+
+        $target = $request->input('target', 'all');
+        $actionUrl = $request->input('action_url', '/dashboard');
+
+        $query = \App\Models\PushSubscription::query();
+
+        if ($target === 'staff') {
+            $query->whereHas('user', function($q) {
+                $q->where('role', 'like', '%employee%')->orWhere('role', 'like', '%admin%');
+            });
+        } elseif ($target === 'driver') {
+            $query->whereHas('user', function($q) {
+                $q->where('role', 'like', '%driver%');
+            });
+        }
+
+        $subscriptions = $query->get();
+        $subscriptionsCount = $subscriptions->count();
+
         if ($subscriptionsCount === 0) {
             return response()->json([
                 'status' => 'error', 
-                'message' => 'Belum ada perangkat yang terdaftar di sistem untuk menerima push notifikasi.'
+                'message' => 'Tidak ada perangkat terdaftar yang cocok dengan target penerima yang dipilih.'
             ]);
         }
 
-        // Validate custom input
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'body'  => 'required|string|max:1000',
-        ]);
-
         try {
-            app(\App\Services\WebPushService::class)->sendToAll(
+            app(\App\Services\WebPushService::class)->dispatch(
+                $subscriptions,
                 $request->input('title'),
                 $request->input('body'),
-                ['url' => '/dashboard']
+                ['url' => $actionUrl]
             );
-            return response()->json(['status' => 'success', 'message' => 'Push notifikasi berhasil disiarkan ke semua perangkat (' . $subscriptionsCount . ' perangkat).']);
+            $targetLabel = $target === 'staff' ? 'Staf & Karyawan' : ($target === 'driver' ? 'Sopir / Driver' : 'Semua Perangkat');
+            return response()->json(['status' => 'success', 'message' => 'Push notifikasi berhasil disiarkan ke ' . $targetLabel . ' (' . $subscriptionsCount . ' perangkat).']);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => 'Gagal mengirim notifikasi: ' . $e->getMessage()], 500);
         }

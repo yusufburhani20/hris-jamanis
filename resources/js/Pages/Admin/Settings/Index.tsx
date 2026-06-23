@@ -42,7 +42,26 @@ interface Settings {
     early_checkin_tolerance_minutes: number;
 }
 
-export default function SettingsIndex({ auth, settings }: PageProps<{ settings: Settings }>) {
+type SettingsIndexProps = {
+    settings: Settings;
+    pwa_devices_stats: { total: number; staff: number; driver: number };
+    pwa_devices_list: Array<{
+        user_id: number;
+        name: string;
+        email: string;
+        phone: string;
+        role: string;
+        count: number;
+        last_active: string;
+    }>;
+};
+
+export default function SettingsIndex({ 
+    auth, 
+    settings,
+    pwa_devices_stats,
+    pwa_devices_list
+}: PageProps<SettingsIndexProps>) {
     const [activeTab, setActiveTab] = useState<'general' | 'system' | 'notifications'>('general');
     const [deployLogs, setDeployLogs] = useState<string>('Belum ada log pembaruan.');
     const [isDeploying, setIsDeploying] = useState<boolean>(false);
@@ -52,6 +71,8 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
     // Broadcast notification state
     const [broadcastTitle, setBroadcastTitle] = useState('📢 Pengumuman HRIS');
     const [broadcastBody, setBroadcastBody] = useState('');
+    const [broadcastTarget, setBroadcastTarget] = useState<'all' | 'staff' | 'driver'>('all');
+    const [broadcastActionUrl, setBroadcastActionUrl] = useState('/dashboard');
 
     const sendTestPush = async () => {
         if (!broadcastTitle.trim()) {
@@ -72,7 +93,9 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
                 },
                 body: JSON.stringify({
                     title: broadcastTitle,
-                    body: broadcastBody
+                    body: broadcastBody,
+                    target: broadcastTarget,
+                    action_url: broadcastActionUrl
                 })
             });
             const resData = await res.json();
@@ -817,45 +840,205 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
                             </div>
 
                             {/* Broadcast Push Notification */}
-                            <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-                                <div>
+                            <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6">
+                                <div className="border-b border-slate-200 dark:border-slate-700 pb-4">
                                     <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2">
-                                        <BellIcon className="w-4 h-4 text-emerald-500" />
-                                        <span>📢 Siaran Push Notifikasi Massal (Broadcast)</span>
+                                        <BellIcon className="w-5 h-5 text-indigo-500" />
+                                        <span>📢 Broadcast Push Notifikasi Massal</span>
                                     </h5>
-                                    <p className="text-[11px] text-slate-400 mt-1">Kirim push notifikasi khusus (seperti quote motivasi, pengumuman penting, info rapat, dll.) ke seluruh perangkat aktif karyawan & staf yang terdaftar.</p>
+                                    <p className="text-[11px] text-slate-400 mt-1">Kirim pesan instan langsung ke perangkat browser seluruh pengguna yang telah mengaktifkan notifikasi push.</p>
                                 </div>
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">Judul Notifikasi</label>
-                                        <input 
-                                            type="text" 
-                                            value={broadcastTitle} 
-                                            onChange={e => setBroadcastTitle(e.target.value)} 
-                                            placeholder="Contoh: Quote Hari Ini / Pengumuman Penting"
-                                            className="block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2 px-3" 
-                                        />
+
+                                {/* Stats Cards */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                                        <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">TOTAL PERANGKAT TERDAFTAR</p>
+                                        <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{pwa_devices_stats.total} Device</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Menggunakan push notifikasi web</p>
                                     </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">Isi Pesan Notifikasi</label>
-                                        <textarea 
-                                            value={broadcastBody} 
-                                            onChange={e => setBroadcastBody(e.target.value)} 
-                                            placeholder="Tulis quote motivasi, info rapat, atau pengumuman lainnya di sini..."
-                                            rows={3}
-                                            className="block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2 px-3" 
-                                        />
+                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                                        <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">PERANGKAT GURU & PEGAWAI</p>
+                                        <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{pwa_devices_stats.staff} Device</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Akun staf & karyawan terdaftar</p>
+                                    </div>
+                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                                        <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">PERANGKAT SOPIR / DRIVER</p>
+                                        <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">{pwa_devices_stats.driver} Device</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Akun sopir & driver terdaftar</p>
                                     </div>
                                 </div>
-                                <div className="flex justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={sendTestPush}
-                                        disabled={testingPush}
-                                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/10 disabled:opacity-50 flex items-center space-x-2"
-                                    >
-                                        <span>{testingPush ? 'Menyiarkan...' : 'Kirim Siaran Notifikasi'}</span>
-                                    </button>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    {/* Form Fields (2 columns) */}
+                                    <div className="lg:col-span-2 space-y-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider mb-1">Target Penerima</label>
+                                            <select
+                                                value={broadcastTarget}
+                                                onChange={e => setBroadcastTarget(e.target.value as any)}
+                                                className="block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2 px-3"
+                                            >
+                                                <option value="all">Semua Perangkat (Staf, Karyawan, & Sopir)</option>
+                                                <option value="staff">Staf & Karyawan</option>
+                                                <option value="driver">Sopir / Driver</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider mb-1">Judul Notifikasi</label>
+                                            <input 
+                                                type="text" 
+                                                value={broadcastTitle} 
+                                                onChange={e => setBroadcastTitle(e.target.value)} 
+                                                placeholder="Contoh: Quote Hari Ini / Pengumuman Penting"
+                                                className="block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2.5 px-3" 
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider mb-1">Isi Pesan (Body)</label>
+                                            <textarea 
+                                                value={broadcastBody} 
+                                                onChange={e => setBroadcastBody(e.target.value)} 
+                                                placeholder="Tulis detail pengumuman yang ingin disampaikan..."
+                                                rows={4}
+                                                className="block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2.5 px-3" 
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider mb-1">Tautan Tindakan (Action URL)</label>
+                                            <input 
+                                                type="text" 
+                                                value={broadcastActionUrl} 
+                                                onChange={e => setBroadcastActionUrl(e.target.value)} 
+                                                placeholder="Contoh: /dashboard atau /payrolls"
+                                                className="block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2.5 px-3" 
+                                            />
+                                        </div>
+                                        <div className="flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={sendTestPush}
+                                                disabled={testingPush}
+                                                className="bg-[#1b75a9] hover:bg-[#155a82] text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md flex items-center space-x-2"
+                                            >
+                                                <BellIcon className="w-4 h-4" />
+                                                <span>{testingPush ? 'Menyiarkan...' : 'Kirim Broadcast'}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Quick Templates (1 column) */}
+                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-start">
+                                        <p className="text-[10px] font-black text-slate-650 dark:text-slate-350 uppercase tracking-wider mb-1">QUICK TEMPLATE</p>
+                                        <p className="text-[11px] text-slate-400 mb-3">Gunakan template cepat ini untuk mempermudah pengisian formulir broadcast.</p>
+                                        <div className="space-y-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setBroadcastTitle('🌴 Pengumuman Hari Libur Bersama');
+                                                    setBroadcastBody('Halo rekan-rekan, diinformasikan bahwa kantor akan libur bersama. Selamat berlibur dan berkumpul dengan keluarga!');
+                                                    setBroadcastActionUrl('/dashboard');
+                                                }}
+                                                className="w-full text-left px-3 py-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg border border-slate-150 dark:border-slate-700 transition-all flex items-center gap-2"
+                                            >
+                                                <span>🌴 Libur Bersama</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setBroadcastTitle('🏫 Rapat Koordinasi Staf');
+                                                    setBroadcastBody('Undangan rapat koordinasi bulanan staf dan karyawan besok pagi pukul 09:00 WIB di ruang meeting.');
+                                                    setBroadcastActionUrl('/dashboard');
+                                                }}
+                                                className="w-full text-left px-3 py-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg border border-slate-150 dark:border-slate-700 transition-all flex items-center gap-2"
+                                            >
+                                                <span>🏫 Rapat Staf</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setBroadcastTitle('💳 Slip Gaji Bulanan Terbit');
+                                                    setBroadcastBody('Slip gaji Anda untuk periode bulan ini sudah selesai diproses dan telah terbit. Silakan cek detailnya di menu payroll.');
+                                                    setBroadcastActionUrl('/payrolls');
+                                                }}
+                                                className="w-full text-left px-3 py-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg border border-slate-150 dark:border-slate-700 transition-all flex items-center gap-2"
+                                            >
+                                                <span>💳 Slip Gaji Bulanan</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setBroadcastTitle('🔧 Pemeliharaan Sistem (Maintenance)');
+                                                    setBroadcastBody('Sistem HRIS akan dimaintenance malam ini pukul 23:00 - 01:00 WIB untuk peningkatan performa. Layanan mungkin akan terganggu sementara.');
+                                                    setBroadcastActionUrl('/dashboard');
+                                                }}
+                                                className="w-full text-left px-3 py-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg border border-slate-150 dark:border-slate-700 transition-all flex items-center gap-2"
+                                            >
+                                                <span>🔧 Maintenance Sistem</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Daftar Perangkat Terdaftar */}
+                            <div className="bg-white dark:bg-gray-800 border border-slate-100 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm space-y-4">
+                                <div className="p-4 border-b border-slate-100 dark:border-slate-700/60 flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                    <h5 className="font-extrabold text-slate-850 dark:text-slate-200 text-xs">📱 Daftar Perangkat Terdaftar ({pwa_devices_list.length} Pengguna)</h5>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-slate-150 dark:divide-slate-800 text-left">
+                                        <thead className="bg-slate-50 dark:bg-slate-900/60">
+                                            <tr>
+                                                <th className="px-6 py-3.5 text-[10px] font-black text-slate-450 uppercase tracking-wider">Nama</th>
+                                                <th className="px-6 py-3.5 text-[10px] font-black text-slate-450 uppercase tracking-wider">Tipe / Peran</th>
+                                                <th className="px-6 py-3.5 text-[10px] font-black text-slate-450 uppercase tracking-wider">Email / No. HP</th>
+                                                <th className="px-6 py-3.5 text-[10px] font-black text-slate-450 text-center uppercase tracking-wider">Jumlah Perangkat</th>
+                                                <th className="px-6 py-3.5 text-[10px] font-black text-slate-450 uppercase tracking-wider">Terakhir Aktif</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-slate-100 dark:divide-slate-850">
+                                            {pwa_devices_list.length > 0 ? (
+                                                pwa_devices_list.map((device, idx) => (
+                                                    <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 text-xs">
+                                                        <td className="px-6 py-4 whitespace-nowrap font-bold text-slate-800 dark:text-slate-200">
+                                                            {device.name}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            {device.role.split(',').map((r, rIdx) => {
+                                                                const roleName = r.trim() === 'admin' ? 'HR Admin' : (r.trim() === 'driver' ? 'Sopir / Driver' : 'Karyawan');
+                                                                const badgeColor = r.trim() === 'admin' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400' : (r.trim() === 'driver' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400');
+                                                                return (
+                                                                    <span key={rIdx} className={`px-2 py-0.5 rounded-full font-black uppercase mr-1 text-[9px] ${badgeColor}`}>
+                                                                        {roleName}
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400">
+                                                            <div className="font-medium">{device.email}</div>
+                                                            <div className="text-[10px] text-slate-450">{device.phone}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                                                {device.count} Device
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-[11px] text-slate-500 dark:text-slate-400">
+                                                            {device.last_active}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={5} className="px-6 py-8 text-center text-xs text-slate-450">
+                                                        Belum ada perangkat yang terdaftar di sistem.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 
