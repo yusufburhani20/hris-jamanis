@@ -14,6 +14,23 @@ class WebPushService
 
     public function __construct()
     {
+        // On Windows local development environments, OpenSSL key signing/generation
+        // requires the OPENSSL_CONF environment variable to point to a valid openssl.cnf file.
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' && !getenv('OPENSSL_CONF')) {
+            $phpDir = dirname(PHP_BINARY);
+            $possiblePaths = [
+                $phpDir . '\extras\ssl\openssl.cnf',
+                'C:\laragon\bin\php\\' . basename($phpDir) . '\extras\ssl\openssl.cnf',
+                'C:\laragon\bin\php\php-8.4.21-nts-Win32-vs17-x64\extras\ssl\openssl.cnf',
+            ];
+            foreach ($possiblePaths as $path) {
+                if (file_exists($path)) {
+                    putenv("OPENSSL_CONF=$path");
+                    break;
+                }
+            }
+        }
+
         $this->webPush = new WebPush([
             'VAPID' => [
                 'subject'    => config('app.url'),

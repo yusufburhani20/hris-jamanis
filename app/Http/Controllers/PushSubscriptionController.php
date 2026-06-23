@@ -29,6 +29,11 @@ class PushSubscriptionController extends Controller
             'authToken'  => 'nullable|string',
         ]);
 
+        // Safely clean up duplicate endpoint references associated with other users
+        PushSubscription::where('endpoint', $request->endpoint)
+            ->where('user_id', '!=', Auth::id())
+            ->delete();
+
         $existing = PushSubscription::where('user_id', Auth::id())
             ->where('endpoint', $request->endpoint)
             ->first();
