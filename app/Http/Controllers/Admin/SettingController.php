@@ -202,22 +202,21 @@ class SettingController extends Controller
             return response()->json(['status' => 'error', 'message' => 'User tidak terotentikasi.'], 401);
         }
 
-        $subscriptions = \App\Models\PushSubscription::where('user_id', $user->id)->get();
-        if ($subscriptions->isEmpty()) {
+        $subscriptionsCount = \App\Models\PushSubscription::count();
+        if ($subscriptionsCount === 0) {
             return response()->json([
                 'status' => 'error', 
-                'message' => 'Perangkat Anda belum terdaftar untuk menerima push notifikasi. Harap pastikan Anda membuka website menggunakan HTTPS, telah mengizinkan notifikasi di browser, dan mengaktifkan izin notifikasi pada sistem operasi HP Anda.'
+                'message' => 'Belum ada perangkat yang terdaftar di sistem untuk menerima push notifikasi.'
             ]);
         }
 
         try {
-            app(\App\Services\WebPushService::class)->sendToUser(
-                $user->id,
-                '🔔 Tes Push Notifikasi',
-                'Halo ' . $user->name . '! Ini adalah push notifikasi uji coba manual dari sistem HRIS Anda.',
-                ['url' => '/admin/settings']
+            app(\App\Services\WebPushService::class)->sendToAll(
+                '🔔 Tes Push Notifikasi Massal',
+                'Ini adalah push notifikasi uji coba manual ke semua perangkat aktif yang terdaftar di sistem HRIS Anda.',
+                ['url' => '/dashboard']
             );
-            return response()->json(['status' => 'success', 'message' => 'Notifikasi uji coba berhasil dikirim ke perangkat Anda.']);
+            return response()->json(['status' => 'success', 'message' => 'Notifikasi uji coba berhasil dikirim ke semua perangkat terdaftar (' . $subscriptionsCount . ' perangkat).']);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => 'Gagal mengirim notifikasi: ' . $e->getMessage()], 500);
         }
