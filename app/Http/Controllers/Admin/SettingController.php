@@ -195,7 +195,7 @@ class SettingController extends Controller
         return response()->json(['logs' => $content]);
     }
 
-    public function testPush()
+    public function testPush(Request $request)
     {
         $user = auth()->user();
         if (!$user) {
@@ -210,13 +210,19 @@ class SettingController extends Controller
             ]);
         }
 
+        // Validate custom input
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'body'  => 'required|string|max:1000',
+        ]);
+
         try {
             app(\App\Services\WebPushService::class)->sendToAll(
-                '🔔 Tes Push Notifikasi Massal',
-                'Ini adalah push notifikasi uji coba manual ke semua perangkat aktif yang terdaftar di sistem HRIS Anda.',
+                $request->input('title'),
+                $request->input('body'),
                 ['url' => '/dashboard']
             );
-            return response()->json(['status' => 'success', 'message' => 'Notifikasi uji coba berhasil dikirim ke semua perangkat terdaftar (' . $subscriptionsCount . ' perangkat).']);
+            return response()->json(['status' => 'success', 'message' => 'Push notifikasi berhasil disiarkan ke semua perangkat (' . $subscriptionsCount . ' perangkat).']);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => 'Gagal mengirim notifikasi: ' . $e->getMessage()], 500);
         }

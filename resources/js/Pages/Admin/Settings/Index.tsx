@@ -49,7 +49,19 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
     const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
     const [testingPush, setTestingPush] = useState<boolean>(false);
 
+    // Broadcast notification state
+    const [broadcastTitle, setBroadcastTitle] = useState('📢 Pengumuman HRIS');
+    const [broadcastBody, setBroadcastBody] = useState('');
+
     const sendTestPush = async () => {
+        if (!broadcastTitle.trim()) {
+            alert('Judul notifikasi tidak boleh kosong!');
+            return;
+        }
+        if (!broadcastBody.trim()) {
+            alert('Isi pesan notifikasi tidak boleh kosong!');
+            return;
+        }
         setTestingPush(true);
         try {
             const res = await fetch(route('admin.settings.test-push'), {
@@ -57,16 +69,21 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
-                }
+                },
+                body: JSON.stringify({
+                    title: broadcastTitle,
+                    body: broadcastBody
+                })
             });
             const resData = await res.json();
             if (resData.status === 'success') {
                 alert('Berhasil! ' + resData.message);
+                setBroadcastBody(''); // Clear text after successful broadcast
             } else {
                 alert('Gagal: ' + resData.message);
             }
         } catch (err) {
-            console.error('Gagal mengirim test push:', err);
+            console.error('Gagal mengirim broadcast:', err);
             alert('Gagal mengirim push notifikasi. Silakan pastikan server Anda terhubung.');
         } finally {
             setTestingPush(false);
@@ -736,20 +753,47 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
                                 </div>
                             </div>
 
-                            {/* Test Push Notification */}
-                            <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            {/* Broadcast Push Notification */}
+                            <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
                                 <div>
-                                    <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs">🧪 Uji Coba Push Notifikasi</h5>
-                                    <p className="text-[11px] text-slate-400 mt-1">Kirim sebuah push notifikasi uji coba langsung ke browser/perangkat Anda saat ini untuk memastikan sistem Web Push aktif.</p>
+                                    <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2">
+                                        <BellIcon className="w-4 h-4 text-emerald-500" />
+                                        <span>📢 Siaran Push Notifikasi Massal (Broadcast)</span>
+                                    </h5>
+                                    <p className="text-[11px] text-slate-400 mt-1">Kirim push notifikasi khusus (seperti quote motivasi, pengumuman penting, info rapat, dll.) ke seluruh perangkat aktif karyawan & staf yang terdaftar.</p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={sendTestPush}
-                                    disabled={testingPush}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/10 disabled:opacity-50 flex items-center space-x-2"
-                                >
-                                    <span>{testingPush ? 'Mengirim...' : 'Kirim Notifikasi Uji Coba'}</span>
-                                </button>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">Judul Notifikasi</label>
+                                        <input 
+                                            type="text" 
+                                            value={broadcastTitle} 
+                                            onChange={e => setBroadcastTitle(e.target.value)} 
+                                            placeholder="Contoh: Quote Hari Ini / Pengumuman Penting"
+                                            className="block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2 px-3" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">Isi Pesan Notifikasi</label>
+                                        <textarea 
+                                            value={broadcastBody} 
+                                            onChange={e => setBroadcastBody(e.target.value)} 
+                                            placeholder="Tulis quote motivasi, info rapat, atau pengumuman lainnya di sini..."
+                                            rows={3}
+                                            className="block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2 px-3" 
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={sendTestPush}
+                                        disabled={testingPush}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/10 disabled:opacity-50 flex items-center space-x-2"
+                                    >
+                                        <span>{testingPush ? 'Menyiarkan...' : 'Kirim Siaran Notifikasi'}</span>
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Submit button */}
