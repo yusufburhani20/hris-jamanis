@@ -90,6 +90,69 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
         }
     };
 
+    const [restoreFile, setRestoreFile] = useState<File | null>(null);
+    const [restoreProcessing, setRestoreProcessing] = useState<boolean>(false);
+    const [resetConfirm, setResetConfirm] = useState<string>('');
+    const [resetProcessing, setResetProcessing] = useState<boolean>(false);
+
+    const handleRestoreSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!restoreFile) {
+            alert('Silakan pilih file ZIP backup terlebih dahulu.');
+            return;
+        }
+        if (!confirm('Apakah Anda yakin ingin merestore aplikasi? Semua data dan file saat ini akan ditimpa dengan data dari file backup!')) {
+            return;
+        }
+
+        setRestoreProcessing(true);
+        const formData = new FormData();
+        formData.append('backup_file', restoreFile);
+
+        router.post(route('admin.settings.restore'), formData, {
+            forceFormData: true,
+            onSuccess: () => {
+                setRestoreFile(null);
+                setRestoreProcessing(false);
+                alert('Restorasi berhasil diselesaikan!');
+            },
+            onError: (errs) => {
+                setRestoreProcessing(false);
+                alert('Gagal merestore: ' + (errs.backup_file || 'Terjadi kesalahan sistem.'));
+            },
+            onFinish: () => {
+                setRestoreProcessing(false);
+            }
+        });
+    };
+
+    const handleResetSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (resetConfirm !== 'KOSONGKAN') {
+            alert('Kata kunci konfirmasi salah. Harap ketik "KOSONGKAN" dengan huruf besar.');
+            return;
+        }
+        if (!confirm('PERINGATAN KERAS! Operasi ini akan menghapus semua data kehadiran, payroll, cuti, lembur, dan seluruh data karyawan lain secara permanen! Hanya akun admin@hris.com dan pengaturan utama yang akan dipertahankan. Apakah Anda benar-benar yakin?')) {
+            return;
+        }
+
+        setResetProcessing(true);
+        router.post(route('admin.settings.reset'), {}, {
+            onSuccess: () => {
+                setResetConfirm('');
+                setResetProcessing(false);
+                alert('Aplikasi berhasil dikosongkan!');
+            },
+            onError: () => {
+                setResetProcessing(false);
+                alert('Gagal mengosongkan aplikasi.');
+            },
+            onFinish: () => {
+                setResetProcessing(false);
+            }
+        });
+    };
+
     const { data, setData, errors, processing } = useForm({
         school_name: settings.school_name || 'SALIRA ACADEMY',
         school_address: settings.school_address || '',
@@ -832,8 +895,132 @@ export default function SettingsIndex({ auth, settings }: PageProps<{ settings: 
 
                             <div className="space-y-2">
                                 <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Log Aktivitas Pembaruan Terakhir:</h4>
-                                <div className="bg-slate-950 text-slate-100 p-5 rounded-2xl font-mono text-[11px] leading-relaxed overflow-x-auto border border-slate-800 shadow-inner max-h-[450px] custom-scrollbar whitespace-pre-wrap">
+                                <div className="bg-slate-950 text-slate-100 p-5 rounded-2xl font-mono text-[11px] leading-relaxed overflow-x-auto border border-slate-800 shadow-inner max-h-[180px] custom-scrollbar whitespace-pre-wrap">
                                     {deployLogs}
+                                </div>
+                            </div>
+
+                            {/* Database Maintenance Section */}
+                            <div className="border-t dark:border-slate-700 pt-6 space-y-4">
+                                <div>
+                                    <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                                        </svg>
+                                        <span>Pemeliharaan & Reset Database Aplikasi</span>
+                                    </h3>
+                                    <p className="text-xs text-slate-400 mt-1">Kelola cadangan database, restore data, atau kosongkan aplikasi untuk memulai dari awal.</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {/* 1. Backup Card */}
+                                    <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="space-y-2">
+                                            <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2">
+                                                <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                </svg>
+                                                <span>Backup Aplikasi (ZIP)</span>
+                                            </h4>
+                                            <p className="text-[11px] text-slate-400 leading-relaxed">
+                                                Mengunduh seluruh skema & data database beserta semua file media yang diunggah (foto absen, bukti logistik, dll.) dalam bentuk berkas <strong>.zip</strong>.
+                                            </p>
+                                        </div>
+                                        <a
+                                            href={route('admin.settings.backup')}
+                                            className="block w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
+                                        >
+                                            Unduh Backup Lengkap (.zip)
+                                        </a>
+                                    </div>
+
+                                    {/* 2. Restore Card */}
+                                    <form onSubmit={handleRestoreSubmit} className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="space-y-2">
+                                            <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2">
+                                                <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                </svg>
+                                                <span>Restore Aplikasi (ZIP)</span>
+                                            </h4>
+                                            <p className="text-[11px] text-slate-400 leading-relaxed">
+                                                Unggah berkas ZIP cadangan Anda untuk memulihkan database dan file media di server. 
+                                                <span className="text-amber-500 font-bold block mt-1">⚠️ Seluruh data saat ini akan ditimpa!</span>
+                                            </p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <input
+                                                type="file"
+                                                accept=".zip"
+                                                onChange={e => setRestoreFile(e.target.files ? e.target.files[0] : null)}
+                                                className="block w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300 dark:file:bg-slate-800 dark:file:text-slate-300 cursor-pointer"
+                                                required
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={restoreProcessing || !restoreFile}
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/10 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                                            >
+                                                {restoreProcessing ? (
+                                                    <>
+                                                        <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                        </svg>
+                                                        <span>Sedang Memulihkan...</span>
+                                                    </>
+                                                ) : (
+                                                    <span>Unggah & Restore</span>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </form>
+
+                                    {/* 3. Reset Card */}
+                                    <form onSubmit={handleResetSubmit} className="bg-rose-50/50 dark:bg-rose-950/10 p-5 rounded-2xl border border-rose-100 dark:border-rose-900/40 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="space-y-2">
+                                            <h4 className="font-bold text-rose-700 dark:text-rose-400 text-xs flex items-center gap-2">
+                                                <svg className="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                <span>Kosongkan Aplikasi (Reset)</span>
+                                            </h4>
+                                            <p className="text-[11px] text-rose-600/80 dark:text-rose-400/80 leading-relaxed">
+                                                Menghapus semua data transaksional (absen, payroll, cuti, lembur, file media, karyawan). 
+                                                <strong> admin@hris.com, settings, geofence & cabang utama dipertahankan.</strong>
+                                            </p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="space-y-1">
+                                                <label className="block text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Ketik "KOSONGKAN" untuk konfirmasi:</label>
+                                                <input
+                                                    type="text"
+                                                    value={resetConfirm}
+                                                    onChange={e => setResetConfirm(e.target.value)}
+                                                    placeholder="Tulis KOSONGKAN"
+                                                    className="block w-full rounded-lg border-rose-200 dark:border-rose-900/60 focus:border-rose-500 focus:ring-rose-200 dark:bg-gray-900 dark:text-white text-[10px] py-1.5 px-2.5"
+                                                    required
+                                                />
+                                            </div>
+                                            <button
+                                                type="submit"
+                                                disabled={resetProcessing || resetConfirm !== 'KOSONGKAN'}
+                                                className="w-full bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-600/10 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                                            >
+                                                {resetProcessing ? (
+                                                    <>
+                                                        <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                        </svg>
+                                                        <span>Sedang Menghapus...</span>
+                                                    </>
+                                                ) : (
+                                                    <span>Kosongkan Semua Data</span>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         </div>

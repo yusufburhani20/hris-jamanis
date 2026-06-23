@@ -227,4 +227,283 @@ class SettingController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Gagal mengirim notifikasi: ' . $e->getMessage()], 500);
         }
     }
+
+    public function backupDb()
+    {
+        try {
+            $pdo = \DB::connection()->getPdo();
+            $tables = [];
+            $result = $pdo->query('SHOW TABLES');
+            while ($row = $result->fetch(\PDO::FETCH_NUM)) {
+                $tables[] = $row[0];
+            }
+
+            $sql = "-- HRIS Enterprise Database Backup\n";
+            $sql .= "-- Generated at: " . now()->toDateTimeString() . "\n\n";
+            $sql .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+
+            foreach ($tables as $table) {
+                // Get table structure
+                $stmt = $pdo->query("SHOW CREATE TABLE `{$table}`");
+                $createRow = $stmt->fetch(\PDO::FETCH_NUM);
+                $sql .= "DROP TABLE IF EXISTS `{$table}`;\n";
+                $sql .= $createRow[1] . ";\n\n";
+
+                // Get table data
+                $dataStmt = $pdo->query("SELECT * FROM `{$table}`");
+                $rows = $dataStmt->fetchAll(\PDO::FETCH_ASSOC);
+
+                if (count($rows) > 0) {
+                    $sql .= "-- Dumping data for table `{$table}`\n";
+                    foreach ($rows as $row) {
+                        $keys = array_map(function($key) {
+                            return "`{$key}`";
+                        }, array_keys($row));
+                        
+                        $values = array_map(function($value) use ($pdo) {
+                            if (is_null($value)) {
+                                return 'NULL';
+                            }
+                            return $pdo->quote($value);
+                        }, array_values($row));
+
+                        $sql .= "INSERT INTO `{$table}` (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $values) . ");\n";
+                    }
+                    $sql .= "\n";
+                }
+            }
+
+            $sql .= "SET FOREIGN_KEY_CHECKS = 1;\n";
+
+            // Create temporary zip file
+            $zip = new \ZipArchive();
+            $zipFileName = tempnam(sys_get_temp_dir(), 'hris_backup_') . '.zip';
+            
+            if ($zip->open($zipFileName, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                return back()->with('error', 'Gagal membuat file ZIP di server.');
+            }
+
+            // Add database.sql file
+            $zip->addFromString('database.sql', $sql);
+
+            // Add files from storage/app/public/ recursively
+            $storagePath = storage_path('app/public');
+            if (file_exists($storagePath)) {
+                $files = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($storagePath),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+
+                foreach ($files as $name => $file) {
+                    if (!$file->isDir()) {
+                        $filePath = $file->getRealPath();
+                        // Relative path inside zip
+                        $relativePath = 'storage/' . substr($filePath, strlen($storagePath) + 1);
+                        // Standardize slash to forward slash
+                        $relativePath = str_replace('\\', '/', $relativePath);
+                        $zip->addFile($filePath, $relativePath);
+                    }
+                }
+            }
+
+            $zip->close();
+
+            $downloadName = 'hris_backup_' . now()->format('Y-m-d_His') . '.zip';
+
+            return response()->download($zipFileName, $downloadName)->deleteFileAfterSend(true);
+                
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal membackup aplikasi: ' . $e->getMessage());
+        }
+    }
+
+    public function restoreDb(Request $request)
+    {
+        $request->validate([
+            'backup_file' => 'required|file|mimes:zip|max:102400', // max 100MB
+        ]);
+
+        try {
+            $file = $request->file('backup_file');
+            $zip = new \ZipArchive();
+            
+            if ($zip->open($file->getRealPath()) !== true) {
+                return back()->with('error', 'Gagal membuka file ZIP.');
+            }
+
+            // 1. Get database.sql content and restore DB
+            $sqlContent = $zip->getFromName('database.sql');
+            if (!$sqlContent) {
+                $zip->close();
+                return back()->with('error', 'File database.sql tidak ditemukan di dalam arsip ZIP.');
+            }
+
+            // Execute SQL statements inside transaction with foreign key check disabled
+            try {
+                \DB::transaction(function() use ($sqlContent) {
+                    \DB::unprepared('SET FOREIGN_KEY_CHECKS = 0;');
+                    \DB::unprepared($sqlContent);
+                    \DB::unprepared('SET FOREIGN_KEY_CHECKS = 1;');
+                });
+            } catch (\Exception $dbEx) {
+                $zip->close();
+                return back()->with('error', 'Gagal merestore database: ' . $dbEx->getMessage());
+            }
+
+            // 2. Restore storage files
+            $storagePath = storage_path('app/public');
+            
+            // Loop files inside ZIP
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $stat = $zip->statIndex($i);
+                $zipFilePath = $stat['name'];
+
+                // Check if file is inside 'storage/' directory
+                if (strpos($zipFilePath, 'storage/') === 0) {
+                    // Extract file path
+                    $relativeFilePath = substr($zipFilePath, strlen('storage/'));
+                    $destinationPath = $storagePath . '/' . $relativeFilePath;
+
+                    // Ensure target directory exists
+                    $dir = dirname($destinationPath);
+                    if (!file_exists($dir)) {
+                        mkdir($dir, 0755, true);
+                    }
+
+                    // Extract file content and save
+                    $content = $zip->getFromIndex($i);
+                    file_put_contents($destinationPath, $content);
+                }
+            }
+
+            $zip->close();
+
+            return back()->with('success', 'Aplikasi berhasil di-restore! Database dan file media telah dipulihkan.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal merestore aplikasi: ' . $e->getMessage());
+        }
+    }
+
+    public function resetApp()
+    {
+        try {
+            \DB::transaction(function() {
+                // Disable foreign key checks
+                \DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
+
+                // 1. Truncate transactional tables
+                \App\Models\Attendance::truncate();
+                \App\Models\Payroll::truncate();
+                \App\Models\Leave::truncate();
+                \App\Models\OvertimeRequest::truncate();
+                \App\Models\ShiftExchangeRequest::truncate();
+                \App\Models\UserShift::truncate();
+                \App\Models\Shift::truncate();
+                \App\Models\ShipmentLog::truncate();
+                \App\Models\Shipment::truncate();
+                \App\Models\PushSubscription::truncate();
+                \Illuminate\Support\Facades\DB::table('notifications')->truncate();
+                
+                // Clear sessions except current admin session
+                \Illuminate\Support\Facades\DB::table('sessions')
+                    ->where('id', '!=', session()->getId())
+                    ->delete();
+                    
+                \Illuminate\Support\Facades\DB::table('cache')->truncate();
+
+                // 2. Clear HPP related tables
+                \App\Models\Material::truncate();
+                \App\Models\Product::truncate();
+                \Illuminate\Support\Facades\DB::table('product_materials')->truncate();
+                \App\Models\OverheadCost::truncate();
+                \App\Models\Business::truncate();
+
+                // 3. Clear non-admin users, keeping only admin@hris.com
+                \App\Models\User::where('email', '!=', 'admin@hris.com')->delete();
+
+                // 4. Ensure admin@hris.com user exists and has admin privileges
+                $admin = \App\Models\User::where('email', 'admin@hris.com')->first();
+                if ($admin) {
+                    $admin->update([
+                        'role' => 'admin',
+                        'status' => \App\Enums\UserStatus::active,
+                    ]);
+                } else {
+                    \App\Models\User::create([
+                        'name' => 'HR Admin Utama',
+                        'email' => 'admin@hris.com',
+                        'nip' => 'HR-0001',
+                        'phone' => '081234567890',
+                        'role' => 'admin',
+                        'status' => \App\Enums\UserStatus::active,
+                        'password' => \Illuminate\Support\Facades\Hash::make('password'),
+                        'email_verified_at' => now(),
+                    ]);
+                }
+
+                // 5. Default geofence
+                \App\Models\Geofence::where('name', '!=', 'Kantor Pusat Jakarta (Monas)')->delete();
+                \App\Models\Geofence::firstOrCreate(
+                    ['name' => 'Kantor Pusat Jakarta (Monas)'],
+                    [
+                        'latitude' => -6.175392,
+                        'longitude' => 106.827153,
+                        'radius' => 150.00,
+                        'work_start_time' => '08:00:00',
+                        'work_end_time' => '17:00:00',
+                        'is_active' => true,
+                    ]
+                );
+
+                // 6. Default branch
+                \App\Models\Branch::where('name', '!=', 'Kantor Pusat Jakarta (Monas)')->delete();
+                \App\Models\Branch::firstOrCreate(
+                    ['name' => 'Kantor Pusat Jakarta (Monas)'],
+                    [
+                        'address' => 'Gudang Pusat Jakarta, Kawasan Monas, Jakarta Pusat',
+                        'latitude' => -6.175392,
+                        'longitude' => 106.827153,
+                        'is_active' => true,
+                    ]
+                );
+
+                // Enable foreign key checks
+                \DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
+            });
+
+            // 7. Delete files in storage/app/public/ recursively, except the 'settings' folder
+            $storagePath = storage_path('app/public');
+            if (file_exists($storagePath)) {
+                $dir = new \DirectoryIterator($storagePath);
+                foreach ($dir as $fileinfo) {
+                    if ($fileinfo->isDir() && !$fileinfo->isDot()) {
+                        $folderName = $fileinfo->getFilename();
+                        // Ignore settings folder
+                        if ($folderName !== 'settings') {
+                            $this->deleteDirectoryRecursive($fileinfo->getPathname());
+                        }
+                    } elseif ($fileinfo->isFile()) {
+                        @unlink($fileinfo->getPathname());
+                    }
+                }
+            }
+
+            return back()->with('success', 'Aplikasi berhasil dikosongkan. Data transaksi dan file media dibersihkan, admin@hris.com dipertahankan.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal mengosongkan aplikasi: ' . $e->getMessage());
+        }
+    }
+
+    private function deleteDirectoryRecursive($dirPath)
+    {
+        if (!is_dir($dirPath)) {
+            return;
+        }
+        $files = array_diff(scandir($dirPath), ['.', '..']);
+        foreach ($files as $file) {
+            $filePath = $dirPath . '/' . $file;
+            (is_dir($filePath)) ? $this->deleteDirectoryRecursive($filePath) : @unlink($filePath);
+        }
+        return @rmdir($dirPath);
+    }
 }
