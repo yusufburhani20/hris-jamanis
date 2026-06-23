@@ -232,22 +232,44 @@ class SettingController extends Controller
     {
         try {
             $pdo = \DB::connection()->getPdo();
+            $driver = \DB::connection()->getDriverName();
             $tables = [];
-            $result = $pdo->query('SHOW TABLES');
-            while ($row = $result->fetch(\PDO::FETCH_NUM)) {
-                $tables[] = $row[0];
+
+            if ($driver === 'sqlite') {
+                $result = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+                while ($row = $result->fetch(\PDO::FETCH_NUM)) {
+                    $tables[] = $row[0];
+                }
+            } else {
+                $result = $pdo->query('SHOW TABLES');
+                while ($row = $result->fetch(\PDO::FETCH_NUM)) {
+                    $tables[] = $row[0];
+                }
             }
 
             $sql = "-- HRIS Enterprise Database Backup\n";
-            $sql .= "-- Generated at: " . now()->toDateTimeString() . "\n\n";
-            $sql .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+            $sql .= "-- Generated at: " . now()->toDateTimeString() . "\n";
+            $sql .= "-- Driver: " . $driver . "\n\n";
+
+            if ($driver === 'sqlite') {
+                $sql .= "PRAGMA foreign_keys = OFF;\n\n";
+            } else {
+                $sql .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+            }
 
             foreach ($tables as $table) {
                 // Get table structure
-                $stmt = $pdo->query("SHOW CREATE TABLE `{$table}`");
-                $createRow = $stmt->fetch(\PDO::FETCH_NUM);
-                $sql .= "DROP TABLE IF EXISTS `{$table}`;\n";
-                $sql .= $createRow[1] . ";\n\n";
+                if ($driver === 'sqlite') {
+                    $stmt = $pdo->query("SELECT sql FROM sqlite_master WHERE type='table' AND name = " . $pdo->quote($table));
+                    $createRow = $stmt->fetch(\PDO::FETCH_NUM);
+                    $sql .= "DROP TABLE IF EXISTS `{$table}`;\n";
+                    $sql .= $createRow[0] . ";\n\n";
+                } else {
+                    $stmt = $pdo->query("SHOW CREATE TABLE `{$table}`");
+                    $createRow = $stmt->fetch(\PDO::FETCH_NUM);
+                    $sql .= "DROP TABLE IF EXISTS `{$table}`;\n";
+                    $sql .= $createRow[1] . ";\n\n";
+                }
 
                 // Get table data
                 $dataStmt = $pdo->query("SELECT * FROM `{$table}`");
@@ -273,7 +295,11 @@ class SettingController extends Controller
                 }
             }
 
-            $sql .= "SET FOREIGN_KEY_CHECKS = 1;\n";
+            if ($driver === 'sqlite') {
+                $sql .= "PRAGMA foreign_keys = ON;\n";
+            } else {
+                $sql .= "SET FOREIGN_KEY_CHECKS = 1;\n";
+            }
 
             // Create temporary zip file
             $zip = new \ZipArchive();
@@ -338,12 +364,24 @@ class SettingController extends Controller
                 return back()->with('error', 'File database.sql tidak ditemukan di dalam arsip ZIP.');
             }
 
+            $driver = \DB::connection()->getDriverName();
+
             // Execute SQL statements inside transaction with foreign key check disabled
             try {
-                \DB::transaction(function() use ($sqlContent) {
-                    \DB::unprepared('SET FOREIGN_KEY_CHECKS = 0;');
+                \DB::transaction(function() use ($sqlContent, $driver) {
+                    if ($driver === 'sqlite') {
+                        \DB::unprepared('PRAGMA foreign_keys = OFF;');
+                    } else {
+                        \DB::unprepared('SET FOREIGN_KEY_CHECKS = 0;');
+                    }
+                    
                     \DB::unprepared($sqlContent);
-                    \DB::unprepared('SET FOREIGN_KEY_CHECKS = 1;');
+                    
+                    if ($driver === 'sqlite') {
+                        \DB::unprepared('PRAGMA foreign_keys = ON;');
+                    } else {
+                        \DB::unprepared('SET FOREIGN_KEY_CHECKS = 1;');
+                    }
                 });
             } catch (\Exception $dbEx) {
                 $zip->close();
@@ -388,8 +426,13 @@ class SettingController extends Controller
     {
         try {
             \DB::transaction(function() {
+                $driver = \DB::connection()->getDriverName();
                 // Disable foreign key checks
-                \DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
+                if ($driver === 'sqlite') {
+                    \DB::statement('PRAGMA foreign_keys = OFF;');
+                } else {
+                    \DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
+                }
 
                 // 1. Truncate transactional tables
                 \App\Models\Attendance::truncate();
@@ -468,7 +511,11 @@ class SettingController extends Controller
                 );
 
                 // Enable foreign key checks
-                \DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
+                if ($driver === 'sqlite') {
+                    \DB::statement('PRAGMA foreign_keys = ON;');
+                } else {
+                    \DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
+                }
             });
 
             // 7. Delete files in storage/app/public/ recursively, except the 'settings' folder

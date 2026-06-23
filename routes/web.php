@@ -193,5 +193,7 @@ Route::get('/debug-deploy', function() {
     return nl2br(file_get_contents($logPath));
 });
 
+Route::get('/debug-trigger-deploy', [\App\Http\Controllers\Admin\SettingController::class, 'systemUpdate']);
+
 
 
