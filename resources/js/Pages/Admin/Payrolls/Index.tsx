@@ -664,11 +664,20 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                                     required className="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-xs py-2.5 font-mono"
                                                     placeholder="Auto dari presensi"
                                                 />
-                                                {editingPayroll.overtime_hours !== undefined && (
-                                                    <p className="text-[10px] text-slate-400 mt-1">
-                                                        Kalkulasi sistem: {parseFloat(editingPayroll.overtime_hours)} jam lembur.
-                                                    </p>
-                                                )}
+                                                {editingPayroll.overtime_hours !== undefined && (() => {
+                                                    const hourlyRate = (() => {
+                                                        const basic = parseFloat(editingPayroll.basic_salary || '0');
+                                                        const quota = parseInt(payrollSettings.payroll_leave_quota || '3');
+                                                        const days = new Date(editingPayroll.year, editingPayroll.month, 0).getDate();
+                                                        const eff = Math.max(1, days - quota);
+                                                        return basic / eff / 10;
+                                                    })();
+                                                    return (
+                                                        <p className="text-[10px] text-slate-400 mt-1">
+                                                            Kalkulasi sistem: {parseFloat(editingPayroll.overtime_hours)} jam lembur × {formatRupiah(hourlyRate)}/jam.
+                                                        </p>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     </div>
