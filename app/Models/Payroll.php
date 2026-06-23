@@ -37,6 +37,7 @@ class Payroll extends Model
         'potongan_kehadiran'      => 'decimal:2',
         'absent_days'             => 'integer',
         'late_hours'              => 'decimal:2',
+        'overtime_hours'          => 'decimal:2',
         'potongan_kasbon'         => 'decimal:2',
         'deductions'              => 'decimal:2',
         'net_salary'              => 'decimal:2',
@@ -251,6 +252,7 @@ class Payroll extends Model
                 'allowances'              => $allowances,
                 // Lembur
                 'overtime_pay'            => $overtimePay,
+                'overtime_hours'          => $totalOvertimeHours,
                 'potongan_agnia_care'     => $potonganAgniaCare,
                 'potongan_biaya_konsumsi' => $potonganBiayaKonsumsi,
                 'potongan_bpjs'           => $potonganBpjs,

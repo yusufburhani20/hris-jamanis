@@ -40,6 +40,7 @@ interface Payroll {
     end_date: string | null;
     absent_days?: number;
     late_hours?: string;
+    overtime_hours?: string;
 }
 
 interface PayrollSettings {
@@ -523,7 +524,12 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                                     {parseFloat(payroll.bonus) > 0 && <div>Bonus: {formatRupiah(payroll.bonus)}</div>}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-4 text-indigo-600 font-mono text-xs">+{formatRupiah(payroll.overtime_pay)}</td>
+                                            <td className="px-4 py-4 text-indigo-600 font-mono text-xs">
+                                                 <div>+{formatRupiah(payroll.overtime_pay)}</div>
+                                                 {payroll.overtime_hours !== undefined && parseFloat(payroll.overtime_hours) > 0 && (
+                                                     <div className="text-[10px] text-slate-400 font-normal">({parseFloat(payroll.overtime_hours)} jam)</div>
+                                                 )}
+                                             </td>
                                             <td className="px-4 py-4">
                                                 <div className="text-rose-600 font-mono text-xs font-bold">-{formatRupiah(payroll.deductions)}</div>
                                                 <div className="text-[10px] text-slate-400 space-y-0.5 mt-0.5">
@@ -658,6 +664,11 @@ export default function PayrollIndex({ auth, payrolls, employees, currentMonth, 
                                                     required className="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-xs py-2.5 font-mono"
                                                     placeholder="Auto dari presensi"
                                                 />
+                                                {editingPayroll.overtime_hours !== undefined && (
+                                                    <p className="text-[10px] text-slate-400 mt-1">
+                                                        Kalkulasi sistem: {parseFloat(editingPayroll.overtime_hours)} jam lembur.
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

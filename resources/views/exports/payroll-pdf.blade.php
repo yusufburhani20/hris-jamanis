@@ -257,7 +257,12 @@
                     <td class="amount-col">Rp {{ number_format($payroll->tunjangan_konsumsi, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
-                    <td>Lembur (Absensi + Jatah Libur Tidak Diambil)</td>
+                    <td>
+                        Lembur (Absensi + Jatah Libur Tidak Diambil)
+                        @if($payroll->overtime_hours && (float) $payroll->overtime_hours > 0)
+                            <br><span style="font-size: 10px; color: #6b7280; font-weight: normal;">({{ (float) $payroll->overtime_hours }} jam)</span>
+                        @endif
+                    </td>
                     <td class="amount-col">Rp {{ number_format($payroll->overtime_pay, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
@@ -287,7 +292,12 @@
                     <td class="amount-col">Rp {{ number_format($payroll->potongan_agnia_care, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
-                    <td>Biaya Konsumsi (Mangkir)</td>
+                    <td>
+                        Biaya Konsumsi (Mangkir)
+                        @if($payroll->absent_days && $payroll->absent_days > 0)
+                            <br><span style="font-size: 10px; color: #6b7280; font-weight: normal;">({{ $payroll->absent_days }} hari)</span>
+                        @endif
+                    </td>
                     <td class="amount-col">Rp {{ number_format($payroll->potongan_biaya_konsumsi, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
@@ -295,7 +305,14 @@
                     <td class="amount-col">Rp {{ number_format($payroll->potongan_bpjs, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
-                    <td>Kehadiran (Mangkir & Terlambat)</td>
+                    <td>
+                        Kehadiran (Mangkir & Terlambat)
+                        @if(($payroll->absent_days && $payroll->absent_days > 0) || ($payroll->late_hours && (float) $payroll->late_hours > 0))
+                            <br><span style="font-size: 10px; color: #6b7280; font-weight: normal;">
+                                ({{ $payroll->absent_days ?: 0 }} hari mangkir, {{ (float) $payroll->late_hours ?: 0 }} jam terlambat)
+                            </span>
+                        @endif
+                    </td>
                     <td class="amount-col">Rp {{ number_format($payroll->potongan_kehadiran, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
