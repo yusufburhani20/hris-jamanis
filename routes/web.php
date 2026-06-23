@@ -181,4 +181,13 @@ Route::get('/debug-logs', function() {
     return nl2br(implode("", $lastLines));
 });
 
+Route::get('/debug-deploy', function() {
+    $logPath = storage_path('logs/deploy.log');
+    if (!file_exists($logPath)) {
+        return "Deploy log file not found.";
+    }
+    return nl2br(file_get_contents($logPath));
+});
+
+
 
