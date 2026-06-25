@@ -40,6 +40,7 @@ interface Settings {
     notif_admin_checkout_enabled: boolean;
     late_tolerance_minutes: number;
     early_checkin_tolerance_minutes: number;
+    overtime_tolerance_minutes: number;
 }
 
 type SettingsIndexProps = {
@@ -201,6 +202,7 @@ export default function SettingsIndex({
         notif_admin_checkout_enabled: settings.notif_admin_checkout_enabled ?? true,
         late_tolerance_minutes: settings.late_tolerance_minutes ?? 0,
         early_checkin_tolerance_minutes: settings.early_checkin_tolerance_minutes ?? 60,
+        overtime_tolerance_minutes: settings.overtime_tolerance_minutes ?? 60,
     });
 
     // File selection state for preview
@@ -247,6 +249,7 @@ export default function SettingsIndex({
             notif_admin_checkout_enabled: data.notif_admin_checkout_enabled,
             late_tolerance_minutes: data.late_tolerance_minutes,
             early_checkin_tolerance_minutes: data.early_checkin_tolerance_minutes,
+            overtime_tolerance_minutes: data.overtime_tolerance_minutes,
         });
     };
 
@@ -449,10 +452,10 @@ export default function SettingsIndex({
                                     {/* Parameter Toleransi Absensi */}
                                     <div className="border-t border-slate-100 dark:border-slate-700/60 pt-5 space-y-4">
                                         <div>
-                                            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Parameter Toleransi Absensi</h3>
-                                            <p className="text-xs text-slate-400">Atur batas toleransi keterlambatan masuk dan toleransi masuk lebih awal untuk penyesuaian jam kerja.</p>
+                                            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Parameter Toleransi Absensi & Lembur</h3>
+                                            <p className="text-xs text-slate-400">Atur batas toleransi keterlambatan masuk, toleransi masuk lebih awal, dan minimal waktu setelah pulang kerja untuk dihitung sebagai lembur.</p>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div>
                                                 <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                                                     <ClockIcon className="w-4 h-4 text-slate-400" />
@@ -482,6 +485,21 @@ export default function SettingsIndex({
                                                     className="mt-2 block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2.5" 
                                                 />
                                                 {errors.early_checkin_tolerance_minutes && <p className="text-red-500 text-[10px] mt-1">{errors.early_checkin_tolerance_minutes}</p>}
+                                            </div>
+                                            <div>
+                                                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                                    <ClockIcon className="w-4 h-4 text-slate-400" />
+                                                    <span>Toleransi Lembur (Menit)</span>
+                                                </label>
+                                                <input 
+                                                    type="number" 
+                                                    value={data.overtime_tolerance_minutes} 
+                                                    onChange={e => setData('overtime_tolerance_minutes', parseInt(e.target.value) || 0)} 
+                                                    min="0"
+                                                    required 
+                                                    className="mt-2 block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2.5" 
+                                                />
+                                                {errors.overtime_tolerance_minutes && <p className="text-red-500 text-[10px] mt-1">{errors.overtime_tolerance_minutes}</p>}
                                             </div>
                                         </div>
                                     </div>

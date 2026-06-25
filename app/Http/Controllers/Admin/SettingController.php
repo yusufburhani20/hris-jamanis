@@ -57,6 +57,7 @@ class SettingController extends Controller
                 // Attendance parameter configurations
                 'late_tolerance_minutes'   => (int) Setting::get('late_tolerance_minutes', 0),
                 'early_checkin_tolerance_minutes' => (int) Setting::get('early_checkin_tolerance_minutes', 60),
+                'overtime_tolerance_minutes' => (int) Setting::get('overtime_tolerance_minutes', 60),
 
                 // Notification keys
                 'push_checkin_reminder_enabled'  => Setting::get('push_checkin_reminder_enabled', '1') === '1',
@@ -90,6 +91,7 @@ class SettingController extends Controller
             // Attendance parameter configuration validation
             'late_tolerance_minutes'          => 'required|integer|min:0|max:1440',
             'early_checkin_tolerance_minutes' => 'required|integer|min:0|max:1440',
+            'overtime_tolerance_minutes'      => 'required|integer|min:0|max:1440',
 
             // Notification validation
             'push_checkin_reminder_enabled'  => 'nullable|boolean',
@@ -115,6 +117,7 @@ class SettingController extends Controller
 
         Setting::set('late_tolerance_minutes', $request->late_tolerance_minutes);
         Setting::set('early_checkin_tolerance_minutes', $request->early_checkin_tolerance_minutes);
+        Setting::set('overtime_tolerance_minutes', $request->overtime_tolerance_minutes);
 
         Setting::set('push_checkin_reminder_enabled', $request->push_checkin_reminder_enabled ? '1' : '0');
         Setting::set('push_checkin_reminder_time', $request->push_checkin_reminder_time ?? '07:45');

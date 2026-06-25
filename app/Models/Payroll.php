@@ -195,7 +195,10 @@ class Payroll extends Model
 
                 if ($checkOut->greaterThan($effectiveEnd)) {
                     $diffMins = $checkOut->diffInMinutes($effectiveEnd);
-                    $attendanceOvertimeHours += round($diffMins / 60, 2);
+                    $overtimeTolerance = (int) Setting::get('overtime_tolerance_minutes', 60);
+                    if ($diffMins >= $overtimeTolerance) {
+                        $attendanceOvertimeHours += round($diffMins / 60, 2);
+                    }
                 }
             } catch (\Exception $e) {
                 Log::warning("Payroll overtime parse error (user {$userId}): " . $e->getMessage());

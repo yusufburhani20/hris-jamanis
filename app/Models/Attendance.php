@@ -147,13 +147,16 @@ class Attendance extends Model
 
         if ($checkOut->greaterThan($effectiveEnd)) {
             $diffInMinutes = $checkOut->diffInMinutes($effectiveEnd);
-            $hours = (int) floor($diffInMinutes / 60);
-            $minutes = $diffInMinutes % 60;
-            return [
-                'hours' => $hours,
-                'minutes' => $minutes,
-                'text' => ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m",
-            ];
+            $overtimeTolerance = (int) \App\Models\Setting::get('overtime_tolerance_minutes', 60);
+            if ($diffInMinutes >= $overtimeTolerance) {
+                $hours = (int) floor($diffInMinutes / 60);
+                $minutes = $diffInMinutes % 60;
+                return [
+                    'hours' => $hours,
+                    'minutes' => $minutes,
+                    'text' => ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m",
+                ];
+            }
         }
 
         return null;
@@ -306,9 +309,12 @@ class Attendance extends Model
             if ($statusVal === 'lembur') {
                 if ($checkOut->greaterThan($effectiveEnd)) {
                     $diffInMinutes = $checkOut->diffInMinutes($effectiveEnd);
-                    $hours = floor($diffInMinutes / 60);
-                    $minutes = $diffInMinutes % 60;
-                    return ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m";
+                    $overtimeTolerance = (int) \App\Models\Setting::get('overtime_tolerance_minutes', 60);
+                    if ($diffInMinutes >= $overtimeTolerance) {
+                        $hours = floor($diffInMinutes / 60);
+                        $minutes = $diffInMinutes % 60;
+                        return ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m";
+                    }
                 }
             } elseif ($statusVal === 'pulang_awal') {
                 if ($checkOut->lessThan($effectiveEnd)) {
