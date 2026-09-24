@@ -28,7 +28,18 @@ export default function Pagination({ links, total, from, to }: PaginationProps) 
                         .replace('&laquo; Previous', '«')
                         .replace('Next &raquo;', '»');
 
-                    if (link.url === null) {
+                    let href = link.url;
+                    // Konversi URL absolute ke relative untuk mencegah error di Cloudflare Tunnel / Proxy
+                    if (href) {
+                        try {
+                            const urlObj = new URL(href);
+                            href = urlObj.pathname + urlObj.search;
+                        } catch (e) {
+                            // Jika format URL tidak valid, biarkan saja
+                        }
+                    }
+
+                    if (!href) {
                         return (
                             <div
                                 key={k}
@@ -41,10 +52,12 @@ export default function Pagination({ links, total, from, to }: PaginationProps) 
                     return (
                         <Link
                             key={k}
-                            href={link.url}
+                            href={href}
+                            preserveScroll
+                            preserveState
                             className={`px-3 py-1.5 text-xs border rounded-lg transition-colors ${
                                 link.active
-                                    ? 'bg-indigo-600 border-indigo-600 text-white font-semibold'
+                                    ? 'bg-indigo-600 border-indigo-600 text-white font-semibold pointer-events-none'
                                     : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                             }`}
                             dangerouslySetInnerHTML={{ __html: label }}
