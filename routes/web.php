@@ -94,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Employee Management (CRUD)
         Route::post('/users/import', [UserController::class, 'import'])->name('users.import');
         Route::get('/users/export', [UserController::class, 'export'])->name('users.export');
+        Route::post('/users/destroy-bulk', [UserController::class, 'destroyBulk'])->name('users.destroyBulk');
         Route::resource('users', UserController::class)->except(['show']);
 
         // Settings Management

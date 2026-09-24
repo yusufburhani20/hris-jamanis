@@ -20,6 +20,7 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
     const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
         file: null as File | null,
@@ -108,6 +109,31 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
         }
     };
 
+    const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            setSelectedIds(users.map(u => u.id));
+        } else {
+            setSelectedIds([]);
+        }
+    };
+
+    const toggleSelect = (id: number) => {
+        if (selectedIds.includes(id)) {
+            setSelectedIds(selectedIds.filter(i => i !== id));
+        } else {
+            setSelectedIds([...selectedIds, id]);
+        }
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.length === 0) return;
+        if (confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} karyawan yang dipilih secara permanen?`)) {
+            router.post(route('admin.users.destroyBulk'), { ids: selectedIds }, {
+                onSuccess: () => setSelectedIds([])
+            });
+        }
+    };
+
     const submitImport = (e: React.FormEvent) => {
         e.preventDefault();
         postImport(route('admin.users.import'), {
@@ -128,6 +154,15 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                             <p className="text-gray-600 dark:text-gray-400 text-sm">Kelola seluruh staf, karyawan, dan akun HR Admin aplikasi HRIS.</p>
                         </div>
                         <div className="flex space-x-2">
+                            {selectedIds.length > 0 && (
+                                <button
+                                    onClick={handleBulkDelete}
+                                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl flex items-center space-x-2 transition-colors shadow-lg shadow-red-600/10 font-semibold text-sm"
+                                >
+                                    <TrashIcon className="w-5 h-5" />
+                                    <span>Hapus {selectedIds.length} Terpilih</span>
+                                </button>
+                            )}
                             <button
                                 onClick={() => setIsImportDialogOpen(true)}
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center space-x-2 transition-colors shadow-lg shadow-emerald-600/10 font-semibold text-sm"
@@ -157,6 +192,14 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50 dark:bg-slate-700/30 border-b border-slate-200 dark:border-slate-700/60 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                                        <th className="px-6 py-4 w-4">
+                                            <input 
+                                                type="checkbox" 
+                                                className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-800"
+                                                checked={users.length > 0 && selectedIds.length === users.length}
+                                                onChange={toggleSelectAll}
+                                            />
+                                        </th>
                                         <th className="px-6 py-4 font-medium">Nama / Email</th>
                                         <th className="px-6 py-4 font-medium">NIP / WhatsApp</th>
                                         <th className="px-6 py-4 font-medium">Gaji Pokok</th>
@@ -168,6 +211,14 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40 text-xs">
                                     {users && users.length > 0 ? users.map((userRecord) => (
                                         <tr key={userRecord.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/10 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-800"
+                                                    checked={selectedIds.includes(userRecord.id)}
+                                                    onChange={() => toggleSelect(userRecord.id)}
+                                                />
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center space-x-3">
                                                     {userRecord.avatar ? (
@@ -236,7 +287,7 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan={5} className="py-8 text-center text-slate-400">Belum ada data karyawan terdaftar</td>
+                                            <td colSpan={7} className="py-8 text-center text-slate-400">Belum ada data karyawan terdaftar</td>
                                         </tr>
                                     )}
                                 </tbody>

@@ -154,6 +154,33 @@ class UserController extends Controller
         return back()->with('success', 'User berhasil dihapus.');
     }
 
+    public function destroyBulk(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:users,id'
+        ]);
+
+        $ids = $request->ids;
+        
+        // Prevent deleting self
+        if (in_array(auth()->id(), $ids)) {
+            $ids = array_diff($ids, [auth()->id()]);
+            $selfExcluded = true;
+        }
+
+        if (count($ids) > 0) {
+            User::whereIn('id', $ids)->delete();
+        }
+
+        $msg = count($ids) . ' data karyawan berhasil dihapus.';
+        if (isset($selfExcluded)) {
+            $msg .= ' (Akun Anda sendiri tidak dihapus).';
+        }
+
+        return back()->with('success', $msg);
+    }
+
     public function export()
     {
         return Excel::download(new UsersExport, 'data_karyawan_' . date('Ymd_His') . '.xlsx');
