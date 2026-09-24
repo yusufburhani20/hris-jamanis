@@ -65,7 +65,7 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'nip' => 'nullable|string|max:50',
+            'nip' => 'nullable|string|max:50|unique:users',
             'phone' => 'nullable|string|max:20',
             'status' => ['required', Rule::enum(UserStatus::class)],
             'role' => [
@@ -110,7 +110,7 @@ class UserController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'nip' => 'nullable|string|max:50',
+            'nip' => ['nullable', 'string', 'max:50', Rule::unique('users')->ignore($user->id)],
             'phone' => 'nullable|string|max:20',
             'status' => ['required', Rule::enum(UserStatus::class)],
             'role' => [
