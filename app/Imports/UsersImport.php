@@ -3,53 +3,56 @@
 namespace App\Imports;
 
 use App\Models\User;
-use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\ToCollection;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Illuminate\Support\Facades\Hash;
 use App\Enums\UserStatus;
+use Illuminate\Support\Facades\Hash;
+use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class UsersImport implements ToCollection, WithHeadingRow
+class UsersImport implements ToModel, WithHeadingRow
 {
-    public function collection(Collection $rows)
+    public function model(array $row)
     {
-        foreach ($rows as $row) {
-            $email = trim($row['email'] ?? '');
-            
-            if (empty($email) || empty($row['nama_lengkap'])) {
-                continue;
-            }
+        // Pastikan baris memiliki email dan nama
+        if (empty($row['email']) || empty($row['nama'])) {
+            return null;
+        }
 
-            // Normalize status
-            $statusStr = strtolower(trim($row['status_activeinactivesuspended'] ?? 'active'));
-            $status = UserStatus::active;
-            if ($statusStr === 'inactive') $status = UserStatus::inactive;
-            if ($statusStr === 'suspended') $status = UserStatus::suspended;
+        $user = User::where('email', $row['email'])->first();
 
-            $userData = [
-                'name' => trim($row['nama_lengkap']),
-                'nip' => !empty($row['nip']) ? trim((string)$row['nip']) : null,
-                'phone' => !empty($row['whatsapp']) ? trim((string)$row['whatsapp']) : null,
-                'telegram_id' => !empty($row['telegram_id']) ? trim((string)$row['telegram_id']) : null,
-                'status' => $status,
-            ];
-
-            $user = User::where('email', $email)->first();
-
-            if ($user) {
-                $user->update($userData);
-            } else {
-                $userData['email'] = $email;
-                $userData['password'] = Hash::make('password');
-                $user = User::create($userData);
-            }
-
-            // Sync Roles
-            if (!empty($row['roles_pisahkan_dengan_koma'])) {
-                $roleNames = explode(',', $row['roles_pisahkan_dengan_koma']);
-                $roleNames = array_map('trim', $roleNames);
-                $user->syncRoles($roleNames);
+        // Validasi dan parsing status
+        $status = 'active';
+        if (!empty($row['status'])) {
+            $statusVal = strtolower($row['status']);
+            if (in_array($statusVal, ['active', 'inactive', 'suspended'])) {
+                $status = $statusVal;
             }
         }
+
+        $role = !empty($row['role']) ? strtolower($row['role']) : 'employee';
+
+        if ($user) {
+            // Jika user sudah ada, lakukan update
+            $user->update([
+                'name' => $row['nama'],
+                'nip' => $row['nip'] ?? $user->nip,
+                'phone' => $row['no_hp'] ?? $user->phone,
+                'role' => $role,
+                'status' => $status,
+                'basic_salary' => isset($row['gaji_pokok']) ? (float)$row['gaji_pokok'] : $user->basic_salary,
+            ]);
+            return null; 
+        }
+
+        // Jika user belum ada, insert baru
+        return new User([
+            'name' => $row['nama'],
+            'email' => $row['email'],
+            'nip' => $row['nip'] ?? null,
+            'phone' => $row['no_hp'] ?? null,
+            'password' => Hash::make('password'), // Password default
+            'role' => $role,
+            'status' => $status,
+            'basic_salary' => isset($row['gaji_pokok']) ? (float)$row['gaji_pokok'] : 4500000,
+        ]);
     }
 }

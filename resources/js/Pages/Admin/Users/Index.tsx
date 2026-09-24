@@ -2,7 +2,7 @@ import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import React, { useState } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon, UserCircleIcon, KeyIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, UserCircleIcon, KeyIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 
 interface User {
     id: number;
@@ -18,7 +18,12 @@ interface User {
 
 export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ users: User[], roles: {value: string, label: string}[], statuses: {value: string, label: string}[] }>) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+
+    const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
+        file: null as File | null,
+    });
 
     const { data, setData, post, put, delete: destroy, reset, processing, errors } = useForm({
         name: '',
@@ -68,6 +73,11 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
         reset();
     };
 
+    const closeImportDialog = () => {
+        setIsImportDialogOpen(false);
+        resetImport();
+    };
+
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         if (editingUser) {
@@ -98,6 +108,13 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
         }
     };
 
+    const submitImport = (e: React.FormEvent) => {
+        e.preventDefault();
+        postImport(route('admin.users.import'), {
+            onSuccess: () => closeImportDialog(),
+        });
+    };
+
     return (
         <AuthenticatedLayout
             header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Kelola Data Karyawan</h2>}
@@ -110,13 +127,29 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                         <div>
                             <p className="text-gray-600 dark:text-gray-400 text-sm">Kelola seluruh staf, karyawan, dan akun HR Admin aplikasi HRIS.</p>
                         </div>
-                        <button
-                            onClick={() => openDialog()}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl flex items-center space-x-2 transition-colors shadow-lg shadow-indigo-600/10 font-semibold text-sm"
-                        >
-                            <PlusIcon className="w-5 h-5" />
-                            <span>Tambah Karyawan</span>
-                        </button>
+                        <div className="flex space-x-2">
+                            <button
+                                onClick={() => setIsImportDialogOpen(true)}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center space-x-2 transition-colors shadow-lg shadow-emerald-600/10 font-semibold text-sm"
+                            >
+                                <ArrowDownTrayIcon className="w-5 h-5" />
+                                <span>Import</span>
+                            </button>
+                            <a
+                                href={route('admin.users.export')}
+                                className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2.5 rounded-xl flex items-center space-x-2 transition-colors shadow-lg shadow-sky-600/10 font-semibold text-sm"
+                            >
+                                <ArrowUpTrayIcon className="w-5 h-5" />
+                                <span>Export</span>
+                            </a>
+                            <button
+                                onClick={() => openDialog()}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl flex items-center space-x-2 transition-colors shadow-lg shadow-indigo-600/10 font-semibold text-sm"
+                            >
+                                <PlusIcon className="w-5 h-5" />
+                                <span>Tambah Karyawan</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div className="bg-white dark:bg-gray-800 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 rounded-2xl overflow-hidden">
@@ -373,6 +406,55 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                                         {processing ? 'Menyimpan...' : 'Simpan Karyawan'}
                                     </button>
                                     <button type="button" onClick={closeDialog} className="inline-flex justify-center rounded-xl border border-slate-300 dark:border-gray-600 px-4 py-2 bg-white dark:bg-gray-800 text-xs font-semibold text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                                        Batal
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Import Dialog */}
+            {isImportDialogOpen && (
+                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={closeImportDialog}></div>
+                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full">
+                            <form onSubmit={submitImport}>
+                                <div className="bg-white dark:bg-gray-800 px-6 pt-6 pb-5 border-b dark:border-gray-700/60">
+                                    <h3 className="text-lg font-black text-gray-900 dark:text-white">
+                                        Import Data Karyawan
+                                    </h3>
+                                    <p className="text-xs text-slate-400 mt-1">Unggah file Excel (.xlsx, .xls) atau CSV.</p>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">File Excel/CSV</label>
+                                        <input 
+                                            type="file" 
+                                            accept=".xlsx,.xls,.csv"
+                                            onChange={e => setImportData('file', e.target.files ? e.target.files[0] : null)}
+                                            required
+                                            className="mt-1 block w-full text-xs text-slate-500
+                                                file:mr-4 file:py-2 file:px-4
+                                                file:rounded-xl file:border-0
+                                                file:text-xs file:font-semibold
+                                                file:bg-indigo-50 file:text-indigo-700
+                                                hover:file:bg-indigo-100 dark:file:bg-indigo-500/10 dark:file:text-indigo-400" 
+                                        />
+                                        {importErrors.file && <p className="text-red-500 text-[10px] mt-1">{importErrors.file}</p>}
+                                        <p className="text-[10px] text-slate-400 mt-2">
+                                            Catatan: Format kolom harus sesuai dengan format export. Wajib memiliki kolom <strong>Email</strong> dan <strong>Nama</strong>.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 dark:bg-gray-700/60 px-6 py-4 flex flex-row-reverse gap-2 border-t border-slate-200 dark:border-gray-600">
+                                    <button type="submit" disabled={importProcessing} className="inline-flex justify-center rounded-xl px-4 py-2 bg-indigo-600 text-xs font-bold text-white hover:bg-indigo-700 transition-colors disabled:opacity-50 shadow-md shadow-indigo-600/10">
+                                        {importProcessing ? 'Mengimport...' : 'Import Data'}
+                                    </button>
+                                    <button type="button" onClick={closeImportDialog} className="inline-flex justify-center rounded-xl border border-slate-300 dark:border-gray-600 px-4 py-2 bg-white dark:bg-gray-800 text-xs font-semibold text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                                         Batal
                                     </button>
                                 </div>

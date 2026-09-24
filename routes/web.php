@@ -92,6 +92,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/attendances/export/pdf', [AdminAttendanceController::class, 'exportPdf'])->name('attendances.export.pdf');
 
         // Employee Management (CRUD)
+        Route::post('/users/import', [UserController::class, 'import'])->name('users.import');
+        Route::get('/users/export', [UserController::class, 'export'])->name('users.export');
         Route::resource('users', UserController::class)->except(['show']);
 
         // Settings Management

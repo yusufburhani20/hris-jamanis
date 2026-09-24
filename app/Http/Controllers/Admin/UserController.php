@@ -10,6 +10,9 @@ use Illuminate\Validation\Rule;
 use App\Enums\UserStatus;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\UsersExport;
+use App\Imports\UsersImport;
 
 class UserController extends Controller
 {
@@ -149,5 +152,24 @@ class UserController extends Controller
 
         $user->delete();
         return back()->with('success', 'User berhasil dihapus.');
+    }
+
+    public function export()
+    {
+        return Excel::download(new UsersExport, 'data_karyawan_' . date('Ymd_His') . '.xlsx');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:2048'
+        ]);
+
+        try {
+            Excel::import(new UsersImport, $request->file('file'));
+            return back()->with('success', 'Data karyawan berhasil diimport.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal mengimport data: ' . $e->getMessage());
+        }
     }
 }

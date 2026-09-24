@@ -6,38 +6,41 @@ use App\Models\User;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-class UsersExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize
+class UsersExport implements FromCollection, WithHeadings, WithMapping
 {
     public function collection()
     {
-        return User::with('roles')->latest()->get();
+        return User::all();
     }
 
     public function headings(): array
     {
         return [
-            'Nama Lengkap',
+            'ID',
+            'Nama',
             'Email',
             'NIP',
-            'WhatsApp/Phone',
-            'Telegram ID',
-            'Roles (Pisahkan dengan koma)',
-            'Status (active/inactive/suspended)',
+            'No. HP',
+            'Role',
+            'Status',
+            'Gaji Pokok',
+            'Tanggal Dibuat',
         ];
     }
 
     public function map($user): array
     {
         return [
+            $user->id,
             $user->name,
             $user->email,
             $user->nip,
             $user->phone,
-            $user->telegram_id,
-            $user->roles->pluck('name')->implode(', '),
-            $user->status?->value ?? $user->status,
+            $user->role,
+            $user->status,
+            $user->basic_salary,
+            $user->created_at ? $user->created_at->format('Y-m-d H:i:s') : '',
         ];
     }
 }
