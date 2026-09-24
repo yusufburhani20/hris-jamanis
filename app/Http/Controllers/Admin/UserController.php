@@ -16,9 +16,29 @@ use App\Imports\UsersImport;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::latest()->get();
+        $query = User::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('nip', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $query->where('role', 'like', "%{$request->role}%");
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $users = $query->latest()->paginate(10)->withQueryString();
         
         $statuses = [];
         foreach(UserStatus::cases() as $case) {
@@ -35,6 +55,7 @@ class UserController extends Controller
             'users' => $users,
             'roles' => $roles,
             'statuses' => $statuses,
+            'filters' => $request->only(['search', 'role', 'status'])
         ]);
     }
 

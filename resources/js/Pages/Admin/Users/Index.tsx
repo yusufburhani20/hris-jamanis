@@ -1,8 +1,9 @@
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import React, { useState } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon, UserCircleIcon, KeyIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect } from 'react';
+import { PlusIcon, PencilIcon, TrashIcon, UserCircleIcon, KeyIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import Pagination from '@/Components/Pagination';
 
 interface User {
     id: number;
@@ -16,11 +17,44 @@ interface User {
     basic_salary?: number | string;
 }
 
-export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ users: User[], roles: {value: string, label: string}[], statuses: {value: string, label: string}[] }>) {
+interface PaginatedData<T> {
+    data: T[];
+    links: { url: string | null; label: string; active: boolean }[];
+    total: number;
+    from: number;
+    to: number;
+}
+
+export default function UserIndex({ auth, users, roles, statuses, filters }: PageProps<{ 
+    users: PaginatedData<User>, 
+    roles: {value: string, label: string}[], 
+    statuses: {value: string, label: string}[],
+    filters: { search?: string, role?: string, status?: string }
+}>) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    const [search, setSearch] = useState(filters?.search || '');
+    const [filterRole, setFilterRole] = useState(filters?.role || '');
+    const [filterStatus, setFilterStatus] = useState(filters?.status || '');
+
+    // Handle debounced search & filter
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const params: Record<string, string> = {};
+            if (search) params.search = search;
+            if (filterRole) params.role = filterRole;
+            if (filterStatus) params.status = filterStatus;
+
+            // Only navigate if parameters changed from original filters to prevent infinite loop
+            if (search !== (filters?.search || '') || filterRole !== (filters?.role || '') || filterStatus !== (filters?.status || '')) {
+                router.get(route('admin.users.index'), params, { preserveState: true, replace: true });
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search, filterRole, filterStatus]);
 
     const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
         file: null as File | null,
@@ -111,7 +145,7 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
 
     const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
-            setSelectedIds(users.map(u => u.id));
+            setSelectedIds(users.data.map(u => u.id));
         } else {
             setSelectedIds([]);
         }
@@ -187,6 +221,44 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                         </div>
                     </div>
 
+                    {/* Filter & Search Bar */}
+                    <div className="bg-white dark:bg-gray-800 p-4 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <div className="relative w-full md:w-96">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                            </div>
+                            <input
+                                type="text"
+                                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl leading-5 bg-white dark:bg-gray-900 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-slate-800 dark:text-slate-200 transition-colors"
+                                placeholder="Cari nama, email, NIP, atau no HP..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-4">
+                            <select
+                                className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl bg-white dark:bg-gray-900 text-slate-800 dark:text-slate-200"
+                                value={filterRole}
+                                onChange={(e) => setFilterRole(e.target.value)}
+                            >
+                                <option value="">Semua Peran (Role)</option>
+                                {roles.map((r) => (
+                                    <option key={r.value} value={r.value}>{r.label}</option>
+                                ))}
+                            </select>
+                            <select
+                                className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl bg-white dark:bg-gray-900 text-slate-800 dark:text-slate-200"
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value)}
+                            >
+                                <option value="">Semua Status</option>
+                                {statuses.map((s) => (
+                                    <option key={s.value} value={s.value}>{s.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
                     <div className="bg-white dark:bg-gray-800 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 rounded-2xl overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
@@ -196,7 +268,7 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                                             <input 
                                                 type="checkbox" 
                                                 className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-800"
-                                                checked={users.length > 0 && selectedIds.length === users.length}
+                                                checked={users.data.length > 0 && selectedIds.length === users.data.length}
                                                 onChange={toggleSelectAll}
                                             />
                                         </th>
@@ -209,7 +281,7 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40 text-xs">
-                                    {users && users.length > 0 ? users.map((userRecord) => (
+                                    {users.data && users.data.length > 0 ? users.data.map((userRecord) => (
                                         <tr key={userRecord.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/10 transition-colors">
                                             <td className="px-6 py-4">
                                                 <input 
@@ -293,6 +365,7 @@ export default function UserIndex({ auth, users, roles, statuses }: PageProps<{ 
                                 </tbody>
                             </table>
                         </div>
+                        <Pagination links={users.links} total={users.total} from={users.from} to={users.to} />
                     </div>
                 </div>
             </div>
