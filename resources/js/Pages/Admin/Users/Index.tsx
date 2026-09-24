@@ -220,51 +220,12 @@ export default function UserIndex({ auth, users, roles, statuses, filters }: Pag
                             </button>
                         </div>
                     </div>
-
-                    {/* Filter & Search Bar */}
-                    <div className="bg-white dark:bg-gray-800 p-4 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
-                        <div className="relative w-full md:w-96">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                            </div>
-                            <input
-                                type="text"
-                                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl leading-5 bg-white dark:bg-gray-900 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-slate-800 dark:text-slate-200 transition-colors"
-                                placeholder="Cari nama, email, NIP, atau no HP..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-4">
-                            <select
-                                className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl bg-white dark:bg-gray-900 text-slate-800 dark:text-slate-200"
-                                value={filterRole}
-                                onChange={(e) => setFilterRole(e.target.value)}
-                            >
-                                <option value="">Semua Peran (Role)</option>
-                                {roles.map((r) => (
-                                    <option key={r.value} value={r.value}>{r.label}</option>
-                                ))}
-                            </select>
-                            <select
-                                className="block w-full sm:w-48 pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-xl bg-white dark:bg-gray-900 text-slate-800 dark:text-slate-200"
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                            >
-                                <option value="">Semua Status</option>
-                                {statuses.map((s) => (
-                                    <option key={s.value} value={s.value}>{s.label}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
                     <div className="bg-white dark:bg-gray-800 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 rounded-2xl overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-slate-50 dark:bg-slate-700/30 border-b border-slate-200 dark:border-slate-700/60 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                                        <th className="px-6 py-4 w-4">
+                                    <tr className="bg-slate-50 dark:bg-slate-700/30 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                                        <th className="px-6 py-4 w-4 border-b border-slate-200 dark:border-slate-700/60" rowSpan={2}>
                                             <input 
                                                 type="checkbox" 
                                                 className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-slate-800"
@@ -272,12 +233,50 @@ export default function UserIndex({ auth, users, roles, statuses, filters }: Pag
                                                 onChange={toggleSelectAll}
                                             />
                                         </th>
-                                        <th className="px-6 py-4 font-medium">Nama / Email</th>
-                                        <th className="px-6 py-4 font-medium">NIP / WhatsApp</th>
-                                        <th className="px-6 py-4 font-medium">Gaji Pokok</th>
-                                        <th className="px-6 py-4 font-medium">Hak Akses (Role)</th>
-                                        <th className="px-6 py-4 font-medium">Status Akun</th>
-                                        <th className="px-6 py-4 font-medium text-right">Aksi</th>
+                                        <th className="px-6 pt-4 pb-2 font-medium">Nama / Email</th>
+                                        <th className="px-6 pt-4 pb-2 font-medium">NIP / WhatsApp</th>
+                                        <th className="px-6 pt-4 pb-2 font-medium">Gaji Pokok</th>
+                                        <th className="px-6 pt-4 pb-2 font-medium">Hak Akses (Role)</th>
+                                        <th className="px-6 pt-4 pb-2 font-medium">Status Akun</th>
+                                        <th className="px-6 py-4 font-medium text-right border-b border-slate-200 dark:border-slate-700/60" rowSpan={2}>Aksi</th>
+                                    </tr>
+                                    <tr className="bg-slate-50 dark:bg-slate-700/30 border-b border-slate-200 dark:border-slate-700/60">
+                                        <th className="px-6 pb-4 pt-1" colSpan={2}>
+                                            <input
+                                                type="text"
+                                                className="w-full text-xs py-1.5 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-200 focus:ring-indigo-500 focus:border-indigo-500 font-normal"
+                                                placeholder="Cari Nama / Email / NIP / HP..."
+                                                value={search}
+                                                onChange={(e) => setSearch(e.target.value)}
+                                            />
+                                        </th>
+                                        <th className="px-6 pb-4 pt-1">
+                                            {/* Empty for Basic Salary */}
+                                        </th>
+                                        <th className="px-6 pb-4 pt-1">
+                                            <select
+                                                className="w-full text-xs py-1.5 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-200 focus:ring-indigo-500 focus:border-indigo-500 font-normal"
+                                                value={filterRole}
+                                                onChange={(e) => setFilterRole(e.target.value)}
+                                            >
+                                                <option value="">Semua Role</option>
+                                                {roles.map((r) => (
+                                                    <option key={r.value} value={r.value}>{r.label}</option>
+                                                ))}
+                                            </select>
+                                        </th>
+                                        <th className="px-6 pb-4 pt-1">
+                                            <select
+                                                className="w-full text-xs py-1.5 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-200 focus:ring-indigo-500 focus:border-indigo-500 font-normal"
+                                                value={filterStatus}
+                                                onChange={(e) => setFilterStatus(e.target.value)}
+                                            >
+                                                <option value="">Semua Status</option>
+                                                {statuses.map((s) => (
+                                                    <option key={s.value} value={s.value}>{s.label}</option>
+                                                ))}
+                                            </select>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/40 text-xs">
