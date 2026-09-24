@@ -38,7 +38,7 @@ class UsersExport implements FromCollection, WithHeadings, WithMapping
             $user->nip,
             $user->phone,
             $user->role,
-            $user->status,
+            $user->status ? $user->status->value : '',
             $user->basic_salary,
             $user->created_at ? $user->created_at->format('Y-m-d H:i:s') : '',
         ];
