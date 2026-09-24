@@ -38,7 +38,8 @@ class UserController extends Controller
             $query->where('status', $request->status);
         }
 
-        $users = $query->latest()->paginate(10)->withQueryString();
+        $perPage = $request->input('per_page', 10);
+        $users = $query->latest()->paginate($perPage)->withQueryString();
         
         $statuses = [];
         foreach(UserStatus::cases() as $case) {
@@ -55,7 +56,7 @@ class UserController extends Controller
             'users' => $users,
             'roles' => $roles,
             'statuses' => $statuses,
-            'filters' => $request->only(['search', 'role', 'status'])
+            'filters' => $request->only(['search', 'role', 'status', 'per_page'])
         ]);
     }
 

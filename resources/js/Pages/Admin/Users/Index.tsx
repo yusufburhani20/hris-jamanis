@@ -29,7 +29,7 @@ export default function UserIndex({ auth, users, roles, statuses, filters }: Pag
     users: PaginatedData<User>, 
     roles: {value: string, label: string}[], 
     statuses: {value: string, label: string}[],
-    filters: { search?: string, role?: string, status?: string }
+    filters: { search?: string, role?: string, status?: string, per_page?: string }
 }>) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -39,6 +39,7 @@ export default function UserIndex({ auth, users, roles, statuses, filters }: Pag
     const [search, setSearch] = useState(filters?.search || '');
     const [filterRole, setFilterRole] = useState(filters?.role || '');
     const [filterStatus, setFilterStatus] = useState(filters?.status || '');
+    const [perPage, setPerPage] = useState(filters?.per_page || '10');
 
     // Handle debounced search & filter
     useEffect(() => {
@@ -47,14 +48,20 @@ export default function UserIndex({ auth, users, roles, statuses, filters }: Pag
             if (search) params.search = search;
             if (filterRole) params.role = filterRole;
             if (filterStatus) params.status = filterStatus;
+            if (perPage !== '10') params.per_page = perPage;
 
             // Only navigate if parameters changed from original filters to prevent infinite loop
-            if (search !== (filters?.search || '') || filterRole !== (filters?.role || '') || filterStatus !== (filters?.status || '')) {
+            if (
+                search !== (filters?.search || '') || 
+                filterRole !== (filters?.role || '') || 
+                filterStatus !== (filters?.status || '') ||
+                perPage !== (filters?.per_page || '10')
+            ) {
                 router.get(route('admin.users.index'), params, { preserveState: true, replace: true });
             }
         }, 500);
         return () => clearTimeout(timer);
-    }, [search, filterRole, filterStatus]);
+    }, [search, filterRole, filterStatus, perPage]);
 
     const { data: importData, setData: setImportData, post: postImport, processing: importProcessing, errors: importErrors, reset: resetImport } = useForm({
         file: null as File | null,
@@ -183,11 +190,25 @@ export default function UserIndex({ auth, users, roles, statuses, filters }: Pag
 
             <div className="py-6">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
-                            <p className="text-gray-600 dark:text-gray-400 text-sm">Kelola seluruh staf, karyawan, dan akun HR Admin aplikasi HRIS.</p>
+                            <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">Kelola seluruh staf, karyawan, dan akun HR Admin aplikasi HRIS.</p>
+                            <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                                <span>Tampilkan</span>
+                                <select 
+                                    className="border-gray-300 dark:border-gray-700 rounded-lg text-sm py-1 pl-3 pr-8 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-300 transition-colors"
+                                    value={perPage}
+                                    onChange={(e) => setPerPage(e.target.value)}
+                                >
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                                <span>data</span>
+                            </div>
                         </div>
-                        <div className="flex space-x-2">
+                        <div className="flex flex-wrap gap-2">
                             {selectedIds.length > 0 && (
                                 <button
                                     onClick={handleBulkDelete}
