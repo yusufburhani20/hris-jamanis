@@ -8,8 +8,8 @@
         <meta name="theme-color" content="#2b7a43">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-        <meta name="apple-mobile-web-app-title" content="HRIS Enterprise">
-        <link rel="apple-touch-icon" href="/images/icon-192.png">
+        <meta name="apple-mobile-web-app-title" content="{{ \App\Models\Setting::get('school_name', 'HRIS Enterprise') }}">
+        <link rel="apple-touch-icon" href="{{ \App\Models\Setting::get('school_logo') ? \Illuminate\Support\Facades\Storage::url(\App\Models\Setting::get('school_logo')) : '/images/icon-192.png' }}">
         <link rel="manifest" href="/manifest.json">
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>

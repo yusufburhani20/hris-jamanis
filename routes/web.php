@@ -22,6 +22,36 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+Route::get('/manifest.json', function () {
+    $logo = \App\Models\Setting::get('school_logo');
+    $logoUrl = $logo ? \Illuminate\Support\Facades\Storage::url($logo) : '/images/icon-512.png';
+    $appName = \App\Models\Setting::get('school_name', 'HRIS Enterprise');
+
+    return response()->json([
+        "name" => $appName,
+        "short_name" => $appName,
+        "description" => "Sistem Informasi Manajemen Kepegawaian & Penggajian Pintar",
+        "start_url" => "/?utm_source=pwa",
+        "display" => "standalone",
+        "background_color" => "#ffffff",
+        "theme_color" => "#2b7a43",
+        "icons" => [
+            [
+                "src" => $logoUrl,
+                "sizes" => "192x192",
+                "type" => "image/png",
+                "purpose" => "any maskable"
+            ],
+            [
+                "src" => $logoUrl,
+                "sizes" => "512x512",
+                "type" => "image/png",
+                "purpose" => "any maskable"
+            ]
+        ]
+    ]);
+});
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
