@@ -18,4 +18,8 @@ export type PageProps<
     auth: {
         user: User;
     };
+    app_settings?: {
+        school_name?: string;
+        school_logo?: string | null;
+    };
 };

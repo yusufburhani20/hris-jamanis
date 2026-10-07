@@ -3,7 +3,8 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { PageProps } from '@/types';
 import { FormEventHandler, useState } from 'react';
 
 export default function Register() {
@@ -17,6 +18,9 @@ export default function Register() {
         password: '',
         password_confirmation: '',
     });
+
+    const { app_settings } = usePage<PageProps>().props;
+    const appName = app_settings?.school_name || "HRIS";
 
     const [showPassword, setShowPassword] = useState(false);
 
@@ -33,7 +37,7 @@ export default function Register() {
             <Head title="Registrasi Karyawan" />
 
             <div className="mb-6 text-center">
-                <h1 className="text-4xl font-black text-indigo-600 dark:text-indigo-400 tracking-tighter mb-0.5">HRIS</h1>
+                <h1 className="text-4xl font-black text-indigo-600 dark:text-indigo-400 tracking-tighter mb-0.5">{appName}</h1>
                 <p className="text-[9px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase mb-2">
                     Human Resource Information System
                 </p>

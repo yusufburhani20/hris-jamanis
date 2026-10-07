@@ -47,6 +47,10 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
+            ],
+            'app_settings' => [
+                'school_name' => \App\Models\Setting::get('school_name', 'HRIS System'),
+                'school_logo' => \App\Models\Setting::get('school_logo') ? asset('storage/' . \App\Models\Setting::get('school_logo')) : null,
             ]
         ];
     }

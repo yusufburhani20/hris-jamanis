@@ -12,6 +12,9 @@ export default function Authenticated({
     const { props } = usePage();
     const flash = props.flash as any;
     const user = props.auth.user as any; 
+    const appSettings = props.app_settings as any;
+    const logoSrc = appSettings?.school_logo || "/images/icon-192.png";
+    const appName = appSettings?.school_name || "HRIS"; 
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // Auto-subscribe to PWA push notifications
@@ -599,10 +602,10 @@ export default function Authenticated({
                 {/* Logo Area */}
                 <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-700/60 flex-shrink-0 overflow-hidden">
                     <Link href={route('dashboard')} className="flex items-center gap-3" onClick={() => setSidebarOpen(false)}>
-                        <img src="/images/icon-192.png" alt="HRIS Logo" className="h-8 w-8 flex-shrink-0 bg-white p-1 rounded-lg" />
+                        <img src={logoSrc} alt={`${appName} Logo`} className="h-8 w-8 flex-shrink-0 bg-white p-1 rounded-lg object-contain" />
                         {!sidebarCollapsed && (
-                            <span className="text-lg font-black tracking-tighter text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
-                                HRIS GEOLOCATION
+                            <span className="text-lg font-black tracking-tighter text-indigo-600 dark:text-indigo-400 whitespace-nowrap overflow-hidden text-ellipsis max-w-[160px]" title={appName}>
+                                {appName.toUpperCase()}
                             </span>
                         )}
                     </Link>
@@ -709,8 +712,8 @@ export default function Authenticated({
                     </button>
 
                     <div className="lg:hidden flex items-center gap-2">
-                        <img src="/images/icon-192.png" alt="HRIS Logo" className="h-7 w-7 bg-white p-0.5 rounded-md" />
-                        <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">HRIS</span>
+                        <img src={logoSrc} alt={`${appName} Logo`} className="h-7 w-7 bg-white p-0.5 rounded-md object-contain" />
+                        <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400 overflow-hidden text-ellipsis whitespace-nowrap max-w-[120px]" title={appName}>{appName.toUpperCase()}</span>
                     </div>
 
                     {header && (

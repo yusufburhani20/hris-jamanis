@@ -1,6 +1,7 @@
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { PageProps } from '@/types';
 import { FormEventHandler, useState } from 'react';
 
 export default function Login({
@@ -15,6 +16,10 @@ export default function Login({
         password: '',
         remember: false as boolean,
     });
+
+    const { app_settings } = usePage<PageProps>().props;
+    const logoSrc = app_settings?.school_logo || "/images/icon-512.png";
+    const appName = app_settings?.school_name || "HRIS";
 
     const [showPassword, setShowPassword] = useState(false);
 
@@ -43,9 +48,9 @@ export default function Login({
                     <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-400/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none" />
 
-                    <img src="/images/icon-512.png" className="w-20 h-20 mb-4 relative z-10 bg-white p-2.5 rounded-2xl animate-pulse-glow" alt="HRIS Logo" />
+                    <img src={logoSrc} className="w-20 h-20 mb-4 relative z-10 bg-white p-2.5 rounded-2xl animate-pulse-glow object-contain" alt={`${appName} Logo`} />
 
-                    <h1 className="text-4xl md:text-5xl font-black mb-1 relative z-10 tracking-tighter text-center">HRIS</h1>
+                    <h1 className="text-4xl md:text-5xl font-black mb-1 relative z-10 tracking-tighter text-center">{appName}</h1>
                     <p className="text-[10px] font-black tracking-[0.2em] mb-8 text-indigo-100 uppercase text-center relative z-10">
                         Human Resource Information System
                     </p>
