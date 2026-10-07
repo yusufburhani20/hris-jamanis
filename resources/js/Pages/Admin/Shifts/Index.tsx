@@ -39,6 +39,9 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
         const [bulkShiftId, setBulkShiftId] = useState<string>(shifts.length > 0 ? String(shifts[0].id) : '');
         const [bulkStartDate, setBulkStartDate] = useState<string>(new Date().toISOString().slice(0, 10));
         const [bulkEndDate, setBulkEndDate] = useState<string>('');
+        const [searchQuery, setSearchQuery] = useState('');
+        const [sortColumn, setSortColumn] = useState<'name' | 'shift'>('name');
+        const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
         const todayStr = new Date().toISOString().slice(0, 10);
 
@@ -230,6 +233,28 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
         setShowAssignModal(true);
     };
 
+    const processedEmployees = employees
+        .filter(emp => 
+            emp.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            emp.email.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .sort((a, b) => {
+            let valA, valB;
+            if (sortColumn === 'name') {
+                valA = a.name.toLowerCase();
+                valB = b.name.toLowerCase();
+            } else if (sortColumn === 'shift') {
+                valA = a.shifts && a.shifts.length > 0 ? a.shifts[0].name.toLowerCase() : 'zzz';
+                valB = b.shifts && b.shifts.length > 0 ? b.shifts[0].name.toLowerCase() : 'zzz';
+            } else {
+                return 0;
+            }
+            
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+
     return (
         <AuthenticatedLayout
             header={
@@ -304,18 +329,30 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                     {/* Right Column - Employee Shift Assignments */}
                     <div className="lg:col-span-2 space-y-6">
                         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-150 dark:border-slate-700/60 transition-colors">
-                            <div className="flex justify-between items-center mb-6">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                                 <div>
                                     <h3 className="text-md font-bold text-slate-900 dark:text-white">Penugasan Shift Kerja Karyawan</h3>
                                     <p className="text-xs text-slate-400">Atur shift jam kerja untuk setiap karyawan.</p>
                                 </div>
-                                <button
-                                    onClick={() => openAssignModal()}
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase px-4 py-2.5 rounded-lg transition-all"
-                                    disabled={shifts.length === 0}
-                                >
-                                    Tugaskan Shift
-                                </button>
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                    <div className="relative w-full sm:w-64">
+                                        <input
+                                            type="text"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            placeholder="Cari nama / email..."
+                                            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                                        />
+                                        <svg className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    </div>
+                                    <button
+                                        onClick={() => openAssignModal()}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase px-4 py-2.5 rounded-lg transition-all flex-shrink-0"
+                                        disabled={shifts.length === 0}
+                                    >
+                                        Tugaskan Shift
+                                    </button>
+                                </div>
                             </div>
 
                             {selectedEmployeeIds.length > 0 && (
@@ -407,30 +444,34 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                 <input
                                                     type="checkbox"
                                                     className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                                                    checked={employees.length > 0 && employees.every(emp => selectedEmployeeIds.includes(emp.id))}
+                                                    checked={processedEmployees.length > 0 && processedEmployees.every(emp => selectedEmployeeIds.includes(emp.id))}
                                                     onChange={(e) => {
                                                         if (e.target.checked) {
-                                                            setSelectedEmployeeIds(employees.map(emp => emp.id));
+                                                            setSelectedEmployeeIds(processedEmployees.map(emp => emp.id));
                                                         } else {
                                                             setSelectedEmployeeIds([]);
                                                         }
                                                     }}
                                                 />
                                             </th>
-                                            <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase">Karyawan</th>
-                                            <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase" colSpan={2}>Jadwal Shift Kerja (Timeline)</th>
+                                            <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => { setSortColumn('name'); setSortDirection(sortColumn === 'name' && sortDirection === 'asc' ? 'desc' : 'asc'); }}>
+                                                Karyawan {sortColumn === 'name' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                            </th>
+                                            <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase cursor-pointer hover:text-indigo-600 transition-colors" colSpan={2} onClick={() => { setSortColumn('shift'); setSortDirection(sortColumn === 'shift' && sortDirection === 'asc' ? 'desc' : 'asc'); }}>
+                                                Jadwal Shift Kerja (Timeline) {sortColumn === 'shift' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                            </th>
                                             <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase text-right">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-750">
-                                        {employees.length === 0 ? (
+                                        {processedEmployees.length === 0 ? (
                                             <tr>
                                                 <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">
                                                     Tidak ada data karyawan.
                                                 </td>
                                             </tr>
                                         ) : (
-                                            employees.map((employee) => {
+                                            processedEmployees.map((employee) => {
                                                 const activeShift = employee.shifts && employee.shifts.length > 0 ? employee.shifts[0] : null;
                                                 return (
                                                     <tr key={employee.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
