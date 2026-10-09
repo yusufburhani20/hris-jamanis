@@ -28,6 +28,16 @@ class AttendanceController extends Controller
         } elseif ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('date', [$request->start_date, $request->end_date]);
         }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('user', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%");
+                })
+                ->orWhere('system_notes', 'like', "%{$search}%")
+                ->orWhere('status', 'like', "%{$search}%");
+            });
+        }
 
         $attendances = $query->latest('date')->latest('check_in')->get();
 
@@ -39,7 +49,7 @@ class AttendanceController extends Controller
         return Inertia::render('Admin/Attendances/Index', [
             'attendances' => $attendances,
             'users' => $users,
-            'filters' => $request->only(['start_date', 'end_date', 'user_id', 'month'])
+            'filters' => $request->only(['start_date', 'end_date', 'user_id', 'month', 'search'])
         ]);
     }
 

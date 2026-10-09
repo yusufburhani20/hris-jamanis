@@ -34,11 +34,12 @@ interface Attendance {
     early_leave_details?: { hours: number; minutes: number; text: string } | null;
 }
 
-export default function AttendanceIndex({ auth, attendances, users, filters }: PageProps<{ attendances: Attendance[], users: User[], filters: { start_date?: string, end_date?: string, user_id?: string, month?: string } }>) {
+export default function AttendanceIndex({ auth, attendances, users, filters }: PageProps<{ attendances: Attendance[], users: User[], filters: { start_date?: string, end_date?: string, user_id?: string, month?: string, search?: string } }>) {
     const [startDate, setStartDate] = useState(filters.start_date || '');
     const [endDate, setEndDate] = useState(filters.end_date || '');
     const [userId, setUserId] = useState(filters.user_id || '');
     const [month, setMonth] = useState(filters.month || '');
+    const [search, setSearch] = useState(filters.search || '');
     const [photoViewer, setPhotoViewer] = useState<{ 
         checkin: string | null, 
         checkout: string | null, 
@@ -65,12 +66,13 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
         return options;
     };
 
-    const applyFilter = (newUserId: string, newMonth: string, newStartDate: string, newEndDate: string) => {
+    const applyFilter = (newUserId: string, newMonth: string, newStartDate: string, newEndDate: string, newSearch: string) => {
         router.get(route('admin.attendances.index'), {
             start_date: newStartDate,
             end_date: newEndDate,
             user_id: newUserId,
-            month: newMonth
+            month: newMonth,
+            search: newSearch
         }, {
             preserveState: true,
             preserveScroll: true
@@ -80,7 +82,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
     const handleUserChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const val = e.target.value;
         setUserId(val);
-        applyFilter(val, month, startDate, endDate);
+        applyFilter(val, month, startDate, endDate, search);
     };
 
     const handleMonthSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -94,7 +96,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
             setStartDate('');
             setEndDate('');
         }
-        applyFilter(userId, val, nextStartDate, nextEndDate);
+        applyFilter(userId, val, nextStartDate, nextEndDate, search);
     };
 
     const handleCustomDateChange = (type: 'start' | 'end', val: string) => {
@@ -109,7 +111,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
     };
 
     const handleFilter = () => {
-        applyFilter(userId, month, startDate, endDate);
+        applyFilter(userId, month, startDate, endDate, search);
     };
 
     const handleExport = (type: 'excel' | 'pdf') => {
@@ -151,7 +153,18 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                     {/* Filters & Actions Card */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                         <div className="flex flex-col md:flex-row md:items-end gap-4">
-                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Cari Data</label>
+                                    <input 
+                                        type="text" 
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        placeholder="Nama / Status..."
+                                        onKeyDown={(e) => e.key === 'Enter' && handleFilter()}
+                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    />
+                                </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Karyawan</label>
                                     <select 
@@ -225,27 +238,27 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
 
                     <div className="bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
+                            <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
                                 <thead>
                                     <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
-                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Date</th>
-                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Employee</th>
-                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Check In</th>
-                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Check Out</th>
-                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Status & Verif</th>
-                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Terlambat</th>
-                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Pulang Awal</th>
-                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Lembur</th>
-                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Notes</th>
-                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white text-center">Aksi</th>
+                                        <th className="px-3 py-3 font-medium text-gray-900 dark:text-white">Date</th>
+                                        <th className="px-3 py-3 font-medium text-gray-900 dark:text-white">Employee</th>
+                                        <th className="px-3 py-3 font-medium text-gray-900 dark:text-white">Check In</th>
+                                        <th className="px-3 py-3 font-medium text-gray-900 dark:text-white">Check Out</th>
+                                        <th className="px-3 py-3 font-medium text-gray-900 dark:text-white">Status & Verif</th>
+                                        <th className="px-3 py-3 font-medium text-gray-900 dark:text-white">Terlambat</th>
+                                        <th className="px-3 py-3 font-medium text-gray-900 dark:text-white">Pulang Awal</th>
+                                        <th className="px-3 py-3 font-medium text-gray-900 dark:text-white">Lembur</th>
+                                        <th className="px-3 py-3 font-medium text-gray-900 dark:text-white">Notes</th>
+                                        <th className="px-3 py-3 font-medium text-gray-900 dark:text-white text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                                     {attendances.map((record) => (
                                         <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20">
-                                            <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{new Date(record.date).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 text-gray-900 dark:text-white font-medium">{record.user.name}</td>
-                                             <td className="px-6 py-4">
+                                            <td className="px-3 py-3 text-gray-600 dark:text-gray-300">{new Date(record.date).toLocaleDateString()}</td>
+                                            <td className="px-3 py-3 text-gray-900 dark:text-white font-medium">{record.user.name}</td>
+                                             <td className="px-3 py-3">
                                                  <div className="flex flex-col">
                                                      <span className="text-gray-600 dark:text-gray-300 font-semibold">{record.check_in || '-'}</span>
                                                      {record.check_in && record.accuracy && (
@@ -259,7 +272,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                      )}
                                                  </div>
                                              </td>
-                                             <td className="px-6 py-4">
+                                             <td className="px-3 py-3">
                                                  <div className="flex flex-col">
                                                      <span className="text-gray-600 dark:text-gray-300 font-semibold">{record.check_out || '-'}</span>
                                                      {record.check_out && record.checkout_accuracy && (
@@ -273,7 +286,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                      )}
                                                  </div>
                                              </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-3 py-3">
                                                 <div className="flex flex-col space-y-1">
                                                     <span className={`inline-flex text-xs font-bold rounded-full px-2 py-0.5 w-max shadow-sm 
                                                         ${record.status === 'hadir' ? 'bg-emerald-100 text-emerald-800' : 
@@ -302,7 +315,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                 </div>
                                             </td>
                                             {/* Kolom Terlambat */}
-                                            <td className="px-6 py-4">
+                                            <td className="px-3 py-3">
                                                 {record.late_details ? (
                                                     <div className="flex flex-col gap-1">
                                                         <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 rounded-full px-2.5 py-0.5 w-max">
@@ -320,7 +333,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                 )}
                                             </td>
                                             {/* Kolom Pulang Awal */}
-                                            <td className="px-6 py-4">
+                                            <td className="px-3 py-3">
                                                 {record.early_leave_details ? (
                                                     <div className="flex flex-col gap-1">
                                                         <span className="inline-flex items-center gap-1 text-xs font-bold text-orange-800 bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 border border-orange-200 dark:border-orange-800/50 rounded-full px-2.5 py-0.5 w-max">
@@ -338,7 +351,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                 )}
                                             </td>
                                             {/* Kolom Lembur */}
-                                            <td className="px-6 py-4">
+                                            <td className="px-3 py-3">
                                                 {record.overtime_details ? (
                                                     <div className="flex flex-col gap-1">
                                                         <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50 rounded-full px-2.5 py-0.5 w-max">
@@ -355,10 +368,10 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                     <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4 text-xs text-gray-500 dark:text-gray-400 max-w-xs truncate" title={record.system_notes || ''}>
+                                            <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400 max-w-xs truncate" title={record.system_notes || ''}>
                                                 {record.system_notes || '-'}
                                             </td>
-                                            <td className="px-6 py-4 text-center">
+                                            <td className="px-3 py-3 text-center">
                                                 <div className="flex items-center justify-center space-x-2">
                                                     <button
                                                         onClick={() => openPhotoViewer(record)}
