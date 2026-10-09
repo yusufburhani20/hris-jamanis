@@ -49,6 +49,17 @@ class HandleInertiaRequests extends Middleware
                 'overtimes' => \App\Models\OvertimeRequest::where('status', 'pending')->count(),
                 'shift_exchanges' => \App\Models\ShiftExchangeRequest::where('status', 'pending')->count(),
             ] : null,
+            'employee_updates' => $user ? [
+                'latest_leave' => \App\Models\Leave::where('user_id', $user->id)
+                    ->whereIn('status', ['approved', 'rejected'])
+                    ->max('updated_at'),
+                'latest_overtime' => \App\Models\OvertimeRequest::where('user_id', $user->id)
+                    ->whereIn('status', ['approved', 'rejected'])
+                    ->max('updated_at'),
+                'latest_shift' => \App\Models\ShiftExchangeRequest::where('user_id', $user->id)
+                    ->whereIn('status', ['approved', 'rejected'])
+                    ->max('updated_at'),
+            ] : null,
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),

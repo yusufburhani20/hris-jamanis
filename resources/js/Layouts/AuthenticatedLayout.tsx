@@ -13,6 +13,7 @@ export default function Authenticated({
     const flash = props.flash as any;
     const user = props.auth.user as any; 
     const pendingApprovals = props.pending_approvals as any;
+    const employeeUpdates = props.employee_updates as any;
     const appSettings = props.app_settings as any;
     const logoSrc = appSettings?.school_logo || "/images/icon-192.png";
     const appName = appSettings?.school_name || "HRIS"; 
@@ -20,6 +21,38 @@ export default function Authenticated({
 
     // Auto-subscribe to PWA push notifications
     usePushNotification();
+    
+    // Check for new employee updates
+    const checkNew = (key: string, latestUpdate: string | null) => {
+        if (!latestUpdate) return false;
+        const lastViewed = typeof window !== 'undefined' ? localStorage.getItem(`last_viewed_${key}`) : null;
+        if (!lastViewed) return true;
+        return new Date(latestUpdate) > new Date(lastViewed);
+    };
+
+    const [hasNewLeaves, setHasNewLeaves] = useState(false);
+    const [hasNewOvertimes, setHasNewOvertimes] = useState(false);
+    const [hasNewShifts, setHasNewShifts] = useState(false);
+
+    useEffect(() => {
+        setHasNewLeaves(checkNew('leaves', employeeUpdates?.latest_leave));
+        setHasNewOvertimes(checkNew('overtimes', employeeUpdates?.latest_overtime));
+        setHasNewShifts(checkNew('shifts', employeeUpdates?.latest_shift));
+
+        // Mark as viewed when visiting the respective pages
+        if (route().current('leaves.index')) {
+            localStorage.setItem('last_viewed_leaves', new Date().toISOString());
+            setHasNewLeaves(false);
+        }
+        if (route().current('overtimes.index')) {
+            localStorage.setItem('last_viewed_overtimes', new Date().toISOString());
+            setHasNewOvertimes(false);
+        }
+        if (route().current('shift-exchanges.index')) {
+            localStorage.setItem('last_viewed_shifts', new Date().toISOString());
+            setHasNewShifts(false);
+        }
+    }, [route().current(), employeeUpdates]);
     
     // Sidebar collapse state (Desktop)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -291,6 +324,7 @@ export default function Authenticated({
                     show: true,
                     icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>),
                     badge: isAdmin ? pendingApprovals?.leaves : undefined,
+                    dot: !isAdmin ? hasNewLeaves : false,
                 },
                 {
                     label: isAdmin ? 'Persetujuan Lembur' : 'Lembur Saya',
@@ -299,6 +333,7 @@ export default function Authenticated({
                     show: true,
                     icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>),
                     badge: isAdmin ? pendingApprovals?.overtimes : undefined,
+                    dot: !isAdmin ? hasNewOvertimes : false,
                 },
                 {
                     label: isAdmin ? 'Persetujuan Tukar Shift' : 'Tukar Shift Saya',
@@ -310,6 +345,7 @@ export default function Authenticated({
                     show: true,
                     icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>),
                     badge: isAdmin ? pendingApprovals?.shift_exchanges : undefined,
+                    dot: !isAdmin ? hasNewShifts : false,
                 },
                 {
                     label: 'Slip Gaji Saya',
@@ -657,8 +693,12 @@ export default function Authenticated({
                                                     {(item as any).badge}
                                                 </span>
                                             )}
+
+                                            {!sidebarCollapsed && (item as any).dot && (
+                                                <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
+                                            )}
                                             
-                                            {!sidebarCollapsed && item.active && (!(item as any).badge || (item as any).badge === 0) && (
+                                            {!sidebarCollapsed && item.active && (!(item as any).badge || (item as any).badge === 0) && !(item as any).dot && (
                                                 <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
                                             )}
                                         </Link>
