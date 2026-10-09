@@ -23,35 +23,40 @@ export default function Authenticated({
     usePushNotification();
     
     // Check for new employee updates
-    const checkNew = (key: string, latestUpdate: string | null) => {
-        if (!latestUpdate) return false;
-        const lastViewed = typeof window !== 'undefined' ? localStorage.getItem(`last_viewed_${key}`) : null;
-        if (!lastViewed) return true;
-        return new Date(latestUpdate) > new Date(lastViewed);
+    const countNew = (key: string, timestamps: string[]) => {
+        if (!timestamps || !timestamps.length) return 0;
+        const lastViewedStr = typeof window !== 'undefined' ? localStorage.getItem(`last_viewed_${key}`) : null;
+        if (!lastViewedStr) return timestamps.length;
+        const lastViewed = new Date(lastViewedStr).getTime();
+        return timestamps.filter(t => new Date(t).getTime() > lastViewed).length;
     };
 
-    const [hasNewLeaves, setHasNewLeaves] = useState(false);
-    const [hasNewOvertimes, setHasNewOvertimes] = useState(false);
-    const [hasNewShifts, setHasNewShifts] = useState(false);
+    const [newLeavesCount, setNewLeavesCount] = useState(0);
+    const [newOvertimesCount, setNewOvertimesCount] = useState(0);
+    const [newShiftsCount, setNewShiftsCount] = useState(0);
 
     useEffect(() => {
-        setHasNewLeaves(checkNew('leaves', employeeUpdates?.latest_leave));
-        setHasNewOvertimes(checkNew('overtimes', employeeUpdates?.latest_overtime));
-        setHasNewShifts(checkNew('shifts', employeeUpdates?.latest_shift));
+        let lCount = countNew('leaves', employeeUpdates?.leaves || []);
+        let oCount = countNew('overtimes', employeeUpdates?.overtimes || []);
+        let sCount = countNew('shifts', employeeUpdates?.shift_exchanges || []);
 
         // Mark as viewed when visiting the respective pages
         if (route().current('leaves.index')) {
             localStorage.setItem('last_viewed_leaves', new Date().toISOString());
-            setHasNewLeaves(false);
+            lCount = 0;
         }
         if (route().current('overtimes.index')) {
             localStorage.setItem('last_viewed_overtimes', new Date().toISOString());
-            setHasNewOvertimes(false);
+            oCount = 0;
         }
         if (route().current('shift-exchanges.index')) {
             localStorage.setItem('last_viewed_shifts', new Date().toISOString());
-            setHasNewShifts(false);
+            sCount = 0;
         }
+
+        setNewLeavesCount(lCount);
+        setNewOvertimesCount(oCount);
+        setNewShiftsCount(sCount);
     }, [route().current(), employeeUpdates]);
     
     // Sidebar collapse state (Desktop)
@@ -323,8 +328,7 @@ export default function Authenticated({
                     active: route().current('leaves.*') || route().current('admin.leaves.*'),
                     show: true,
                     icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>),
-                    badge: isAdmin ? pendingApprovals?.leaves : undefined,
-                    dot: !isAdmin ? hasNewLeaves : false,
+                    badge: isAdmin ? pendingApprovals?.leaves : newLeavesCount,
                 },
                 {
                     label: isAdmin ? 'Persetujuan Lembur' : 'Lembur Saya',
@@ -332,8 +336,7 @@ export default function Authenticated({
                     active: route().current('overtimes.*') || route().current('admin.overtimes.*'),
                     show: true,
                     icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>),
-                    badge: isAdmin ? pendingApprovals?.overtimes : undefined,
-                    dot: !isAdmin ? hasNewOvertimes : false,
+                    badge: isAdmin ? pendingApprovals?.overtimes : newOvertimesCount,
                 },
                 {
                     label: isAdmin ? 'Persetujuan Tukar Shift' : 'Tukar Shift Saya',
@@ -344,8 +347,7 @@ export default function Authenticated({
                             (route().has('admin.shift-exchanges.index') && route().current('admin.shift-exchanges.*')),
                     show: true,
                     icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>),
-                    badge: isAdmin ? pendingApprovals?.shift_exchanges : undefined,
-                    dot: !isAdmin ? hasNewShifts : false,
+                    badge: isAdmin ? pendingApprovals?.shift_exchanges : newShiftsCount,
                 },
                 {
                     label: 'Slip Gaji Saya',
@@ -693,12 +695,8 @@ export default function Authenticated({
                                                     {(item as any).badge}
                                                 </span>
                                             )}
-
-                                            {!sidebarCollapsed && (item as any).dot && (
-                                                <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
-                                            )}
                                             
-                                            {!sidebarCollapsed && item.active && (!(item as any).badge || (item as any).badge === 0) && !(item as any).dot && (
+                                            {!sidebarCollapsed && item.active && (!(item as any).badge || (item as any).badge === 0) && (
                                                 <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
                                             )}
                                         </Link>

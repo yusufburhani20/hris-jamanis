@@ -50,15 +50,18 @@ class HandleInertiaRequests extends Middleware
                 'shift_exchanges' => \App\Models\ShiftExchangeRequest::where('status', 'pending')->count(),
             ] : null,
             'employee_updates' => $user ? [
-                'latest_leave' => \App\Models\Leave::where('user_id', $user->id)
+                'leaves' => \App\Models\Leave::where('user_id', $user->id)
                     ->whereIn('status', ['approved', 'rejected'])
-                    ->max('updated_at'),
-                'latest_overtime' => \App\Models\OvertimeRequest::where('user_id', $user->id)
+                    ->where('updated_at', '>=', now()->subDays(30))
+                    ->pluck('updated_at'),
+                'overtimes' => \App\Models\OvertimeRequest::where('user_id', $user->id)
                     ->whereIn('status', ['approved', 'rejected'])
-                    ->max('updated_at'),
-                'latest_shift' => \App\Models\ShiftExchangeRequest::where('user_id', $user->id)
+                    ->where('updated_at', '>=', now()->subDays(30))
+                    ->pluck('updated_at'),
+                'shift_exchanges' => \App\Models\ShiftExchangeRequest::where('user_id', $user->id)
                     ->whereIn('status', ['approved', 'rejected'])
-                    ->max('updated_at'),
+                    ->where('updated_at', '>=', now()->subDays(30))
+                    ->pluck('updated_at'),
             ] : null,
             'flash' => [
                 'success' => $request->session()->get('success'),
