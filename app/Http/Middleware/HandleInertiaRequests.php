@@ -44,6 +44,11 @@ class HandleInertiaRequests extends Middleware
                 'unreadCount' => $user ? $user->unreadNotifications()->count() : 0,
                 'recent' => $user ? $user->notifications()->take(5)->get() : [],
             ],
+            'pending_approvals' => $user && (method_exists($user, 'hasRole') ? $user->hasRole('admin') : $user->role === 'admin') ? [
+                'leaves' => \App\Models\Leave::where('status', 'pending')->count(),
+                'overtimes' => \App\Models\OvertimeRequest::where('status', 'pending')->count(),
+                'shift_exchanges' => \App\Models\ShiftExchangeRequest::where('status', 'pending')->count(),
+            ] : null,
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
