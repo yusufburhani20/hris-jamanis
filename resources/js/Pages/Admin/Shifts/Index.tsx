@@ -581,8 +581,8 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
             {/* Modal CRUD Shift */}
             {showShiftModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700 transform transition-all scale-100 animate-scale-up">
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/50 dark:bg-slate-850">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700 transform transition-all scale-100 animate-scale-up flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/50 dark:bg-slate-850 shrink-0">
                             <h3 className="text-lg font-black text-slate-900 dark:text-white">
                                 {editingShift ? 'Edit Shift Kerja' : 'Tambah Shift Kerja Baru'}
                             </h3>
@@ -593,7 +593,7 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <form onSubmit={editingShift ? handleUpdateShift : handleCreateShift} className="p-6 space-y-4">
+                        <form onSubmit={editingShift ? handleUpdateShift : handleCreateShift} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Nama Shift</label>
                                 <input
@@ -669,8 +669,8 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
             {/* Modal Assign Shift to Employee */}
             {showAssignModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700 transform transition-all scale-100 animate-scale-up">
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/50 dark:bg-slate-850">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700 transform transition-all scale-100 animate-scale-up flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/50 dark:bg-slate-850 shrink-0">
                             <h3 className="text-lg font-black text-slate-900 dark:text-white">Tugaskan Shift Kerja</h3>
                             <button
                                 onClick={() => { setShowAssignModal(false); resetAssign(); }}
@@ -679,7 +679,7 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <form onSubmit={handleAssignShift} className="p-6 space-y-4">
+                        <form onSubmit={handleAssignShift} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
                              <div>
                                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Pilih Karyawan</label>
                                 <select
@@ -799,8 +799,8 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
             {/* Modal Edit Assign Shift */}
             {showEditAssignModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700 transform transition-all scale-100 animate-scale-up">
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/50 dark:bg-slate-850">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700 transform transition-all scale-100 animate-scale-up flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/50 dark:bg-slate-850 shrink-0">
                             <h3 className="text-lg font-black text-slate-900 dark:text-white">Edit Penugasan Shift</h3>
                             <button
                                 onClick={() => { setShowEditAssignModal(false); resetEditAssign(); }}
@@ -809,7 +809,7 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <form onSubmit={handleEditAssignSubmit} className="p-6 space-y-4">
+                        <form onSubmit={handleEditAssignSubmit} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Pilih Jam Shift</label>
                                 <select
