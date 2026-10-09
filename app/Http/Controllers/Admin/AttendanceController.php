@@ -43,6 +43,24 @@ class AttendanceController extends Controller
         ]);
     }
 
+    public function resetCheckout(Attendance $attendance)
+    {
+        $attendance->update([
+            'check_out' => null,
+            'checkout_photo_path' => null,
+            'checkout_accuracy' => null,
+            'status' => 'hadir' // Resetting status back to hadir, as if they only checked in
+        ]);
+
+        return back()->with('success', 'Data check-out berhasil direset.');
+    }
+
+    public function destroy(Attendance $attendance)
+    {
+        $attendance->delete();
+        return back()->with('success', 'Data absensi berhasil dihapus sepenuhnya.');
+    }
+
     public function exportExcel(Request $request)
     {
         $startDate = $request->query('start_date');

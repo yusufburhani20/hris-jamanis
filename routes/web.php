@@ -118,6 +118,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         // Employee Attendance Logs
         Route::get('/attendances', [AdminAttendanceController::class, 'index'])->name('attendances.index');
+        Route::post('/attendances/{attendance}/reset-checkout', [AdminAttendanceController::class, 'resetCheckout'])->name('attendances.reset-checkout');
+        Route::delete('/attendances/{attendance}', [AdminAttendanceController::class, 'destroy'])->name('attendances.destroy');
         Route::get('/attendances/export/excel', [AdminAttendanceController::class, 'exportExcel'])->name('attendances.export.excel');
         Route::get('/attendances/export/pdf', [AdminAttendanceController::class, 'exportPdf'])->name('attendances.export.pdf');
 

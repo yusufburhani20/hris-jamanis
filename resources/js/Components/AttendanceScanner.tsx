@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useForm } from '@inertiajs/react';
+import { useForm, Link } from '@inertiajs/react';
 import { MapPinIcon, CameraIcon, CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { addToOfflineQueue } from '../utils/offlineStore';
 
@@ -11,6 +11,8 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
     // Geofence validation state
     const [nearestGeofence, setNearestGeofence] = useState<{ name: string, distance: number, radius: number, valid: boolean } | null>(null);
     const [localSuccessMessage, setLocalSuccessMessage] = useState<string | null>(null);
+    const [justCheckedIn, setJustCheckedIn] = useState(false);
+    const [justCheckedOut, setJustCheckedOut] = useState(false);
     
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
@@ -345,9 +347,11 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
             onSuccess: () => {
                 // If it was a success, we should restart the camera if they need to check out later
                 if (type === 'checkIn') {
-                    setPhotoPreview(null);
-                    setData('photo', null);
-                    startCamera();
+                    setJustCheckedIn(true);
+                    stopCamera();
+                } else {
+                    setJustCheckedOut(true);
+                    stopCamera();
                 }
             }
         });
@@ -361,25 +365,38 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 text-center h-full flex flex-col justify-center items-center space-y-4 shadow-md transition-shadow">
                 <CheckCircleIcon className="w-16 h-16 text-emerald-500 animate-bounce" />
                 <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Absensi Disimpan</h3>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Absensi Disimpan Offline</h3>
                     <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm leading-relaxed">{localSuccessMessage}</p>
                 </div>
-                <button
-                    onClick={() => {
-                        setLocalSuccessMessage(null);
-                        setPhotoPreview(null);
-                        setData('photo', null);
-                        startCamera();
-                    }}
+                <Link
+                    href={route('dashboard')}
                     className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
                 >
-                    Kembali ke Pemindai
-                </button>
+                    Kembali ke Dashboard
+                </Link>
             </div>
         );
     }
 
-    if (isCheckedOut) {
+    if (justCheckedIn) {
+        return (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 text-center h-full flex flex-col justify-center items-center space-y-4 shadow-md transition-shadow">
+                <CheckCircleIcon className="w-16 h-16 text-emerald-500 animate-bounce" />
+                <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Presensi Masuk Berhasil</h3>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2">Anda telah berhasil melakukan Check-In hari ini.</p>
+                </div>
+                <Link
+                    href={route('dashboard')}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors inline-block"
+                >
+                    Kembali ke Dashboard
+                </Link>
+            </div>
+        );
+    }
+
+    if (justCheckedOut || isCheckedOut) {
         return (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 text-center h-full flex flex-col justify-center items-center space-y-4 shadow-md transition-shadow">
                 <CheckCircleIcon className="w-16 h-16 text-emerald-500" />
@@ -387,6 +404,12 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white">Presensi Selesai</h3>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">Anda telah menyelesaikan Check-In dan Check-Out hari ini.</p>
                 </div>
+                <Link
+                    href={route('dashboard')}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors inline-block"
+                >
+                    Kembali ke Dashboard
+                </Link>
             </div>
         );
     }

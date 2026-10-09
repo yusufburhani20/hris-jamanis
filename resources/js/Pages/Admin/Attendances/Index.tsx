@@ -2,7 +2,7 @@ import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import React, { useState } from 'react';
-import { EyeIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, TrashIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
 
 interface User {
     id: number;
@@ -237,7 +237,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Pulang Awal</th>
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Lembur</th>
                                         <th className="px-6 py-4 font-medium text-gray-900 dark:text-white">Notes</th>
-                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white text-center">Photo</th>
+                                        <th className="px-6 py-4 font-medium text-gray-900 dark:text-white text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -359,13 +359,39 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                 {record.system_notes || '-'}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <button
-                                                    onClick={() => openPhotoViewer(record)}
-                                                    title="Lihat Foto"
-                                                    className="text-gray-500 hover:text-primary transition-colors"
-                                                >
-                                                    <EyeIcon className="w-5 h-5 mx-auto" />
-                                                </button>
+                                                <div className="flex items-center justify-center space-x-2">
+                                                    <button
+                                                        onClick={() => openPhotoViewer(record)}
+                                                        title="Lihat Foto"
+                                                        className="p-1 text-gray-500 hover:text-primary transition-colors"
+                                                    >
+                                                        <EyeIcon className="w-5 h-5" />
+                                                    </button>
+                                                    {record.check_out && (
+                                                        <button
+                                                            onClick={() => {
+                                                                if (confirm('Yakin ingin mereset/mengosongkan jam pulang absen ini?')) {
+                                                                    router.post(route('admin.attendances.reset-checkout', record.id));
+                                                                }
+                                                            }}
+                                                            title="Reset Check-Out"
+                                                            className="p-1 text-orange-500 hover:text-orange-700 transition-colors"
+                                                        >
+                                                            <ArrowUturnLeftIcon className="w-5 h-5" />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => {
+                                                            if (confirm('Yakin ingin menghapus seluruh data absen ini secara permanen?')) {
+                                                                router.delete(route('admin.attendances.destroy', record.id));
+                                                            }
+                                                        }}
+                                                        title="Hapus Data Absen"
+                                                        className="p-1 text-rose-500 hover:text-rose-700 transition-colors"
+                                                    >
+                                                        <TrashIcon className="w-5 h-5" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
