@@ -7,8 +7,9 @@ interface Shift {
     id: number;
     name: string;
     code: string;
-    start_time: string;
-    end_time: string;
+    is_dayoff?: boolean;
+    start_time: string | null;
+    end_time: string | null;
 }
 
 interface Employee {
@@ -279,14 +280,18 @@ export default function ShiftExchangesIndex({ auth, exchanges, shifts, employees
                                             </td>
                                             <td className="px-6 py-4 text-xs">
                                                 <div className="font-bold text-slate-800 dark:text-slate-200">{exc.from_shift?.name}</div>
-                                                <div className="text-[10px] text-slate-400 font-mono">{exc.from_shift?.start_time.substring(0, 5)} - {exc.from_shift?.end_time.substring(0, 5)}</div>
+                                                <div className="text-[10px] text-slate-400 font-mono">
+                                                    {exc.from_shift?.is_dayoff ? 'Libur' : `${exc.from_shift?.start_time?.substring(0, 5)} - ${exc.from_shift?.end_time?.substring(0, 5)}`}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-xs">
                                                 {exc.type === 'shift' ? (
                                                     exc.to_shift ? (
                                                         <>
                                                             <div className="font-bold text-slate-800 dark:text-slate-200">{exc.to_shift.name}</div>
-                                                            <div className="text-[10px] text-slate-400 font-mono">{exc.to_shift.start_time.substring(0, 5)} - {exc.to_shift.end_time.substring(0, 5)}</div>
+                                                            <div className="text-[10px] text-slate-400 font-mono">
+                                                                {exc.to_shift.is_dayoff ? 'Libur' : `${exc.to_shift.start_time?.substring(0, 5)} - ${exc.to_shift.end_time?.substring(0, 5)}`}
+                                                            </div>
                                                         </>
                                                     ) : '-'
                                                 ) : (
@@ -295,7 +300,7 @@ export default function ShiftExchangesIndex({ auth, exchanges, shifts, employees
                                                             <div className="font-bold text-indigo-600 dark:text-indigo-400">↔ {exc.target_user.name}</div>
                                                             {exc.target_user_from_shift && (
                                                                 <div className="text-[10px] text-slate-400">
-                                                                    (Shift Rekan: {exc.target_user_from_shift.name} {exc.target_user_from_shift.start_time.substring(0, 5)}-{exc.target_user_from_shift.end_time.substring(0, 5)})
+                                                                    (Shift Rekan: {exc.target_user_from_shift.name} {exc.target_user_from_shift.is_dayoff ? 'Libur' : `${exc.target_user_from_shift.start_time?.substring(0, 5)}-${exc.target_user_from_shift.end_time?.substring(0, 5)}`})
                                                                 </div>
                                                             )}
                                                         </>
@@ -421,7 +426,7 @@ export default function ShiftExchangesIndex({ auth, exchanges, shifts, employees
                                         <option value="">-- Pilih Shift Tujuan --</option>
                                         {shifts.map(shift => (
                                             <option key={shift.id} value={shift.id}>
-                                                {shift.name} ({shift.start_time.substring(0, 5)} - {shift.end_time.substring(0, 5)})
+                                                {shift.name} {shift.is_dayoff ? '(Libur)' : `(${shift.start_time?.substring(0, 5)} - ${shift.end_time?.substring(0, 5)})`}
                                             </option>
                                         ))}
                                     </select>
