@@ -41,6 +41,20 @@ class AttendanceController extends Controller
 
         $attendances = $query->latest('date')->latest('check_in')->get();
 
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+
+        if ($request->filled('month')) {
+            $monthDate = Carbon::parse($request->month);
+            $startDate = $monthDate->startOfMonth()->toDateString();
+            $endDate = $monthDate->endOfMonth()->toDateString();
+        } elseif (!$startDate || !$endDate) {
+            $startDate = Carbon::now()->startOfMonth()->toDateString();
+            $endDate = Carbon::now()->endOfMonth()->toDateString();
+        }
+
+        $attendances = Attendance::injectDayOffs($attendances, $startDate, $endDate, $request->user_id);
+
         $users = \App\Models\User::where('role', 'LIKE', '%employee%')
             ->orWhere('role', 'LIKE', '%driver%')
             ->orderBy('name')
@@ -124,6 +138,12 @@ class AttendanceController extends Controller
             ->orderBy('attendances.date', 'asc')
             ->select('attendances.*')
             ->get();
+
+        $attendances = Attendance::injectDayOffs($attendances, $startDate, $endDate, $userId);
+
+        $attendances = $attendances->sortBy(function($att) {
+            return $att->user->name . '_' . $att->date;
+        })->values();
 
         $groupedAttendances = $attendances->groupBy(function($item) {
             return $item->user->name;

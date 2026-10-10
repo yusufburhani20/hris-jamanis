@@ -42,6 +42,7 @@ interface DashboardProps {
         present_today: number;
         late_today: number;
         checkout_today: number;
+        users_on_leave_today: Array<{ user_id: number; name: string; avatar: string | null; shift_name: string }>;
     };
     activeUsers?: any[];
     lastLogins?: any[];
@@ -381,7 +382,7 @@ export default function Dashboard({
                     // ────────────────────────────────────────────────────────
                     <div className="space-y-6">
                         {/* Stats Cards */}
-                        <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+                        <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
                             <StatCard 
                                 title="Total Karyawan" 
                                 value={stats?.total_employees || 0} 
@@ -412,7 +413,40 @@ export default function Dashboard({
                                 icon={<ClockIcon className="w-5 h-5" />}
                                 colorClass="bg-teal-100 text-teal-600 dark:bg-teal-500/20 dark:text-teal-400"
                             />
+                            <StatCard 
+                                title="Sedang Libur" 
+                                value={stats?.users_on_leave_today?.length || 0} 
+                                icon={<CalendarIcon className="w-5 h-5" />}
+                                colorClass="bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400"
+                            />
                         </div>
+
+                        {/* List Karyawan Libur Hari Ini */}
+                        {stats?.users_on_leave_today && stats.users_on_leave_today.length > 0 && (
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-150 dark:border-slate-700/60">
+                                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                                    <CalendarIcon className="w-5 h-5 text-rose-500" />
+                                    Karyawan Libur Hari Ini
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    {stats.users_on_leave_today.map((u, i) => (
+                                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-750">
+                                            {u.avatar ? (
+                                                <img src={u.avatar} alt={u.name} className="w-10 h-10 rounded-full object-cover" />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold text-sm">
+                                                    {u.name.charAt(0)}
+                                                </div>
+                                            )}
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{u.name}</p>
+                                                <p className="text-xs font-semibold text-rose-500">{u.shift_name}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* ── FASE 4: VISUAL ANALYTICS DASHBOARD ── */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -43,8 +43,9 @@ class ShiftController extends Controller
         $request->validate([
             'name' => 'required|string|max:100',
             'code' => 'required|string|unique:shifts,code|max:20',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i',
+            'start_time' => 'nullable|required_without:is_dayoff|date_format:H:i',
+            'end_time' => 'nullable|required_without:is_dayoff|date_format:H:i',
+            'is_dayoff' => 'boolean',
         ]);
 
         Shift::create([
@@ -52,6 +53,7 @@ class ShiftController extends Controller
             'code' => strtoupper($request->code),
             'start_time' => $request->start_time,
             'end_time' => $request->end_time,
+            'is_dayoff' => $request->boolean('is_dayoff', false),
         ]);
 
         return redirect()->back()->with('success', 'Shift baru berhasil ditambahkan.');
@@ -65,19 +67,21 @@ class ShiftController extends Controller
         $request->validate([
             'name' => 'required|string|max:100',
             'code' => 'required|string|max:20|unique:shifts,code,' . $shift->id,
-            'start_time' => 'required',
-            'end_time' => 'required',
+            'start_time' => 'nullable|required_without:is_dayoff',
+            'end_time' => 'nullable|required_without:is_dayoff',
+            'is_dayoff' => 'boolean',
         ]);
 
         // Clean time format to H:i
-        $startTime = date('H:i', strtotime($request->start_time));
-        $endTime = date('H:i', strtotime($request->end_time));
+        $startTime = $request->start_time ? date('H:i', strtotime($request->start_time)) : null;
+        $endTime = $request->end_time ? date('H:i', strtotime($request->end_time)) : null;
 
         $shift->update([
             'name' => $request->name,
             'code' => strtoupper($request->code),
             'start_time' => $startTime,
             'end_time' => $endTime,
+            'is_dayoff' => $request->boolean('is_dayoff', false),
         ]);
 
         return redirect()->back()->with('success', 'Shift berhasil diperbarui.');

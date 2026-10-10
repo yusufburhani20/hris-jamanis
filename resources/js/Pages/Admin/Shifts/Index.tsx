@@ -7,8 +7,9 @@ interface Shift {
     id: number;
     name: string;
     code: string;
-    start_time: string;
-    end_time: string;
+    start_time: string | null;
+    end_time: string | null;
+    is_dayoff: boolean;
 }
 
 interface Employee {
@@ -129,6 +130,7 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
         code: '',
         start_time: '',
         end_time: '',
+        is_dayoff: false,
     });
 
     // Form state for assigning shift to employee
@@ -167,8 +169,9 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
             name: shift.name,
             code: shift.code,
             // Strip seconds if present (e.g. 08:00:00 -> 08:00)
-            start_time: shift.start_time.slice(0, 5),
-            end_time: shift.end_time.slice(0, 5),
+            start_time: shift.start_time ? shift.start_time.slice(0, 5) : '',
+            end_time: shift.end_time ? shift.end_time.slice(0, 5) : '',
+            is_dayoff: (shift as any).is_dayoff || false,
         });
         setShowShiftModal(true);
     };
@@ -300,7 +303,11 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-1">
-                                                    ⏱️ {shift.start_time.slice(0, 5)} - {shift.end_time.slice(0, 5)}
+                                                    {shift.is_dayoff ? (
+                                                        <span className="text-rose-500">🏖️ Libur</span>
+                                                    ) : (
+                                                        `⏱️ ${shift.start_time?.slice(0, 5)} - ${shift.end_time?.slice(0, 5)}`
+                                                    )}
                                                 </p>
                                             </div>
                                             <div className="flex gap-1.5">
@@ -380,7 +387,9 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                             >
                                                 <option value="" disabled>-- Pilih Shift --</option>
                                                 {shifts.map((sh) => (
-                                                    <option key={sh.id} value={sh.id}>{sh.name} [{sh.code}] ({sh.start_time.slice(0, 5)} - {sh.end_time.slice(0, 5)})</option>
+                                                    <option key={sh.id} value={sh.id}>
+                                                        {sh.name} [{sh.code}] {sh.is_dayoff ? '(Libur)' : `(${sh.start_time?.slice(0, 5)} - ${sh.end_time?.slice(0, 5)})`}
+                                                    </option>
                                                 ))}
                                             </select>
                                         </div>
@@ -518,9 +527,15 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                                                     <div className="font-bold text-sm">
                                                                                         {sh.name} <span className="text-xs font-mono font-medium opacity-75">[{sh.code}]</span>
                                                                                     </div>
-                                                                                    <span className="text-xs opacity-80">
-                                                                                        ⏱️ {sh.start_time.slice(0, 5)} - {sh.end_time.slice(0, 5)}
-                                                                                    </span>
+                                                                                    {sh.is_dayoff ? (
+                                                                                        <span className="text-xs font-bold text-rose-500 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full">
+                                                                                            🏖️ Libur
+                                                                                        </span>
+                                                                                    ) : (
+                                                                                        <span className="text-xs opacity-80">
+                                                                                            ⏱️ {sh.start_time?.slice(0, 5)} - {sh.end_time?.slice(0, 5)}
+                                                                                        </span>
+                                                                                    )}
                                                                                 </div>
                                                                                 <div className="flex items-center justify-between sm:justify-end gap-3 mt-1.5 sm:mt-0">
                                                                                     <div className="text-xs font-semibold opacity-75">
@@ -620,30 +635,45 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                 {shiftErrors.code && <p className="text-red-500 text-xs mt-1">{shiftErrors.code}</p>}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Jam Masuk (Check-In)</label>
-                                    <input
-                                        type="time"
-                                        value={shiftData.start_time}
-                                        onChange={(e) => setShiftData('start_time', e.target.value)}
-                                        className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                        required
-                                    />
-                                    {shiftErrors.start_time && <p className="text-red-500 text-xs mt-1">{shiftErrors.start_time}</p>}
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Jam Pulang (Check-Out)</label>
-                                    <input
-                                        type="time"
-                                        value={shiftData.end_time}
-                                        onChange={(e) => setShiftData('end_time', e.target.value)}
-                                        className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                        required
-                                    />
-                                    {shiftErrors.end_time && <p className="text-red-500 text-xs mt-1">{shiftErrors.end_time}</p>}
-                                </div>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="is_dayoff"
+                                    checked={shiftData.is_dayoff}
+                                    onChange={(e) => setShiftData('is_dayoff', e.target.checked)}
+                                    className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                />
+                                <label htmlFor="is_dayoff" className="text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                    Tandai sebagai Jadwal Libur (Day Off)
+                                </label>
                             </div>
+
+                            {!shiftData.is_dayoff && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Jam Masuk (Check-In)</label>
+                                        <input
+                                            type="time"
+                                            value={shiftData.start_time}
+                                            onChange={(e) => setShiftData('start_time', e.target.value)}
+                                            className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                            required={!shiftData.is_dayoff}
+                                        />
+                                        {shiftErrors.start_time && <p className="text-red-500 text-xs mt-1">{shiftErrors.start_time}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Jam Pulang (Check-Out)</label>
+                                        <input
+                                            type="time"
+                                            value={shiftData.end_time}
+                                            onChange={(e) => setShiftData('end_time', e.target.value)}
+                                            className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                            required={!shiftData.is_dayoff}
+                                        />
+                                        {shiftErrors.end_time && <p className="text-red-500 text-xs mt-1">{shiftErrors.end_time}</p>}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="pt-4 flex gap-3">
                                 <button

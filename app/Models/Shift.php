@@ -11,6 +11,10 @@ class Shift extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'is_dayoff' => 'boolean',
+    ];
+
     public function users()
     {
         return $this->belongsToMany(User::class, 'user_shifts')

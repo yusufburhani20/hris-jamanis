@@ -107,6 +107,25 @@ class DashboardController extends Controller
                 ];
             }
 
+            $usersOnLeaveToday = \App\Models\UserShift::with(['user:id,name,avatar', 'shift:id,name,code,is_dayoff'])
+                ->where('start_date', '<=', $today)
+                ->where(function($q) use ($today) {
+                    $q->whereNull('end_date')
+                      ->orWhere('end_date', '>=', $today);
+                })
+                ->whereHas('shift', function($q) {
+                    $q->where('is_dayoff', true);
+                })
+                ->get()
+                ->map(function($us) {
+                    return [
+                        'user_id' => $us->user->id ?? 0,
+                        'name' => $us->user->name ?? 'Unknown',
+                        'avatar' => $us->user->avatar ?? null,
+                        'shift_name' => $us->shift->name ?? '',
+                    ];
+                });
+
             return Inertia::render('Dashboard', [
                 'role' => 'admin',
                 'stats' => [
@@ -115,6 +134,7 @@ class DashboardController extends Controller
                     'present_today' => $presentToday,
                     'late_today' => $lateToday,
                     'checkout_today' => $checkoutToday,
+                    'users_on_leave_today' => $usersOnLeaveToday,
                 ],
                 'activeUsers' => $activeUsers,
                 'lastLogins' => $lastLogins,

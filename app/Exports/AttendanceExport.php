@@ -47,6 +47,12 @@ class AttendanceExport implements FromView, ShouldAutoSize
             ->select('attendances.*')
             ->get();
 
+        $attendances = \App\Models\Attendance::injectDayOffs($attendances, $startDate, $endDate, $this->userId);
+        
+        $attendances = $attendances->sortBy(function($att) {
+            return $att->user->name . '_' . $att->date;
+        })->values();
+
         $groupedAttendances = $attendances->groupBy(function($item) {
             return $item->user->name;
         });

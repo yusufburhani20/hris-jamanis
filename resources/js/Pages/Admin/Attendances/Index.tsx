@@ -293,12 +293,15 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                           record.status === 'terlambat' ? 'bg-amber-100 text-amber-800' : 
                                                           record.status === 'pulang_awal' ? 'bg-orange-100 text-orange-800' : 
                                                           record.status === 'lembur' ? 'bg-indigo-100 text-indigo-800' : 
+                                                          record.status === 'libur' ? 'bg-rose-100 text-rose-800' : 
                                                           'bg-gray-100 text-gray-800'}`}>
                                                         {record.status.replace('_', ' ').toUpperCase()}
                                                     </span>
-                                                    <span className={`inline-flex text-[10px] uppercase font-black rounded-full px-2 py-0.5 w-max border ${record.verification_status === 'valid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                                                        {record.verification_status.replace('_', ' ')}
-                                                    </span>
+                                                    {record.status !== 'libur' && (
+                                                        <span className={`inline-flex text-[10px] uppercase font-black rounded-full px-2 py-0.5 w-max border ${record.verification_status === 'valid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                                            {record.verification_status.replace('_', ' ')}
+                                                        </span>
+                                                    )}
                                                     {record.is_mocked && (
                                                         <span className="inline-flex items-center gap-1 text-[9px] uppercase font-black rounded-full px-2 py-0.5 w-max bg-rose-100 text-rose-800 border border-rose-350 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800 animate-pulse">
                                                             ⚠️ GPS PALSU
@@ -372,39 +375,41 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                 {record.system_notes || '-'}
                                             </td>
                                             <td className="px-3 py-3 text-center">
-                                                <div className="flex items-center justify-center space-x-2">
-                                                    <button
-                                                        onClick={() => openPhotoViewer(record)}
-                                                        title="Lihat Foto"
-                                                        className="p-1 text-gray-500 hover:text-primary transition-colors"
-                                                    >
-                                                        <EyeIcon className="w-5 h-5" />
-                                                    </button>
-                                                    {record.check_out && (
+                                                {record.status !== 'libur' && record.id !== 0 && (
+                                                    <div className="flex items-center justify-center space-x-2">
+                                                        <button
+                                                            onClick={() => openPhotoViewer(record)}
+                                                            title="Lihat Foto"
+                                                            className="p-1 text-gray-500 hover:text-primary transition-colors"
+                                                        >
+                                                            <EyeIcon className="w-5 h-5" />
+                                                        </button>
+                                                        {record.check_out && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (confirm('Yakin ingin mereset/mengosongkan jam pulang absen ini?')) {
+                                                                        router.post(route('admin.attendances.reset-checkout', record.id));
+                                                                    }
+                                                                }}
+                                                                title="Reset Check-Out"
+                                                                className="p-1 text-orange-500 hover:text-orange-700 transition-colors"
+                                                            >
+                                                                <ArrowUturnLeftIcon className="w-5 h-5" />
+                                                            </button>
+                                                        )}
                                                         <button
                                                             onClick={() => {
-                                                                if (confirm('Yakin ingin mereset/mengosongkan jam pulang absen ini?')) {
-                                                                    router.post(route('admin.attendances.reset-checkout', record.id));
+                                                                if (confirm('Yakin ingin menghapus seluruh data absen ini secara permanen?')) {
+                                                                    router.delete(route('admin.attendances.destroy', record.id));
                                                                 }
                                                             }}
-                                                            title="Reset Check-Out"
-                                                            className="p-1 text-orange-500 hover:text-orange-700 transition-colors"
+                                                            title="Hapus Data Absen"
+                                                            className="p-1 text-rose-500 hover:text-rose-700 transition-colors"
                                                         >
-                                                            <ArrowUturnLeftIcon className="w-5 h-5" />
+                                                            <TrashIcon className="w-5 h-5" />
                                                         </button>
-                                                    )}
-                                                    <button
-                                                        onClick={() => {
-                                                            if (confirm('Yakin ingin menghapus seluruh data absen ini secara permanen?')) {
-                                                                router.delete(route('admin.attendances.destroy', record.id));
-                                                            }
-                                                        }}
-                                                        title="Hapus Data Absen"
-                                                        className="p-1 text-rose-500 hover:text-rose-700 transition-colors"
-                                                    >
-                                                        <TrashIcon className="w-5 h-5" />
-                                                    </button>
-                                                </div>
+                                                    </div>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}

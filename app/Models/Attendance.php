@@ -24,6 +24,65 @@ class Attendance extends Model
     
     protected $appends = ['photo_url', 'checkout_photo_url', 'time_details', 'late_details', 'overtime_details', 'early_leave_details'];
 
+    protected $casts = [
+        'status' => \App\Enums\AttendanceStatus::class,
+    ];
+
+    public static function injectDayOffs($attendances, $startDate, $endDate, $userId = null)
+    {
+        $start = \Carbon\Carbon::parse($startDate);
+        $end = \Carbon\Carbon::parse($endDate);
+
+        $q = \App\Models\UserShift::with('user', 'shift')
+            ->whereHas('shift', function($query) {
+                $query->where('is_dayoff', true);
+            })
+            ->where('start_date', '<=', $end->toDateString())
+            ->where(function($query) use ($start) {
+                $query->whereNull('end_date')
+                      ->orWhere('end_date', '>=', $start->toDateString());
+            });
+
+        if ($userId) {
+            $q->where('user_id', $userId);
+        }
+
+        $dayOffShifts = $q->get();
+
+        $existing = [];
+        foreach ($attendances as $att) {
+            $existing[$att->user_id][$att->date] = true;
+        }
+
+        $newAttendances = collect();
+
+        foreach ($dayOffShifts as $us) {
+            $user = $us->user;
+            if (!$user) continue;
+
+            $usStart = \Carbon\Carbon::parse($us->start_date)->max($start);
+            $usEnd = $us->end_date ? \Carbon\Carbon::parse($us->end_date)->min($end) : $end->copy();
+
+            for ($d = $usStart->copy(); $d->lte($usEnd); $d->addDay()) {
+                $dateStr = $d->toDateString();
+                if (!isset($existing[$user->id][$dateStr])) {
+                    $virtualAtt = new self();
+                    $virtualAtt->id = 0; // Virtual ID
+                    $virtualAtt->user_id = $user->id;
+                    $virtualAtt->date = $dateStr;
+                    $virtualAtt->status = \App\Enums\AttendanceStatus::libur;
+                    $virtualAtt->system_notes = 'Jadwal Libur: ' . $us->shift->name;
+                    $virtualAtt->setRelation('user', $user);
+                    
+                    $newAttendances->push($virtualAtt);
+                    $existing[$user->id][$dateStr] = true;
+                }
+            }
+        }
+
+        return $attendances->concat($newAttendances)->sortByDesc('date')->values();
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
