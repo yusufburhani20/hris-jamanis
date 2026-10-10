@@ -743,7 +743,9 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                 >
                                     <option value="" disabled>-- Pilih Shift --</option>
                                     {shifts.map((sh) => (
-                                        <option key={sh.id} value={sh.id}>{sh.name} [{sh.code}] ({sh.start_time.slice(0, 5)} - {sh.end_time.slice(0, 5)})</option>
+                                        <option key={sh.id} value={sh.id}>
+                                            {sh.name} [{sh.code}] {sh.is_dayoff ? '(Libur)' : `(${sh.start_time?.slice(0, 5)} - ${sh.end_time?.slice(0, 5)})`}
+                                        </option>
                                     ))}
                                 </select>
                                 {assignErrors.shift_id && <p className="text-red-500 text-xs mt-1">{assignErrors.shift_id}</p>}
@@ -850,7 +852,9 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                 >
                                     <option value="" disabled>-- Pilih Shift --</option>
                                     {shifts.map((sh) => (
-                                        <option key={sh.id} value={sh.id}>{sh.name} [{sh.code}] ({sh.start_time.slice(0, 5)} - {sh.end_time.slice(0, 5)})</option>
+                                        <option key={sh.id} value={sh.id}>
+                                            {sh.name} [{sh.code}] {sh.is_dayoff ? '(Libur)' : `(${sh.start_time?.slice(0, 5)} - ${sh.end_time?.slice(0, 5)})`}
+                                        </option>
                                     ))}
                                 </select>
                                 {editAssignErrors.shift_id && <p className="text-red-500 text-xs mt-1">{editAssignErrors.shift_id}</p>}
