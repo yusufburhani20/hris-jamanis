@@ -108,10 +108,10 @@ class DashboardController extends Controller
             }
 
             $usersOnLeaveToday = \App\Models\UserShift::with(['user:id,name,avatar', 'shift:id,name,code,is_dayoff'])
-                ->where('start_date', '<=', $today)
+                ->where('start_date', '<=', $today->toDateString())
                 ->where(function($q) use ($today) {
                     $q->whereNull('end_date')
-                      ->orWhere('end_date', '>=', $today);
+                      ->orWhere('end_date', '>=', $today->toDateString());
                 })
                 ->whereHas('shift', function($q) {
                     $q->where('is_dayoff', true);
