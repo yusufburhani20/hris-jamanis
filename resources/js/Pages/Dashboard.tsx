@@ -177,6 +177,16 @@ export default function Dashboard({
         };
     }, []);
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setSelectedPhoto(null);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     const checkOfflineQueue = async () => {
         try {
             const queue = await getOfflineQueue();
