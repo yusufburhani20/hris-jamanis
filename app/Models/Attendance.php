@@ -48,7 +48,8 @@ class Attendance extends Model
 
         $existing = [];
         foreach ($attendances as $att) {
-            $existing[$att->user_id][$att->date] = true;
+            $dateStr = $att->date instanceof \Carbon\Carbon ? $att->date->toDateString() : (string) $att->date;
+            $existing[$att->user_id][$dateStr] = true;
         }
 
         $newAttendances = collect();
