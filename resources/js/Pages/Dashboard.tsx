@@ -74,6 +74,7 @@ export default function Dashboard({
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
     const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
+    const [selectedPhoto, setSelectedPhoto] = useState<{ url: string, label: string } | null>(null);
 
     const { auth } = usePage<PageProps>().props;
     const user = auth.user as any;
@@ -616,32 +617,32 @@ export default function Dashboard({
                                                                 <div className="flex flex-col">
                                                                     <span className="font-bold text-slate-700 dark:text-slate-300">{log.check_in || '-'}</span>
                                                                     <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">{new Date(log.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
-                                                                    {log.distance_in_meters !== null && (
-                                                                        <span className="text-[10px] text-slate-400 font-medium">Jarak: {Math.round(log.distance_in_meters)}m</span>
+                                                                    {log.distance_in_meters != null && !isNaN(Number(log.distance_in_meters)) && (
+                                                                        <span className="text-[10px] text-slate-400 font-medium">Jarak: {Math.round(Number(log.distance_in_meters))}m</span>
                                                                     )}
                                                                 </div>
                                                             </td>
                                                             <td className="py-3 px-3">
                                                                 <div className="flex flex-col">
                                                                     <span className="font-bold text-slate-700 dark:text-slate-300">{log.check_out || '-'}</span>
-                                                                    {log.checkout_distance_in_meters !== null && (
-                                                                        <span className="text-[10px] text-slate-400 font-medium">Jarak: {Math.round(log.checkout_distance_in_meters)}m</span>
+                                                                    {log.checkout_distance_in_meters != null && !isNaN(Number(log.checkout_distance_in_meters)) && (
+                                                                        <span className="text-[10px] text-slate-400 font-medium">Jarak: {Math.round(Number(log.checkout_distance_in_meters))}m</span>
                                                                     )}
                                                                 </div>
                                                             </td>
                                                             <td className="py-3 px-3 text-center">
                                                                 <div className="flex justify-center gap-1.5">
                                                                     {log.photo_path ? (
-                                                                        <a href={`/storage/${log.photo_path}`} target="_blank" rel="noreferrer" title="Foto Check-In">
-                                                                            <img src={`/storage/${log.photo_path}`} className="w-8 h-8 rounded-lg object-cover border border-slate-200 hover:scale-125 transition-transform" />
-                                                                        </a>
+                                                                        <button type="button" onClick={() => setSelectedPhoto({ url: `/storage/${log.photo_path}`, label: `Foto Check-In - ${log.user?.name}` })} className="focus:outline-none" title="Foto Check-In">
+                                                                            <img src={`/storage/${log.photo_path}`} className="w-8 h-8 rounded-lg object-cover border border-slate-200 hover:scale-125 transition-transform cursor-pointer" />
+                                                                        </button>
                                                                     ) : (
                                                                         <span className="text-slate-300">-</span>
                                                                     )}
                                                                     {log.checkout_photo_path && (
-                                                                        <a href={`/storage/${log.checkout_photo_path}`} target="_blank" rel="noreferrer" title="Foto Check-Out">
-                                                                            <img src={`/storage/${log.checkout_photo_path}`} className="w-8 h-8 rounded-lg object-cover border border-slate-200 hover:scale-125 transition-transform" />
-                                                                        </a>
+                                                                        <button type="button" onClick={() => setSelectedPhoto({ url: `/storage/${log.checkout_photo_path}`, label: `Foto Check-Out - ${log.user?.name}` })} className="focus:outline-none" title="Foto Check-Out">
+                                                                            <img src={`/storage/${log.checkout_photo_path}`} className="w-8 h-8 rounded-lg object-cover border border-slate-200 hover:scale-125 transition-transform cursor-pointer" />
+                                                                        </button>
                                                                     )}
                                                                 </div>
                                                             </td>
@@ -972,6 +973,25 @@ export default function Dashboard({
                 )}
 
             </div>
+            {/* Photo Modal */}
+            {selectedPhoto && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedPhoto(null)}>
+                    <div className="relative max-w-3xl w-full flex flex-col items-center animate-scale-up" onClick={e => e.stopPropagation()}>
+                        <button 
+                            onClick={() => setSelectedPhoto(null)}
+                            className="absolute -top-12 right-0 text-white hover:text-slate-300 p-2 focus:outline-none"
+                        >
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-2xl border border-slate-700/50">
+                            <img src={selectedPhoto.url} alt={selectedPhoto.label} className="max-h-[80vh] w-auto object-contain" />
+                            <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700/50">
+                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200 text-center">{selectedPhoto.label}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }
