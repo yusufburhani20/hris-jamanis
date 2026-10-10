@@ -26,8 +26,8 @@ class DashboardController extends Controller
             
             $todayAttendances = Attendance::whereDate('date', $today)->get();
             
-            $presentToday = $todayAttendances->where('status', 'hadir')->count();
-            $lateToday = $todayAttendances->where('status', 'terlambat')->count();
+            $presentToday = $todayAttendances->whereIn('status', [\App\Enums\AttendanceStatus::hadir, \App\Enums\AttendanceStatus::lembur, \App\Enums\AttendanceStatus::pulang_awal])->count();
+            $lateToday = $todayAttendances->where('status', \App\Enums\AttendanceStatus::terlambat)->count();
             $checkoutToday = $todayAttendances->whereNotNull('check_out')->count();
 
             // Active users online (session last active within 5 mins)
@@ -45,10 +45,10 @@ class DashboardController extends Controller
                     return $u;
                 });
 
-            // Feed of today's attendance
-            $todayLogs = Attendance::whereDate('date', $today)
-                ->with('user:id,name,email,avatar')
+            // Feed of recent attendances
+            $todayLogs = Attendance::with('user:id,name,email,avatar')
                 ->latest('updated_at')
+                ->limit(20)
                 ->get();
 
             // FASE 4: 1. Tren Kehadiran Harian (Last 7 Days)
@@ -58,14 +58,14 @@ class DashboardController extends Controller
                 $records = Attendance::whereDate('date', $targetDate)->get();
                 $attendanceTrend[] = [
                     'date' => $targetDate->translatedFormat('d M'),
-                    'hadir' => $records->whereIn('status', ['hadir', 'lembur', 'pulang_awal'])->count(),
-                    'terlambat' => $records->where('status', 'terlambat')->count(),
+                    'hadir' => $records->whereIn('status', [\App\Enums\AttendanceStatus::hadir, \App\Enums\AttendanceStatus::lembur, \App\Enums\AttendanceStatus::pulang_awal])->count(),
+                    'terlambat' => $records->where('status', \App\Enums\AttendanceStatus::terlambat)->count(),
                 ];
             }
 
             // FASE 4: 2. Distribusi Status Kehadiran Hari Ini (Pie Chart)
-            $present = $todayAttendances->whereIn('status', ['hadir', 'lembur', 'pulang_awal'])->count();
-            $late = $todayAttendances->where('status', 'terlambat')->count();
+            $present = $todayAttendances->whereIn('status', [\App\Enums\AttendanceStatus::hadir, \App\Enums\AttendanceStatus::lembur, \App\Enums\AttendanceStatus::pulang_awal])->count();
+            $late = $todayAttendances->where('status', \App\Enums\AttendanceStatus::terlambat)->count();
             $absent = max(0, $totalEmployees - $present - $late);
             
             $todayDistribution = [

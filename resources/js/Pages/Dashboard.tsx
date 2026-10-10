@@ -526,8 +526,8 @@ export default function Dashboard({
                             <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl shadow-lg shadow-slate-200/60 dark:shadow-none border border-slate-100 dark:border-slate-700/50 flex flex-col h-[500px]">
                                 <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center shrink-0">
                                     <div>
-                                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Presensi Pegawai Hari Ini</h3>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">Log kehadiran masuk & pulang terupdate</p>
+                                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Log Absensi Terakhir</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Log kehadiran masuk & pulang terupdate (Semua Hari)</p>
                                     </div>
                                     <Link 
                                         href={route('admin.attendances.index')} 
@@ -581,6 +581,7 @@ export default function Dashboard({
                                                             <td className="py-3 px-3">
                                                                 <div className="flex flex-col">
                                                                     <span className="font-bold text-slate-700 dark:text-slate-300">{log.check_in || '-'}</span>
+                                                                    <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">{new Date(log.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
                                                                     {log.distance_in_meters !== null && (
                                                                         <span className="text-[10px] text-slate-400 font-medium">Jarak: {Math.round(log.distance_in_meters)}m</span>
                                                                     )}
@@ -618,7 +619,7 @@ export default function Dashboard({
                                     ) : (
                                         <div className="h-full flex flex-col items-center justify-center text-center py-10 opacity-40">
                                             <ExclamationTriangleIcon className="w-8 h-8 text-slate-400 mb-2" />
-                                            <p className="text-xs font-bold">Belum ada presensi pegawai hari ini</p>
+                                            <p className="text-xs font-bold">Belum ada data presensi pegawai</p>
                                         </div>
                                     )}
                                 </div>
