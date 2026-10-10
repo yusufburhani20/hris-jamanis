@@ -80,10 +80,13 @@ class Attendance extends Model
         if ($startStr) {
             try {
                 $shiftStart = Carbon::createFromFormat('H:i:s', $startStr);
-                if ($checkIn->greaterThan($shiftStart)) {
-                    $diffInMinutes = $checkIn->diffInMinutes($shiftStart);
+                $lateTolerance = (int) \App\Models\Setting::get('late_tolerance_minutes', 0);
+                $effectiveStart = $shiftStart->copy()->addMinutes($lateTolerance);
+
+                if ($checkIn->greaterThan($effectiveStart)) {
+                    $diffInMinutes = $effectiveStart->diffInMinutes($checkIn);
                     $hours = (int) floor($diffInMinutes / 60);
-                    $minutes = $diffInMinutes % 60;
+                    $minutes = (int) ($diffInMinutes % 60);
                     return [
                         'hours' => $hours,
                         'minutes' => $minutes,
@@ -264,10 +267,13 @@ class Attendance extends Model
             if ($startStr) {
                 try {
                     $shiftStart = Carbon::createFromFormat('H:i:s', $startStr);
-                    if ($checkIn->greaterThan($shiftStart)) {
-                        $diffInMinutes = $checkIn->diffInMinutes($shiftStart);
-                        $hours = floor($diffInMinutes / 60);
-                        $minutes = $diffInMinutes % 60;
+                    $lateTolerance = (int) \App\Models\Setting::get('late_tolerance_minutes', 0);
+                    $effectiveStart = $shiftStart->copy()->addMinutes($lateTolerance);
+
+                    if ($checkIn->greaterThan($effectiveStart)) {
+                        $diffInMinutes = $effectiveStart->diffInMinutes($checkIn);
+                        $hours = (int) floor($diffInMinutes / 60);
+                        $minutes = (int) ($diffInMinutes % 60);
                         return ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m";
                     }
                 } catch (\Exception $e) {
