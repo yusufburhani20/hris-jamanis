@@ -24,9 +24,6 @@ class Attendance extends Model
     
     protected $appends = ['photo_url', 'checkout_photo_url', 'time_details', 'late_details', 'overtime_details', 'early_leave_details'];
 
-    protected $casts = [
-        'status' => \App\Enums\AttendanceStatus::class,
-    ];
 
     public static function injectDayOffs($attendances, $startDate, $endDate, $userId = null)
     {
