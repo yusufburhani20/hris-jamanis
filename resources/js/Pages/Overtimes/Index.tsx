@@ -30,6 +30,8 @@ interface IndexProps {
 
 export default function OvertimesIndex({ overtimes, role }: IndexProps) {
     const [showModal, setShowModal] = useState(false);
+    const [selectedRequest, setSelectedRequest] = useState<Overtime | null>(null);
+    const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
     const isAdmin = role === 'admin';
 
     // Form state for employee submit
@@ -49,15 +51,29 @@ export default function OvertimesIndex({ overtimes, role }: IndexProps) {
         });
     };
 
-    const handleApprove = (id: number) => {
-        if (confirm('Setujui pengajuan lembur ini?')) {
-            router.post(route('admin.overtimes.approve', id));
-        }
+    const openActionModal = (overtime: Overtime, type: 'approve' | 'reject') => {
+        setSelectedRequest(overtime);
+        setActionType(type);
     };
 
-    const handleReject = (id: number) => {
-        if (confirm('Tolak pengajuan lembur ini?')) {
-            router.post(route('admin.overtimes.reject', id));
+    const submitAction = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedRequest) return;
+        
+        if (actionType === 'approve') {
+            router.post(route('admin.overtimes.approve', selectedRequest.id), {}, {
+                onSuccess: () => {
+                    setSelectedRequest(null);
+                    setActionType(null);
+                }
+            });
+        } else {
+            router.post(route('admin.overtimes.reject', selectedRequest.id), {}, {
+                onSuccess: () => {
+                    setSelectedRequest(null);
+                    setActionType(null);
+                }
+            });
         }
     };
 
@@ -160,13 +176,13 @@ export default function OvertimesIndex({ overtimes, role }: IndexProps) {
                                                     overtime.status === 'pending' ? (
                                                         <div className="flex justify-end gap-2">
                                                             <button
-                                                                onClick={() => handleApprove(overtime.id)}
+                                                                onClick={() => openActionModal(overtime, 'approve')}
                                                                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase px-3 py-1.5 rounded-lg transition-all"
                                                             >
                                                                 Setujui
                                                             </button>
                                                             <button
-                                                                onClick={() => handleReject(overtime.id)}
+                                                                onClick={() => openActionModal(overtime, 'reject')}
                                                                 className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase px-3 py-1.5 rounded-lg transition-all"
                                                             >
                                                                 Tolak
@@ -265,6 +281,72 @@ export default function OvertimesIndex({ overtimes, role }: IndexProps) {
                                 >
                                     Kirim Pengajuan
                                 </PrimaryButton>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Action Modal (Admin Only) */}
+            {selectedRequest && actionType && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700 transform transition-all scale-100">
+                        <div className={`p-6 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center ${actionType === 'approve' ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : 'bg-rose-50/50 dark:bg-rose-900/10'}`}>
+                            <h3 className={`text-md font-black ${actionType === 'approve' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                                Konfirmasi {actionType === 'approve' ? 'Persetujuan' : 'Penolakan'} Lembur
+                            </h3>
+                            <button
+                                onClick={() => { setSelectedRequest(null); setActionType(null); }}
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <form onSubmit={submitAction} className="p-6 space-y-5">
+                            {/* Details Section */}
+                            <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 space-y-3 text-sm">
+                                <div className="grid grid-cols-3 gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                                    <div className="text-slate-500 dark:text-slate-400 font-medium">Pemohon</div>
+                                    <div className="col-span-2 font-bold text-slate-800 dark:text-slate-200">{selectedRequest.user?.name}</div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                                    <div className="text-slate-500 dark:text-slate-400 font-medium">Tanggal</div>
+                                    <div className="col-span-2 font-bold text-slate-800 dark:text-slate-200">
+                                        {new Date(selectedRequest.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                                    <div className="text-slate-500 dark:text-slate-400 font-medium">Durasi Kerja</div>
+                                    <div className="col-span-2 font-bold text-indigo-600 dark:text-indigo-400">{selectedRequest.hours} Jam</div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="text-slate-500 dark:text-slate-400 font-medium">Alasan / Pekerjaan</div>
+                                    <div className="col-span-2 text-slate-800 dark:text-slate-200 italic">"{selectedRequest.reason}"</div>
+                                </div>
+                            </div>
+
+                            <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                                Apakah Anda yakin ingin {actionType === 'approve' ? 'menyetujui' : 'menolak'} pengajuan lembur ini?
+                            </p>
+
+                            <div className="pt-2 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => { setSelectedRequest(null); setActionType(null); }}
+                                    className="flex-1 border border-slate-200 dark:border-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs uppercase tracking-wide py-3 rounded-xl transition-all"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className={`flex-1 justify-center py-3 rounded-xl font-bold text-xs uppercase shadow-lg text-white transition-all ${
+                                        actionType === 'approve' 
+                                            ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20' 
+                                            : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                                    }`}
+                                >
+                                    {actionType === 'approve' ? 'Ya, Setujui' : 'Tolak Pengajuan'}
+                                </button>
                             </div>
                         </form>
                     </div>

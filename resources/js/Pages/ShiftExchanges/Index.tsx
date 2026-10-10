@@ -69,8 +69,8 @@ interface IndexProps {
 
 export default function ShiftExchangesIndex({ auth, exchanges, shifts, employees, role }: IndexProps) {
     const [showModal, setShowModal] = useState(false);
-    const [showRejectModal, setShowRejectModal] = useState(false);
-    const [rejectId, setRejectId] = useState<number | null>(null);
+    const [selectedRequest, setSelectedRequest] = useState<ShiftExchange | null>(null);
+    const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
     const [rejectionReasonInput, setRejectionReasonInput] = useState('');
     const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
     
@@ -95,31 +95,34 @@ export default function ShiftExchangesIndex({ auth, exchanges, shifts, employees
         });
     };
 
-    const handleApprove = (id: number) => {
-        if (confirm('Apakah Anda yakin ingin menyetujui pengajuan tukar shift ini? Jadwal kerja karyawan akan otomatis diperbarui.')) {
-            router.post(route('admin.shift-exchanges.approve', id));
-        }
-    };
-
-    const handleRejectClick = (id: number) => {
-        setRejectId(id);
+    const openActionModal = (exchange: ShiftExchange, type: 'approve' | 'reject') => {
+        setSelectedRequest(exchange);
+        setActionType(type);
         setRejectionReasonInput('');
-        setShowRejectModal(true);
     };
 
-    const handleRejectSubmit = (e: React.FormEvent) => {
+    const submitAction = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!rejectId) return;
+        if (!selectedRequest) return;
         
-        router.post(route('admin.shift-exchanges.reject', rejectId), {
-            rejection_reason: rejectionReasonInput
-        }, {
-            onSuccess: () => {
-                setShowRejectModal(false);
-                setRejectId(null);
-                setRejectionReasonInput('');
-            }
-        });
+        if (actionType === 'approve') {
+            router.post(route('admin.shift-exchanges.approve', selectedRequest.id), {}, {
+                onSuccess: () => {
+                    setSelectedRequest(null);
+                    setActionType(null);
+                }
+            });
+        } else {
+            router.post(route('admin.shift-exchanges.reject', selectedRequest.id), {
+                rejection_reason: rejectionReasonInput
+            }, {
+                onSuccess: () => {
+                    setSelectedRequest(null);
+                    setActionType(null);
+                    setRejectionReasonInput('');
+                }
+            });
+        }
     };
 
     const handleDelete = (id: number) => {
@@ -330,13 +333,13 @@ export default function ShiftExchangesIndex({ auth, exchanges, shifts, employees
                                                     exc.status === 'pending' ? (
                                                         <div className="flex justify-end gap-2">
                                                             <button
-                                                                onClick={() => handleApprove(exc.id)}
+                                                                onClick={() => openActionModal(exc, 'approve')}
                                                                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase px-3 py-1.5 rounded-lg transition-all"
                                                             >
                                                                 Setujui
                                                             </button>
                                                             <button
-                                                                onClick={() => handleRejectClick(exc.id)}
+                                                                onClick={() => openActionModal(exc, 'reject')}
                                                                 className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] uppercase px-3 py-1.5 rounded-lg transition-all"
                                                             >
                                                                 Tolak
@@ -489,45 +492,93 @@ export default function ShiftExchangesIndex({ auth, exchanges, shifts, employees
                 </div>
             )}
 
-            {/* Modal Input Alasan Penolakan (Admin Only) */}
-            {showRejectModal && (
+            {/* Action Modal (Admin Only) */}
+            {selectedRequest && actionType && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700 transform transition-all scale-100">
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/50 dark:bg-slate-850">
-                            <h3 className="text-md font-black text-slate-900 dark:text-white">Alasan Penolakan</h3>
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700 transform transition-all scale-100">
+                        <div className={`p-6 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center ${actionType === 'approve' ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : 'bg-rose-50/50 dark:bg-rose-900/10'}`}>
+                            <h3 className={`text-md font-black ${actionType === 'approve' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                                Konfirmasi {actionType === 'approve' ? 'Persetujuan' : 'Penolakan'} Tukar Shift
+                            </h3>
                             <button
-                                onClick={() => { setShowRejectModal(false); setRejectId(null); }}
+                                onClick={() => { setSelectedRequest(null); setActionType(null); }}
                                 className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <form onSubmit={handleRejectSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Tulis Alasan Penolakan</label>
-                                <textarea
-                                    value={rejectionReasonInput}
-                                    onChange={(e) => setRejectionReasonInput(e.target.value)}
-                                    placeholder="Tulis alasan mengapa pengajuan ini ditolak oleh Admin..."
-                                    rows={3}
-                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-rose-500 focus:border-rose-500 text-sm"
-                                    required
-                                />
+                        <form onSubmit={submitAction} className="p-6 space-y-5">
+                            {/* Details Section */}
+                            <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 space-y-3 text-sm">
+                                <div className="grid grid-cols-3 gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                                    <div className="text-slate-500 dark:text-slate-400 font-medium">Pemohon</div>
+                                    <div className="col-span-2 font-bold text-slate-800 dark:text-slate-200">{selectedRequest.user?.name}</div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                                    <div className="text-slate-500 dark:text-slate-400 font-medium">Tanggal</div>
+                                    <div className="col-span-2 font-bold text-slate-800 dark:text-slate-200">
+                                        {new Date(selectedRequest.target_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                                    <div className="text-slate-500 dark:text-slate-400 font-medium">Jenis Tukar</div>
+                                    <div className="col-span-2 font-bold text-slate-800 dark:text-slate-200">
+                                        {selectedRequest.type === 'shift' ? 'Ganti Shift Mandiri' : 'Tukar Shift Rekan'}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                                    <div className="text-slate-500 dark:text-slate-400 font-medium">Dari Shift</div>
+                                    <div className="col-span-2 font-bold text-slate-800 dark:text-slate-200">{selectedRequest.from_shift?.name}</div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                                    <div className="text-slate-500 dark:text-slate-400 font-medium">Menjadi</div>
+                                    <div className="col-span-2 font-bold text-indigo-600 dark:text-indigo-400">
+                                        {selectedRequest.type === 'shift' ? selectedRequest.to_shift?.name : selectedRequest.target_user?.name}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="text-slate-500 dark:text-slate-400 font-medium">Alasan</div>
+                                    <div className="col-span-2 text-slate-800 dark:text-slate-200 italic">"{selectedRequest.reason}"</div>
+                                </div>
                             </div>
+
+                            {actionType === 'reject' && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Alasan Penolakan</label>
+                                    <textarea
+                                        value={rejectionReasonInput}
+                                        onChange={(e) => setRejectionReasonInput(e.target.value)}
+                                        placeholder="Tulis alasan mengapa pengajuan ini ditolak..."
+                                        rows={3}
+                                        className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-150 focus:ring-rose-500 focus:border-rose-500 text-sm"
+                                        required
+                                    />
+                                </div>
+                            )}
+
+                            {actionType === 'approve' && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                                    Apakah Anda yakin ingin menyetujui pengajuan ini? Jadwal kerja karyawan akan otomatis diperbarui.
+                                </p>
+                            )}
 
                             <div className="pt-2 flex gap-3">
                                 <button
                                     type="button"
-                                    onClick={() => { setShowRejectModal(false); setRejectId(null); }}
-                                    className="flex-1 border border-slate-200 dark:border-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs uppercase tracking-wide py-2.5 rounded-xl transition-all"
+                                    onClick={() => { setSelectedRequest(null); setActionType(null); }}
+                                    className="flex-1 border border-slate-200 dark:border-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs uppercase tracking-wide py-3 rounded-xl transition-all"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 justify-center py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs uppercase shadow-lg shadow-rose-600/20"
+                                    className={`flex-1 justify-center py-3 rounded-xl font-bold text-xs uppercase shadow-lg text-white transition-all ${
+                                        actionType === 'approve' 
+                                            ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20' 
+                                            : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                                    }`}
                                 >
-                                    Tolak Pengajuan
+                                    {actionType === 'approve' ? 'Ya, Setujui' : 'Tolak Pengajuan'}
                                 </button>
                             </div>
                         </form>
