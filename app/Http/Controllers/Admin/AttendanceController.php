@@ -67,6 +67,38 @@ class AttendanceController extends Controller
         ]);
     }
 
+    public function update(Request $request, Attendance $attendance)
+    {
+        $validated = $request->validate([
+            'status' => 'required|string|in:hadir,izin,sakit,alpha,terlambat,pulang_awal,lembur,libur',
+            'verification_status' => 'required|string|in:valid,pending,rejected,system_flagged',
+            'check_in' => 'nullable|string',
+            'check_out' => 'nullable|string',
+            'system_notes' => 'nullable|string|max:1000',
+        ]);
+
+        $updateData = [
+            'status' => $validated['status'],
+            'verification_status' => $validated['verification_status'],
+        ];
+
+        if ($request->has('check_in')) {
+            $updateData['check_in'] = $validated['check_in'] ?: null;
+        }
+
+        if ($request->has('check_out')) {
+            $updateData['check_out'] = $validated['check_out'] ?: null;
+        }
+
+        if ($request->has('system_notes')) {
+            $updateData['system_notes'] = $validated['system_notes'];
+        }
+
+        $attendance->update($updateData);
+
+        return back()->with('success', 'Data absensi karyawan berhasil diperbarui.');
+    }
+
     public function resetCheckout(Attendance $attendance)
     {
         $attendance->update([

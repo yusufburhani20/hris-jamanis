@@ -85,9 +85,11 @@ class AttendanceToleranceTest extends TestCase
         $this->assertEquals('terlambat', $attendance->status->value);
     }
 
-    public function test_early_checkin_adjusts_effective_end_time()
+    public function test_early_checkin_exceeding_tolerance_adjusts_effective_end_time()
     {
-        Setting::set('early_checkin_tolerance_minutes', 120);
+        // Toleransi masuk awal 30 menit. Check-in 05:00 (lebih awal 60 menit > 30 menit).
+        // Dianggap masuk awal, jam pulang efektif menjadi 05:00 + 10 jam = 15:00.
+        Setting::set('early_checkin_tolerance_minutes', 30);
 
         Carbon::setTestNow(Carbon::today()->setTime(5, 0, 0));
 
@@ -111,5 +113,35 @@ class AttendanceToleranceTest extends TestCase
         $this->assertNotNull($attendance);
         $this->assertNotEquals('pulang_awal', $attendance->status->value);
         $this->assertEquals('hadir', $attendance->status->value);
+    }
+
+    public function test_early_checkin_within_tolerance_does_not_adjust_effective_end_time()
+    {
+        // Toleransi masuk awal 30 menit. Check-in 05:45 (lebih awal 15 menit <= 30 menit).
+        // Masih dalam toleransi persiapan -> TIDAK dianggap masuk awal (effective end tetap 16:00).
+        // Pulang jam 15:00 dianggap pulang lebih awal (karena < 16:00 - 30 menit).
+        Setting::set('early_checkin_tolerance_minutes', 30);
+
+        Carbon::setTestNow(Carbon::today()->setTime(5, 45, 0));
+
+        $this->actingAs($this->employee)->post(route('attendances.check-in'), [
+            'latitude' => -6.200000,
+            'longitude' => 106.800000,
+            'photo_base64' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        ]);
+
+        Carbon::setTestNow(Carbon::today()->setTime(15, 0, 0));
+
+        $response = $this->actingAs($this->employee)->post(route('attendances.check-out'), [
+            'latitude' => -6.200000,
+            'longitude' => 106.800000,
+            'photo_base64' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        ]);
+
+        $response->assertStatus(302);
+
+        $attendance = Attendance::where('user_id', $this->employee->id)->where('date', Carbon::today()->toDateString())->first();
+        $this->assertNotNull($attendance);
+        $this->assertEquals('pulang_awal', $attendance->status->value);
     }
 }

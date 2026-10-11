@@ -202,7 +202,7 @@ class AttendanceController extends Controller
         $newStatus = $existing->status;
 
         // ── EARLY CHECK-IN RULE + SHIFT INTEGRATION ──
-        // Toleransi early check-in: jika masuk ≤ early check-in tolerance menit sebelum shift,
+        // Toleransi early check-in: jika masuk > early check-in tolerance menit sebelum shift,
         // jam kerja dihitung dari check-in nyata (10 jam ke depan).
         $earlyToleranceMinutes = (int) Setting::get('early_checkin_tolerance_minutes', 60);
         $activeShift = $user->activeShift($date);
@@ -213,8 +213,8 @@ class AttendanceController extends Controller
             $shiftEnd    = Carbon::createFromFormat('H:i:s', $activeShift->end_time);
             $minsEarly   = $shiftStart->diffInMinutes($checkInTime, false); // negatif jika lebih awal
 
-            // Early check-in dalam toleransi → effective end = check_in + 10 jam
-            if ($minsEarly < 0 && abs($minsEarly) <= $earlyToleranceMinutes) {
+            // Masuk lebih awal melebihi toleransi → diakui sebagai masuk awal (effective end = check_in + 10 jam)
+            if ($minsEarly < 0 && abs($minsEarly) > $earlyToleranceMinutes) {
                 $effectiveEnd = $checkInTime->copy()->addHours(10);
                 $notes .= " (Masuk Awal, EffEnd: " . $effectiveEnd->format('H:i') . ")";
             } else {

@@ -2,7 +2,7 @@ import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import React, { useState } from 'react';
-import { EyeIcon, TrashIcon, ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, TrashIcon, ArrowUturnLeftIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 
 interface User {
     id: number;
@@ -52,6 +52,43 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
         offlineDeviceTime?: string | null,
         createdAt?: string
     } | null>(null);
+
+    const [editingRecord, setEditingRecord] = useState<Attendance | null>(null);
+    const [editForm, setEditForm] = useState({
+        status: '',
+        verification_status: '',
+        check_in: '',
+        check_out: '',
+        system_notes: '',
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const openEditModal = (record: Attendance) => {
+        setEditingRecord(record);
+        setEditForm({
+            status: record.status || 'hadir',
+            verification_status: record.verification_status || 'valid',
+            check_in: record.check_in || '',
+            check_out: record.check_out || '',
+            system_notes: record.system_notes || '',
+        });
+    };
+
+    const handleEditSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingRecord) return;
+        setIsSubmitting(true);
+        router.patch(route('admin.attendances.update', editingRecord.id), editForm, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setEditingRecord(null);
+                setIsSubmitting(false);
+            },
+            onError: () => {
+                setIsSubmitting(false);
+            }
+        });
+    };
 
     const getMonthOptions = () => {
         const options = [];
@@ -384,6 +421,13 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                         >
                                                             <EyeIcon className="w-5 h-5" />
                                                         </button>
+                                                        <button
+                                                            onClick={() => openEditModal(record)}
+                                                            title="Koreksi Manual Status & Verifikasi"
+                                                            className="p-1 text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                                                        >
+                                                            <PencilSquareIcon className="w-5 h-5" />
+                                                        </button>
                                                         {record.check_out && (
                                                             <button
                                                                 onClick={() => {
@@ -511,6 +555,142 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Koreksi Manual Status & Verifikasi */}
+            {editingRecord && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => !isSubmitting && setEditingRecord(null)}>
+                    <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-gray-100 dark:border-gray-700 flex flex-col space-y-5 animate-in fade-in zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-start border-b dark:border-gray-700 pb-3">
+                            <div>
+                                <h3 className="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
+                                    <PencilSquareIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                    Koreksi Manual Absensi
+                                </h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    {editingRecord.user.name} • {new Date(editingRecord.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                </p>
+                            </div>
+                            <button 
+                                disabled={isSubmitting} 
+                                onClick={() => setEditingRecord(null)} 
+                                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
+                            {/* Status Presensi */}
+                            <div>
+                                <label className="block font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                                    Status Presensi
+                                </label>
+                                <select
+                                    value={editForm.status}
+                                    onChange={e => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                                    className="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs py-2.5 font-semibold"
+                                    required
+                                >
+                                    <option value="hadir">Hadir (Normal)</option>
+                                    <option value="terlambat">Terlambat</option>
+                                    <option value="pulang_awal">Pulang Lebih Awal</option>
+                                    <option value="lembur">Lembur</option>
+                                    <option value="izin">Izin</option>
+                                    <option value="sakit">Sakit</option>
+                                    <option value="alpha">Alpha</option>
+                                    <option value="libur">Libur</option>
+                                </select>
+                            </div>
+
+                            {/* Status Verifikasi */}
+                            <div>
+                                <label className="block font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                                    Status Verifikasi
+                                </label>
+                                <select
+                                    value={editForm.verification_status}
+                                    onChange={e => setEditForm(prev => ({ ...prev, verification_status: e.target.value }))}
+                                    className="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs py-2.5 font-semibold"
+                                    required
+                                >
+                                    <option value="valid">VALID (Terverifikasi)</option>
+                                    <option value="system_flagged">SYSTEM FLAGGED (Perlu Perhatian)</option>
+                                    <option value="pending">PENDING</option>
+                                    <option value="rejected">REJECTED (Ditolak)</option>
+                                </select>
+                            </div>
+
+                            {/* Jam Check-In & Check-Out */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                                        Jam Check-In
+                                    </label>
+                                    <input
+                                        type="time"
+                                        step="1"
+                                        value={editForm.check_in}
+                                        onChange={e => setEditForm(prev => ({ ...prev, check_in: e.target.value }))}
+                                        className="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs py-2.5 font-mono"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                                        Jam Check-Out
+                                    </label>
+                                    <input
+                                        type="time"
+                                        step="1"
+                                        value={editForm.check_out}
+                                        onChange={e => setEditForm(prev => ({ ...prev, check_out: e.target.value }))}
+                                        className="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs py-2.5 font-mono"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Catatan Sistem / Alasan Koreksi */}
+                            <div>
+                                <label className="block font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                                    Catatan Sistem / Alasan Koreksi
+                                </label>
+                                <textarea
+                                    rows={2}
+                                    value={editForm.system_notes}
+                                    onChange={e => setEditForm(prev => ({ ...prev, system_notes: e.target.value }))}
+                                    placeholder="Contoh: Koreksi manual admin (masuk awal sesuai shift)"
+                                    className="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-xs py-2"
+                                />
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex items-center justify-end gap-2 pt-3 border-t dark:border-gray-700">
+                                <button
+                                    type="button"
+                                    disabled={isSubmitting}
+                                    onClick={() => setEditingRecord(null)}
+                                    className="px-4 py-2 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold transition-all text-xs"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md hover:shadow-lg transition-all text-xs flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                    {isSubmitting ? (
+                                        <span>Menyimpan...</span>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                            <span>Simpan Koreksi</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

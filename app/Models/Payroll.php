@@ -182,8 +182,8 @@ class Payroll extends Model
                     $shiftStart = Carbon::createFromFormat('H:i:s', $shift->start_time);
                     $minsEarly  = $shiftStart->diffInMinutes($checkIn, false); // negatif jika lebih awal
 
-                    // Early check-in dalam toleransi → effective end = check_in + 10 jam
-                    if ($minsEarly < 0 && abs($minsEarly) <= $earlyToleranceMinutes) {
+                    // Masuk lebih awal melebihi toleransi → effective end = check_in + 10 jam
+                    if ($minsEarly < 0 && abs($minsEarly) > $earlyToleranceMinutes) {
                         $effectiveEnd = $checkIn->copy()->addHours(10);
                     } else {
                         $effectiveEnd = Carbon::createFromFormat('H:i:s', $shift->end_time);

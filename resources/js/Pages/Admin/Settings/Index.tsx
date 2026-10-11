@@ -484,6 +484,7 @@ export default function SettingsIndex({
                                                     required 
                                                     className="mt-2 block w-full rounded-xl border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 dark:bg-gray-900 dark:text-white text-xs py-2.5" 
                                                 />
+                                                <p className="text-[10px] text-slate-400 mt-1">Check-in lebih awal dari batas ini diakui masuk awal (jam pulang = masuk + 10 jam).</p>
                                                 {errors.early_checkin_tolerance_minutes && <p className="text-red-500 text-[10px] mt-1">{errors.early_checkin_tolerance_minutes}</p>}
                                             </div>
                                             <div>
