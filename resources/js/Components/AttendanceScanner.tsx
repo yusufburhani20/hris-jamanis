@@ -3,7 +3,17 @@ import { useForm, Link } from '@inertiajs/react';
 import { MapPinIcon, CameraIcon, CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { addToOfflineQueue } from '../utils/offlineStore';
 
-export default function AttendanceScanner({ existingRecord, geofences = [] }: { existingRecord?: any, geofences?: any[] }) {
+export default function AttendanceScanner({ 
+    existingRecord, 
+    geofences = [], 
+    activeShift, 
+    isDayOff = false 
+}: { 
+    existingRecord?: any, 
+    geofences?: any[], 
+    activeShift?: any, 
+    isDayOff?: boolean 
+}) {
     const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
     const [isRefreshingLocation, setIsRefreshingLocation] = useState(false);
@@ -403,6 +413,28 @@ export default function AttendanceScanner({ existingRecord, geofences = [] }: { 
                 <div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white">Presensi Selesai</h3>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">Anda telah menyelesaikan Check-In dan Check-Out hari ini.</p>
+                </div>
+                <Link
+                    href={route('dashboard')}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors inline-block"
+                >
+                    Kembali ke Dashboard
+                </Link>
+            </div>
+        );
+    }
+
+    if (isDayOff && !isCheckedIn) {
+        return (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-amber-200 dark:border-amber-800/60 p-6 text-center h-full flex flex-col justify-center items-center space-y-4 shadow-md transition-shadow">
+                <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-3xl">
+                    🏖️
+                </div>
+                <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Hari Ini Jadwal Libur</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm leading-relaxed max-w-sm">
+                        Anda dijadwalkan libur hari ini{activeShift?.name ? ` (${activeShift.name})` : ''}. Presensi kehadiran dinonaktifkan.
+                    </p>
                 </div>
                 <Link
                     href={route('dashboard')}

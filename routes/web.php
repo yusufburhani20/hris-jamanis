@@ -65,10 +65,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->whereDate('date', today())
             ->first();
         $geofences = \App\Models\Geofence::where('is_active', true)->get();
+        $activeShift = $request->user()->activeShift(today());
         
         return Inertia::render('User/Attendances/Scanner', [
             'todayAttendance' => $todayAttendance,
-            'geofences' => $geofences
+            'geofences' => $geofences,
+            'activeShift' => $activeShift,
+            'isDayOff' => $activeShift ? (bool) $activeShift->is_dayoff : false,
         ]);
     })->name('attendances.scanner');
     
@@ -85,6 +88,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/shift-exchanges', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'index'])->name('shift-exchanges.index');
     Route::post('/shift-exchanges', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'store'])->name('shift-exchanges.store');
     Route::delete('/shift-exchanges/{shiftExchange}', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'destroy'])->name('shift-exchanges.destroy');
+
+    // --- DAY OFF EXCHANGES ROUTES (TUKAR LIBUR) ---
+    Route::get('/day-off-exchanges', [\App\Http\Controllers\DayOffExchangeController::class, 'index'])->name('day-off-exchanges.index');
+    Route::post('/day-off-exchanges', [\App\Http\Controllers\DayOffExchangeController::class, 'store'])->name('day-off-exchanges.store');
+    Route::get('/day-off-exchanges/colleague/{user}', [\App\Http\Controllers\DayOffExchangeController::class, 'getColleagueDayOffs'])->name('day-off-exchanges.colleague-dayoffs');
+    Route::delete('/day-off-exchanges/{dayOffExchange}', [\App\Http\Controllers\DayOffExchangeController::class, 'destroy'])->name('day-off-exchanges.destroy');
 
     // --- OVERTIME REQUESTS ROUTES ---
     Route::get('/overtimes', [\App\Http\Controllers\OvertimeRequestController::class, 'index'])->name('overtimes.index');
@@ -149,6 +158,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/shift-exchanges', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'index'])->name('shift-exchanges.index');
         Route::post('/shift-exchanges/{shiftExchange}/approve', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'approve'])->name('shift-exchanges.approve');
         Route::post('/shift-exchanges/{shiftExchange}/reject', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'reject'])->name('shift-exchanges.reject');
+
+        // Admin Day Off Exchanges Approval Desk (Persetujuan Tukar Libur)
+        Route::get('/day-off-exchanges', [\App\Http\Controllers\DayOffExchangeController::class, 'index'])->name('day-off-exchanges.index');
+        Route::post('/day-off-exchanges/{dayOffExchange}/approve', [\App\Http\Controllers\DayOffExchangeController::class, 'approve'])->name('day-off-exchanges.approve');
+        Route::post('/day-off-exchanges/{dayOffExchange}/reject', [\App\Http\Controllers\DayOffExchangeController::class, 'reject'])->name('day-off-exchanges.reject');
 
         // Admin Overtime Approval Desk
         Route::get('/overtimes', [\App\Http\Controllers\OvertimeRequestController::class, 'index'])->name('overtimes.index');

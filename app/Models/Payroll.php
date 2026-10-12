@@ -112,10 +112,35 @@ class Payroll extends Model
 
         $jatahLiburDates    = array_unique($jatahLiburDates);
         $izinTerlambatDates = array_unique($izinTerlambatDates);
-        $leavesTaken        = count($jatahLiburDates);
+
+        // ── SHIFT LIBUR RESMI (user_shifts dengan is_dayoff = true) ───────
+        $dayOffShifts = \App\Models\UserShift::where('user_id', $userId)
+            ->whereHas('shift', function ($q) {
+                $q->where('is_dayoff', true);
+            })
+            ->where('start_date', '<=', $endDate->toDateString())
+            ->where(function ($q) use ($startDate) {
+                $q->whereNull('end_date')
+                  ->orWhere('end_date', '>=', $startDate->toDateString());
+            })
+            ->get();
+
+        $dayOffDates = [];
+        foreach ($dayOffShifts as $us) {
+            $usStart = Carbon::parse($us->start_date)->max($startDate);
+            $usEnd   = $us->end_date ? Carbon::parse($us->end_date)->min($endDate) : $endDate->copy();
+            for ($d = $usStart->copy(); $d->lte($usEnd); $d->addDay()) {
+                $dayOffDates[] = $d->toDateString();
+            }
+        }
+        $dayOffDates = array_unique($dayOffDates);
+
+        // Total jatah libur yang sah diambil = Shift Libur + Cuti/Izin yang Disetujui
+        $allOffDates = array_unique(array_merge($dayOffDates, $jatahLiburDates));
+        $leavesTaken = count($allOffDates);
 
         // ── HITUNG MANGKIR ───────────────────────────────────────────────
-        // Mangkir = hari tidak ada absensi DAN tidak ada approved leave
+        // Mangkir = hari tidak ada absensi DAN tidak ada shift libur/approved leave
         $absentCount = 0;
         $today       = Carbon::today();
         $tempDate    = $startDate->copy();
@@ -123,7 +148,7 @@ class Payroll extends Model
             if ($tempDate->gt($today)) break;
             $dateStr       = $tempDate->toDateString();
             $hasAttendance = $attendances->firstWhere('date', $dateStr) !== null;
-            $hasLeave      = in_array($dateStr, $jatahLiburDates);
+            $hasLeave      = in_array($dateStr, $allOffDates);
             if (!$hasAttendance && !$hasLeave) {
                 $absentCount++;
             }

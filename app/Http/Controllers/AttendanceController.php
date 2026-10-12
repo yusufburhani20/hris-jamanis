@@ -77,6 +77,12 @@ class AttendanceController extends Controller
             return back()->with('error', 'Anda sudah melakukan presensi masuk hari ini.');
         }
 
+        // Cek apakah hari ini jadwal libur
+        $activeShift = $user->activeShift($date);
+        if ($activeShift && $activeShift->is_dayoff) {
+            return back()->with('error', 'Gagal Presensi: Hari ini adalah jadwal libur Anda. Anda tidak dapat melakukan presensi pada hari libur.');
+        }
+
         $geoCheck = $this->verifyGeofence($request->latitude, $request->longitude);
         if (!$geoCheck['valid']) {
             return back()->with('error', 'Gagal Check-In: Anda berada di luar radius lokasi yang diizinkan.');
@@ -85,9 +91,8 @@ class AttendanceController extends Controller
         $status = 'hadir';
 
         // ── SHIFT PENUGASAN INTEGRATION (PHASE 1) ──
-        $activeShift = $user->activeShift($date);
         $lateToleranceMinutes = (int) Setting::get('late_tolerance_minutes', 0);
-        if ($activeShift) {
+        if ($activeShift && !$activeShift->is_dayoff && $activeShift->start_time) {
             $startTime = Carbon::createFromFormat('H:i:s', $activeShift->start_time);
             if ($deviceTime->greaterThan($startTime->copy()->addMinutes($lateToleranceMinutes))) {
                 $status = 'terlambat';
@@ -208,7 +213,7 @@ class AttendanceController extends Controller
         $activeShift = $user->activeShift($date);
         $checkInTime = Carbon::createFromFormat('H:i:s', $existing->check_in);
 
-        if ($activeShift) {
+        if ($activeShift && !$activeShift->is_dayoff && $activeShift->start_time && $activeShift->end_time) {
             $shiftStart  = Carbon::createFromFormat('H:i:s', $activeShift->start_time);
             $shiftEnd    = Carbon::createFromFormat('H:i:s', $activeShift->end_time);
             $minsEarly   = $shiftStart->diffInMinutes($checkInTime, false); // negatif jika lebih awal
@@ -221,7 +226,7 @@ class AttendanceController extends Controller
                 $effectiveEnd = $shiftEnd;
             }
         } else {
-            // Tidak ada shift → selalu check_in + 10 jam
+            // Tidak ada shift atau shift libur → selalu check_in + 10 jam
             $effectiveEnd = $checkInTime->copy()->addHours(10);
             $notes .= " (No Shift, EffEnd: " . $effectiveEnd->format('H:i') . ")";
         }

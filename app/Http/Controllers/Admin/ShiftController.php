@@ -29,6 +29,32 @@ class ShiftController extends Controller
             }])
             ->get();
 
+        $startOfMonth = now()->startOfMonth()->toDateString();
+        $endOfMonth = now()->endOfMonth()->toDateString();
+
+        $employees->each(function($emp) use ($startOfMonth, $endOfMonth) {
+            $dayOffs = UserShift::where('user_id', $emp->id)
+                ->whereHas('shift', function($q) {
+                    $q->where('is_dayoff', true);
+                })
+                ->where('start_date', '<=', $endOfMonth)
+                ->where(function($q) use ($startOfMonth) {
+                    $q->whereNull('end_date')
+                      ->orWhere('end_date', '>=', $startOfMonth);
+                })
+                ->get();
+
+            $dates = [];
+            foreach ($dayOffs as $us) {
+                $usStart = \Carbon\Carbon::parse($us->start_date)->max(\Carbon\Carbon::parse($startOfMonth));
+                $usEnd   = $us->end_date ? \Carbon\Carbon::parse($us->end_date)->min(\Carbon\Carbon::parse($endOfMonth)) : \Carbon\Carbon::parse($endOfMonth);
+                for ($d = $usStart->copy(); $d->lte($usEnd); $d->addDay()) {
+                    $dates[] = $d->toDateString();
+                }
+            }
+            $emp->monthly_days_off_count = count(array_unique($dates));
+        });
+
         return Inertia::render('Admin/Shifts/Index', [
             'shifts' => $shifts,
             'employees' => $employees,

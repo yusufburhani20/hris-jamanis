@@ -17,6 +17,7 @@ interface Employee {
     name: string;
     email: string;
     role: string;
+    monthly_days_off_count?: number;
     shifts?: (Shift & {
         pivot: {
             id: number;
@@ -501,6 +502,17 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                         <td className="px-4 py-4">
                                                             <div className="font-semibold text-slate-900 dark:text-white text-sm">{employee.name}</div>
                                                             <div className="text-xs text-slate-400">{employee.email}</div>
+                                                            <div className="mt-1 flex items-center gap-1.5">
+                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                                                                    (employee.monthly_days_off_count || 0) > 3
+                                                                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
+                                                                        : (employee.monthly_days_off_count || 0) === 3
+                                                                            ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+                                                                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                                                }`}>
+                                                                    🏖️ Libur Bulan Ini: {employee.monthly_days_off_count || 0} / 3
+                                                                </span>
+                                                            </div>
                                                         </td>
                                                         <td className="px-4 py-4" colSpan={2}>
                                                             {employee.shifts && employee.shifts.length > 0 ? (
@@ -749,6 +761,25 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                     ))}
                                 </select>
                                 {assignErrors.shift_id && <p className="text-red-500 text-xs mt-1">{assignErrors.shift_id}</p>}
+
+                                {(() => {
+                                    const selectedEmp = employees.find(e => String(e.id) === assignData.user_id);
+                                    const selectedSh = shifts.find(s => String(s.id) === assignData.shift_id);
+                                    if (selectedSh?.is_dayoff && (selectedEmp?.monthly_days_off_count || 0) >= 3) {
+                                        return (
+                                            <div className="mt-2.5 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2">
+                                                <span className="text-base leading-none">⚠️</span>
+                                                <div>
+                                                    <span className="font-bold">Peringatan Kuota Libur:</span>
+                                                    <p className="mt-0.5 leading-relaxed">
+                                                        Karyawan ini sudah memiliki <strong>{selectedEmp?.monthly_days_off_count} hari libur</strong> bulan ini (kuota standar: 3 hari). Penugasan ini akan melebihi jatah standar bulanan.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                             </div>
 
                             <div>

@@ -34,11 +34,13 @@ export default function Authenticated({
     const [newLeavesCount, setNewLeavesCount] = useState(0);
     const [newOvertimesCount, setNewOvertimesCount] = useState(0);
     const [newShiftsCount, setNewShiftsCount] = useState(0);
+    const [newDayOffsCount, setNewDayOffsCount] = useState(0);
 
     useEffect(() => {
         let lCount = countNew('leaves', employeeUpdates?.leaves || []);
         let oCount = countNew('overtimes', employeeUpdates?.overtimes || []);
         let sCount = countNew('shifts', employeeUpdates?.shift_exchanges || []);
+        let dCount = countNew('day_offs', employeeUpdates?.day_off_exchanges || []);
 
         // Mark as viewed when visiting the respective pages
         if (route().current('leaves.index')) {
@@ -53,10 +55,15 @@ export default function Authenticated({
             localStorage.setItem('last_viewed_shifts', new Date().toISOString());
             sCount = 0;
         }
+        if (route().current('day-off-exchanges.index')) {
+            localStorage.setItem('last_viewed_day_offs', new Date().toISOString());
+            dCount = 0;
+        }
 
         setNewLeavesCount(lCount);
         setNewOvertimesCount(oCount);
         setNewShiftsCount(sCount);
+        setNewDayOffsCount(dCount);
     }, [route().current(), employeeUpdates]);
     
     // Sidebar collapse state (Desktop)
@@ -348,6 +355,17 @@ export default function Authenticated({
                     show: true,
                     icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>),
                     badge: isAdmin ? pendingApprovals?.shift_exchanges : newShiftsCount,
+                },
+                {
+                    label: isAdmin ? 'Persetujuan Tukar Libur' : 'Tukar Libur Saya',
+                    href: route().has(isAdmin ? 'admin.day-off-exchanges.index' : 'day-off-exchanges.index')
+                        ? route(isAdmin ? 'admin.day-off-exchanges.index' : 'day-off-exchanges.index')
+                        : '#',
+                    active: (route().has('day-off-exchanges.index') && route().current('day-off-exchanges.*')) || 
+                            (route().has('admin.day-off-exchanges.index') && route().current('admin.day-off-exchanges.*')),
+                    show: true,
+                    icon: (<svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2zM12 12v4m0 0l-2-2m2 2l2-2" /></svg>),
+                    badge: isAdmin ? pendingApprovals?.day_off_exchanges : newDayOffsCount,
                 },
                 {
                     label: 'Slip Gaji Saya',
