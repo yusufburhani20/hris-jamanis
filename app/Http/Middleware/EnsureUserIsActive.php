@@ -24,7 +24,7 @@ class EnsureUserIsActive
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            $statusLabel = $user->status->label();
+            $statusLabel = $user->status?->label() ?? 'Inactive';
             
             return redirect()->route('login')->with('error', "Your account is {$statusLabel}. Please contact administrator.");
         }

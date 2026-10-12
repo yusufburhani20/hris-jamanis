@@ -141,13 +141,17 @@ class Payroll extends Model
 
         // ── HITUNG MANGKIR ───────────────────────────────────────────────
         // Mangkir = hari tidak ada absensi DAN tidak ada shift libur/approved leave
+        $attendanceDates = $attendances->map(function ($att) {
+            return $att->date instanceof Carbon ? $att->date->toDateString() : (string) $att->date;
+        })->toArray();
+
         $absentCount = 0;
         $today       = Carbon::today();
         $tempDate    = $startDate->copy();
         while ($tempDate->lte($endDate)) {
             if ($tempDate->gt($today)) break;
             $dateStr       = $tempDate->toDateString();
-            $hasAttendance = $attendances->firstWhere('date', $dateStr) !== null;
+            $hasAttendance = in_array($dateStr, $attendanceDates);
             $hasLeave      = in_array($dateStr, $allOffDates);
             if (!$hasAttendance && !$hasLeave) {
                 $absentCount++;

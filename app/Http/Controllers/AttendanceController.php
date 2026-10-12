@@ -144,10 +144,11 @@ class AttendanceController extends Controller
         // Push notification to admins
         if (Setting::get('notif_admin_checkin_enabled', '1') === '1') {
             try {
-                $statusLabel = match($status) {
+                $statusVal = is_string($status) ? $status : ($status->value ?? (string) $status);
+                $statusLabel = match($statusVal) {
                     'hadir' => 'Hadir',
                     'terlambat' => 'Terlambat',
-                    default => ucfirst($status)
+                    default => ucfirst($statusVal)
                 };
                 app(\App\Services\WebPushService::class)->sendToAdmins(
                     '📢 Absen Masuk Baru',
@@ -275,12 +276,13 @@ class AttendanceController extends Controller
         // Push notification to admins
         if (Setting::get('notif_admin_checkout_enabled', '1') === '1') {
             try {
-                $statusLabel = match($newStatus) {
+                $statusVal = is_string($newStatus) ? $newStatus : ($newStatus->value ?? (string) $newStatus);
+                $statusLabel = match($statusVal) {
                     'hadir' => 'Hadir',
                     'terlambat' => 'Terlambat',
                     'lembur' => 'Lembur',
                     'pulang_awal' => 'Pulang Lebih Awal',
-                    default => ucfirst($newStatus)
+                    default => ucfirst($statusVal)
                 };
                 app(\App\Services\WebPushService::class)->sendToAdmins(
                     '📢 Absen Pulang Baru',

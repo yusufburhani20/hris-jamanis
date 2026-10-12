@@ -12,6 +12,9 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $guarded = ['id'];
+    protected $attributes = [
+        'status' => 'active',
+    ];
     protected $hidden = ['password', 'remember_token'];
     protected $casts = [
         'email_verified_at' => 'datetime',
