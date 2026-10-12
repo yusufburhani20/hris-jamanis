@@ -8,11 +8,11 @@ interface Employee {
     email: string;
 }
 
-interface MyDayOff {
-    id: number;
-    start_date: string;
-    end_date: string | null;
-    shift_id: number;
+interface DayOffOption {
+    date: string;
+    formatted: string;
+    short_formatted: string;
+    shift_name: string;
 }
 
 interface DayOffExchange {
@@ -53,7 +53,7 @@ interface IndexProps {
     };
     exchanges: DayOffExchange[];
     employees: Employee[];
-    myDayOffs: MyDayOff[];
+    myDayOffs: DayOffOption[];
     role: 'admin' | 'employee';
 }
 
@@ -63,7 +63,7 @@ export default function DayOffExchangesIndex({ auth, exchanges, employees, myDay
     const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
     const [rejectionReasonInput, setRejectionReasonInput] = useState('');
     const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
-    const [colleagueDayOffs, setColleagueDayOffs] = useState<any[]>([]);
+    const [colleagueDayOffs, setColleagueDayOffs] = useState<DayOffOption[]>([]);
     const [isLoadingColleagueOffs, setIsLoadingColleagueOffs] = useState(false);
 
     const isAdmin = role === 'admin';
@@ -382,16 +382,28 @@ export default function DayOffExchangesIndex({ auth, exchanges, employees, myDay
                                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                                     Tanggal Libur Anda (Yang Ingin Diberikan ke Rekan)
                                 </label>
-                                <input
-                                    type="date"
-                                    min={new Date().toISOString().slice(0, 10)}
-                                    value={data.requester_date}
-                                    onChange={(e) => setData('requester_date', e.target.value)}
-                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-sm focus:ring-emerald-500 focus:border-emerald-500"
-                                    required
-                                />
+                                {myDayOffs && myDayOffs.length > 0 ? (
+                                    <select
+                                        value={data.requester_date}
+                                        onChange={(e) => setData('requester_date', e.target.value)}
+                                        className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-sm focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+                                        required
+                                    >
+                                        <option value="">-- Pilih Tanggal Libur Anda --</option>
+                                        {myDayOffs.map(off => (
+                                            <option key={off.date} value={off.date}>
+                                                🏖️ {off.formatted} ({off.shift_name})
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2">
+                                        <span className="text-base leading-none">⚠️</span>
+                                        <span>Anda belum memiliki jadwal shift Libur mendatang yang diatur oleh Admin. Hubungi admin untuk mengatur jadwal roster libur Anda.</span>
+                                    </div>
+                                )}
                                 <p className="text-[11px] text-slate-400 mt-1">
-                                    Pastikan pada tanggal ini Anda memiliki jadwal shift Libur. Pada tanggal ini, Anda akan masuk kerja dan rekan Anda akan libur.
+                                    Otomatis diambil dari jadwal shift Libur yang telah di-set Admin (mencegah salah pilih/salah ketik).
                                 </p>
                                 {errors.requester_date && <p className="text-rose-500 text-xs mt-1">{errors.requester_date}</p>}
                             </div>
@@ -401,19 +413,40 @@ export default function DayOffExchangesIndex({ auth, exchanges, employees, myDay
                                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                                     Tanggal Libur Rekan (Yang Ingin Anda Ambil)
                                 </label>
-                                <input
-                                    type="date"
-                                    min={new Date().toISOString().slice(0, 10)}
-                                    value={data.target_date}
-                                    onChange={(e) => setData('target_date', e.target.value)}
-                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-sm focus:ring-emerald-500 focus:border-emerald-500"
-                                    required
-                                />
-                                {isLoadingColleagueOffs && (
-                                    <p className="text-[11px] text-emerald-600 animate-pulse mt-1">Memeriksa jadwal libur rekan...</p>
+                                {!data.target_user_id ? (
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 text-xs flex items-center gap-2">
+                                        <span>ℹ️</span>
+                                        <span>Silakan pilih rekan kerja terlebih dahulu di atas untuk melihat jadwal liburnya.</span>
+                                    </div>
+                                ) : isLoadingColleagueOffs ? (
+                                    <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/40 rounded-xl text-indigo-600 dark:text-indigo-400 text-xs flex items-center gap-2">
+                                        <svg className="w-4 h-4 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                        <span>Memeriksa jadwal libur rekan...</span>
+                                    </div>
+                                ) : colleagueDayOffs.length > 0 ? (
+                                    <select
+                                        value={data.target_date}
+                                        onChange={(e) => setData('target_date', e.target.value)}
+                                        className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-sm focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+                                        required
+                                    >
+                                        <option value="">-- Pilih Tanggal Libur Rekan --</option>
+                                        {colleagueDayOffs
+                                            .filter(off => off.date !== data.requester_date)
+                                            .map(off => (
+                                                <option key={off.date} value={off.date}>
+                                                    🏖️ {off.formatted} ({off.shift_name})
+                                                </option>
+                                            ))}
+                                    </select>
+                                ) : (
+                                    <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 rounded-xl text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
+                                        <span className="text-base leading-none">⚠️</span>
+                                        <span>Rekan kerja terpilih belum memiliki jadwal shift Libur mendatang yang di-set oleh Admin.</span>
+                                    </div>
                                 )}
                                 <p className="text-[11px] text-slate-400 mt-1">
-                                    Pastikan rekan Anda memiliki jadwal Libur di tanggal ini. Pada tanggal ini, Anda yang akan libur dan rekan Anda masuk kerja.
+                                    Otomatis diambil dari jadwal shift Libur milik rekan kerja yang telah di-set Admin.
                                 </p>
                                 {errors.target_date && <p className="text-rose-500 text-xs mt-1">{errors.target_date}</p>}
                             </div>
@@ -444,7 +477,15 @@ export default function DayOffExchangesIndex({ auth, exchanges, employees, myDay
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={processing}
+                                    disabled={
+                                        processing || 
+                                        !myDayOffs || 
+                                        myDayOffs.length === 0 || 
+                                        !data.target_user_id || 
+                                        colleagueDayOffs.length === 0 || 
+                                        !data.requester_date || 
+                                        !data.target_date
+                                    }
                                     className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-emerald-600/20 active:scale-95 disabled:opacity-50"
                                 >
                                     {processing ? 'Mengirim...' : 'Kirim Pengajuan'}

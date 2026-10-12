@@ -43,16 +43,7 @@ class DayOffExchangeController extends Controller
             })->get(['id', 'name', 'email']);
 
         // List requester's upcoming scheduled day-offs
-        $myDayOffs = UserShift::where('user_id', $user->id)
-            ->whereHas('shift', function ($q) {
-                $q->where('is_dayoff', true);
-            })
-            ->where(function ($q) {
-                $q->whereNull('end_date')
-                  ->orWhere('end_date', '>=', today()->toDateString());
-            })
-            ->orderBy('start_date')
-            ->get(['id', 'start_date', 'end_date', 'shift_id']);
+        $myDayOffs = $this->getUpcomingDayOffDates($user);
 
         return Inertia::render('DayOffExchanges/Index', [
             'exchanges' => $exchanges,
@@ -63,22 +54,56 @@ class DayOffExchangeController extends Controller
     }
 
     /**
+     * Helper to get upcoming scheduled day-offs for a user (next 60 days).
+     */
+    private function getUpcomingDayOffDates(User $user): array
+    {
+        $today = today();
+        $limitDate = today()->addDays(60);
+
+        $dayOffs = UserShift::with('shift')
+            ->where('user_id', $user->id)
+            ->whereHas('shift', function ($q) {
+                $q->where('is_dayoff', true);
+            })
+            ->where('start_date', '<=', $limitDate->toDateString())
+            ->where(function ($q) use ($today) {
+                $q->whereNull('end_date')
+                  ->orWhere('end_date', '>=', $today->toDateString());
+            })
+            ->orderBy('start_date')
+            ->get();
+
+        $dates = [];
+
+        foreach ($dayOffs as $us) {
+            $usStart = \Carbon\Carbon::parse($us->start_date)->max($today);
+            $usEnd   = $us->end_date ? \Carbon\Carbon::parse($us->end_date)->min($limitDate) : $usStart->copy();
+
+            for ($d = $usStart->copy(); $d->lte($usEnd); $d->addDay()) {
+                $dateStr = $d->toDateString();
+                if (!isset($dates[$dateStr])) {
+                    $dates[$dateStr] = [
+                        'date' => $dateStr,
+                        'formatted' => $d->locale('id')->isoFormat('dddd, D MMMM Y'),
+                        'short_formatted' => $d->locale('id')->isoFormat('D MMM Y'),
+                        'shift_name' => $us->shift->name ?? 'Libur',
+                    ];
+                }
+            }
+        }
+
+        ksort($dates);
+
+        return array_values($dates);
+    }
+
+    /**
      * Fetch scheduled days off for a specific colleague (AJAX / Inertia helper).
      */
     public function getColleagueDayOffs(User $user)
     {
-        $dayOffs = UserShift::where('user_id', $user->id)
-            ->whereHas('shift', function ($q) {
-                $q->where('is_dayoff', true);
-            })
-            ->where(function ($q) {
-                $q->whereNull('end_date')
-                  ->orWhere('end_date', '>=', today()->toDateString());
-            })
-            ->orderBy('start_date')
-            ->get(['id', 'start_date', 'end_date']);
-
-        return response()->json($dayOffs);
+        return response()->json($this->getUpcomingDayOffDates($user));
     }
 
     /**
@@ -98,6 +123,22 @@ class DayOffExchangeController extends Controller
             'target_date.different' => 'Tanggal libur rekan harus berbeda dengan tanggal libur Anda.',
         ]);
 
+        // Cegah pengajuan ganda untuk tanggal yang sama yang masih pending
+        $alreadyPendingRequester = DayOffExchange::where('status', 'pending')
+            ->where(function ($q) use ($user, $request) {
+                $q->where(function ($sub) use ($user, $request) {
+                    $sub->where('requester_id', $user->id)
+                        ->where('requester_date', $request->requester_date);
+                })->orWhere(function ($sub) use ($user, $request) {
+                    $sub->where('target_user_id', $user->id)
+                        ->where('target_date', $request->requester_date);
+                });
+            })->exists();
+
+        if ($alreadyPendingRequester) {
+            return back()->withErrors(['requester_date' => 'Tanggal libur Anda ini sedang dalam proses pengajuan tukar libur lain yang masih menunggu persetujuan.']);
+        }
+
         // Pastikan pemohon memang memiliki shift libur di requester_date
         $requesterShift = $user->activeShift($request->requester_date);
         if (!$requesterShift || !$requesterShift->is_dayoff) {
@@ -106,6 +147,22 @@ class DayOffExchangeController extends Controller
 
         // Pastikan rekan memang memiliki shift libur di target_date
         $targetUser = User::findOrFail($request->target_user_id);
+
+        $alreadyPendingTarget = DayOffExchange::where('status', 'pending')
+            ->where(function ($q) use ($targetUser, $request) {
+                $q->where(function ($sub) use ($targetUser, $request) {
+                    $sub->where('requester_id', $targetUser->id)
+                        ->where('requester_date', $request->target_date);
+                })->orWhere(function ($sub) use ($targetUser, $request) {
+                    $sub->where('target_user_id', $targetUser->id)
+                        ->where('target_date', $request->target_date);
+                });
+            })->exists();
+
+        if ($alreadyPendingTarget) {
+            return back()->withErrors(['target_date' => 'Tanggal libur rekan ini sedang dalam proses pengajuan tukar libur lain yang masih menunggu persetujuan.']);
+        }
+
         $targetShift = $targetUser->activeShift($request->target_date);
         if (!$targetShift || !$targetShift->is_dayoff) {
             return back()->withErrors(['target_date' => 'Rekan kerja terpilih tidak memiliki jadwal libur pada tanggal ' . date('d/m/Y', strtotime($request->target_date)) . '.']);
@@ -160,12 +217,11 @@ class DayOffExchangeController extends Controller
         $tarDate = $dayOffExchange->target_date->toDateString();
 
         // 1. Pada requester_date: Target User menjadi Libur, Requester masuk kerja (default work shift)
-        UserShift::create([
-            'user_id' => $dayOffExchange->target_user_id,
-            'shift_id' => $dayOffShift->id,
-            'start_date' => $reqDate,
-            'end_date' => $reqDate,
-        ]);
+        UserShift::where('user_id', $dayOffExchange->requester_id)
+            ->where('start_date', $reqDate)
+            ->where('end_date', $reqDate)
+            ->delete();
+
         if ($defaultWorkShift) {
             UserShift::create([
                 'user_id' => $dayOffExchange->requester_id,
@@ -175,13 +231,24 @@ class DayOffExchangeController extends Controller
             ]);
         }
 
-        // 2. Pada target_date: Requester menjadi Libur, Target User masuk kerja
+        UserShift::where('user_id', $dayOffExchange->target_user_id)
+            ->where('start_date', $reqDate)
+            ->where('end_date', $reqDate)
+            ->delete();
+
         UserShift::create([
-            'user_id' => $dayOffExchange->requester_id,
+            'user_id' => $dayOffExchange->target_user_id,
             'shift_id' => $dayOffShift->id,
-            'start_date' => $tarDate,
-            'end_date' => $tarDate,
+            'start_date' => $reqDate,
+            'end_date' => $reqDate,
         ]);
+
+        // 2. Pada target_date: Requester menjadi Libur, Target User masuk kerja
+        UserShift::where('user_id', $dayOffExchange->target_user_id)
+            ->where('start_date', $tarDate)
+            ->where('end_date', $tarDate)
+            ->delete();
+
         if ($defaultWorkShift) {
             UserShift::create([
                 'user_id' => $dayOffExchange->target_user_id,
@@ -190,6 +257,18 @@ class DayOffExchangeController extends Controller
                 'end_date' => $tarDate,
             ]);
         }
+
+        UserShift::where('user_id', $dayOffExchange->requester_id)
+            ->where('start_date', $tarDate)
+            ->where('end_date', $tarDate)
+            ->delete();
+
+        UserShift::create([
+            'user_id' => $dayOffExchange->requester_id,
+            'shift_id' => $dayOffShift->id,
+            'start_date' => $tarDate,
+            'end_date' => $tarDate,
+        ]);
 
         $dayOffExchange->update([
             'status' => 'approved',
