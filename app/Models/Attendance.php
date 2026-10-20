@@ -100,59 +100,148 @@ class Attendance extends Model
      * Durasi keterlambatan dalam format "Xj Ym" (misal: "1j 15m").
      * Null jika bukan status terlambat atau data tidak tersedia.
      */
-    public function getLateDetailsAttribute(): ?array
+    /**
+     * Helper to resolve the reference shift start time for this attendance record.
+     */
+    public function resolveShiftStartTime(): ?Carbon
     {
-        $statusVal = $this->status instanceof AttendanceStatus
-            ? $this->status->value
-            : $this->status;
-
-        if ($statusVal !== 'terlambat') {
-            return null;
-        }
-
-        if (!$this->check_in) {
-            return null;
-        }
-
-        try {
-            $checkIn = Carbon::createFromFormat('H:i:s', $this->check_in);
-        } catch (\Exception $e) {
-            return null;
-        }
-
         $user = $this->user;
-        if (!$user) return null;
-
-        $activeShift = $user->activeShift($this->date);
+        $activeShift = $user ? $user->activeShift($this->date) : null;
         $startStr = null;
-        if ($activeShift) {
+
+        if ($activeShift && $activeShift->start_time) {
             $startStr = $activeShift->start_time;
-        } else {
+        } elseif ($user) {
+            $anyShift = $user->shifts()->where('is_dayoff', false)->whereNotNull('start_time')->first();
+            if ($anyShift) {
+                $startStr = $anyShift->start_time;
+            }
+        }
+
+        if (!$startStr) {
             $activeGeofence = \App\Models\Geofence::where('is_active', true)->whereNotNull('work_start_time')->first();
             if ($activeGeofence) {
                 $startStr = $activeGeofence->work_start_time;
             }
         }
 
-        if ($startStr) {
-            try {
-                $shiftStart = Carbon::createFromFormat('H:i:s', $startStr);
-                $lateTolerance = (int) \App\Models\Setting::get('late_tolerance_minutes', 0);
-                $effectiveStart = $shiftStart->copy()->addMinutes($lateTolerance);
-
-                if ($checkIn->greaterThan($effectiveStart)) {
-                    $diffInMinutes = $effectiveStart->diffInMinutes($checkIn);
-                    $hours = (int) floor($diffInMinutes / 60);
-                    $minutes = (int) ($diffInMinutes % 60);
-                    return [
-                        'hours' => $hours,
-                        'minutes' => $minutes,
-                        'text' => ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m",
-                    ];
-                }
-            } catch (\Exception $e) {
-                return null;
+        if (!$startStr) {
+            $defaultShift = \App\Models\Shift::where('is_dayoff', false)->whereNotNull('start_time')->first();
+            if ($defaultShift) {
+                $startStr = $defaultShift->start_time;
             }
+        }
+
+        if (!$startStr) {
+            $startStr = '08:00:00';
+        }
+
+        try {
+            return Carbon::parse($startStr);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Helper to resolve effective end time for this attendance record.
+     */
+    public function resolveEffectiveEndTime(?Carbon $checkIn = null): ?Carbon
+    {
+        $user = $this->user;
+        $activeShift = $user ? $user->activeShift($this->date) : null;
+
+        if ($activeShift && $activeShift->start_time && $activeShift->end_time) {
+            try {
+                $shiftStart = Carbon::parse($activeShift->start_time);
+                $shiftEnd   = Carbon::parse($activeShift->end_time);
+                if ($shiftEnd->lessThan($shiftStart)) {
+                    $shiftEnd->addDay();
+                }
+
+                if ($checkIn) {
+                    $minsEarly = $shiftStart->diffInMinutes($checkIn, false);
+                    $earlyToleranceMinutes = (int) \App\Models\Setting::get('early_checkin_tolerance_minutes', 60);
+                    if ($minsEarly < 0 && abs($minsEarly) > $earlyToleranceMinutes) {
+                        return $checkIn->copy()->addHours(10);
+                    }
+                }
+
+                return $shiftEnd;
+            } catch (\Exception $e) {
+                // fallback below
+            }
+        }
+
+        // Fallback if no active shift or missing end time
+        if ($user) {
+            $anyShift = $user->shifts()->where('is_dayoff', false)->whereNotNull('end_time')->first();
+            if ($anyShift && $anyShift->end_time) {
+                try {
+                    return Carbon::parse($anyShift->end_time);
+                } catch (\Exception $e) {}
+            }
+        }
+
+        $defaultShift = \App\Models\Shift::where('is_dayoff', false)->whereNotNull('end_time')->first();
+        if ($defaultShift && $defaultShift->end_time) {
+            try {
+                return Carbon::parse($defaultShift->end_time);
+            } catch (\Exception $e) {}
+        }
+
+        if ($checkIn) {
+            return $checkIn->copy()->addHours(10);
+        }
+
+        return null;
+    }
+
+    /**
+     * Durasi keterlambatan dalam format "Xj Ym" (misal: "1j 15m").
+     * Muncul jika status terlambat atau kedatangan melebihi batas jam masuk.
+     */
+    public function getLateDetailsAttribute(): ?array
+    {
+        if (!$this->check_in) {
+            return null;
+        }
+
+        try {
+            $checkIn = Carbon::parse($this->check_in);
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        $statusVal = $this->status instanceof AttendanceStatus
+            ? $this->status->value
+            : (string) $this->status;
+
+        $shiftStart = $this->resolveShiftStartTime();
+        if (!$shiftStart) {
+            return null;
+        }
+
+        $lateTolerance = (int) \App\Models\Setting::get('late_tolerance_minutes', 0);
+        $effectiveStart = $shiftStart->copy()->addMinutes($lateTolerance);
+
+        // Jika status terlambat, atau jam masuk melebihi toleransi keterlambatan
+        $isLate = ($statusVal === 'terlambat') || ($checkIn->greaterThan($effectiveStart) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha']));
+
+        if ($isLate) {
+            if ($checkIn->greaterThan($shiftStart)) {
+                $diffInMinutes = (int) round(abs($checkIn->diffInMinutes($shiftStart)));
+            } else {
+                $diffInMinutes = 0;
+            }
+
+            $hours = (int) floor($diffInMinutes / 60);
+            $minutes = (int) ($diffInMinutes % 60);
+            return [
+                'hours' => $hours,
+                'minutes' => $minutes,
+                'text' => ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m",
+            ];
         }
 
         return null;
@@ -160,63 +249,51 @@ class Attendance extends Model
 
     /**
      * Durasi lembur dalam format "Xj Ym" (misal: "2j 30m").
-     * Null jika bukan status lembur atau data tidak tersedia.
+     * Muncul jika status lembur atau kepulangan melebihi toleransi lembur setelah jam pulang efektif.
      */
     public function getOvertimeDetailsAttribute(): ?array
     {
-        $statusVal = $this->status instanceof AttendanceStatus
-            ? $this->status->value
-            : $this->status;
-
-        if ($statusVal !== 'lembur') {
-            return null;
-        }
-
         if (!$this->check_in || !$this->check_out) {
             return null;
         }
 
         try {
-            $checkIn = Carbon::createFromFormat('H:i:s', $this->check_in);
-            $checkOut = Carbon::createFromFormat('H:i:s', $this->check_out);
+            $checkIn = Carbon::parse($this->check_in);
+            $checkOut = Carbon::parse($this->check_out);
+            if ($checkOut->lessThan($checkIn)) {
+                $checkOut->addDay();
+            }
         } catch (\Exception $e) {
             return null;
         }
 
-        $user = $this->user;
-        if (!$user) return null;
+        $statusVal = $this->status instanceof AttendanceStatus
+            ? $this->status->value
+            : (string) $this->status;
 
-        $activeShift = $user->activeShift($this->date);
-        if ($activeShift) {
-            try {
-                $shiftStart = Carbon::createFromFormat('H:i:s', $activeShift->start_time);
-                $shiftEnd = Carbon::createFromFormat('H:i:s', $activeShift->end_time);
-                $minsEarly = $shiftStart->diffInMinutes($checkIn, false);
-                $earlyToleranceMinutes = (int) \App\Models\Setting::get('early_checkin_tolerance_minutes', 60);
-                if ($minsEarly < 0 && abs($minsEarly) > $earlyToleranceMinutes) {
-                    $effectiveEnd = $checkIn->copy()->addHours(10);
-                } else {
-                    $effectiveEnd = $shiftEnd;
-                }
-            } catch (\Exception $e) {
-                $effectiveEnd = $checkIn->copy()->addHours(10);
-            }
-        } else {
-            $effectiveEnd = $checkIn->copy()->addHours(10);
+        $effectiveEnd = $this->resolveEffectiveEndTime($checkIn);
+        if (!$effectiveEnd) {
+            return null;
         }
 
-        if ($checkOut->greaterThan($effectiveEnd)) {
-            $diffInMinutes = $checkOut->diffInMinutes($effectiveEnd);
-            $overtimeTolerance = (int) \App\Models\Setting::get('overtime_tolerance_minutes', 60);
-            if ($diffInMinutes >= $overtimeTolerance) {
-                $hours = (int) floor($diffInMinutes / 60);
-                $minutes = $diffInMinutes % 60;
-                return [
-                    'hours' => $hours,
-                    'minutes' => $minutes,
-                    'text' => ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m",
-                ];
+        $overtimeTolerance = (int) \App\Models\Setting::get('overtime_tolerance_minutes', 60);
+
+        // Muncul jika status lembur, atau kepulangan melebihi batas lembur
+        $isOvertime = ($statusVal === 'lembur') || ($checkOut->greaterThan($effectiveEnd->copy()->addMinutes($overtimeTolerance)) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha']));
+
+        if ($isOvertime) {
+            $diffInMinutes = (int) round(abs($checkOut->diffInMinutes($effectiveEnd)));
+            if ($diffInMinutes <= 0 && $statusVal === 'lembur') {
+                $diffInMinutes = 1;
             }
+
+            $hours = (int) floor($diffInMinutes / 60);
+            $minutes = (int) ($diffInMinutes % 60);
+            return [
+                'hours' => $hours,
+                'minutes' => $minutes,
+                'text' => ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m",
+            ];
         }
 
         return null;
@@ -224,56 +301,44 @@ class Attendance extends Model
 
     /**
      * Durasi pulang awal dalam format "Xj Ym" (misal: "1j 30m").
-     * Null jika bukan status pulang_awal atau data tidak tersedia.
+     * Muncul jika status pulang_awal atau kepulangan sebelum jam pulang efektif.
      */
     public function getEarlyLeaveDetailsAttribute(): ?array
     {
-        $statusVal = $this->status instanceof AttendanceStatus
-            ? $this->status->value
-            : $this->status;
-
-        if ($statusVal !== 'pulang_awal') {
-            return null;
-        }
-
         if (!$this->check_in || !$this->check_out) {
             return null;
         }
 
         try {
-            $checkIn  = Carbon::createFromFormat('H:i:s', $this->check_in);
-            $checkOut = Carbon::createFromFormat('H:i:s', $this->check_out);
+            $checkIn  = Carbon::parse($this->check_in);
+            $checkOut = Carbon::parse($this->check_out);
+            if ($checkOut->lessThan($checkIn)) {
+                $checkOut->addDay();
+            }
         } catch (\Exception $e) {
             return null;
         }
 
-        $user = $this->user;
-        if (!$user) return null;
+        $statusVal = $this->status instanceof AttendanceStatus
+            ? $this->status->value
+            : (string) $this->status;
 
-        $activeShift = $user->activeShift($this->date);
-        if ($activeShift) {
-            try {
-                $shiftStart = Carbon::createFromFormat('H:i:s', $activeShift->start_time);
-                $shiftEnd   = Carbon::createFromFormat('H:i:s', $activeShift->end_time);
-                // Jika check-in lebih awal dari toleransi menit sebelum shift, gunakan durasi tetap 10 jam
-                $minsEarly = $shiftStart->diffInMinutes($checkIn, false);
-                $earlyToleranceMinutes = (int) \App\Models\Setting::get('early_checkin_tolerance_minutes', 60);
-                if ($minsEarly < 0 && abs($minsEarly) > $earlyToleranceMinutes) {
-                    $effectiveEnd = $checkIn->copy()->addHours(10);
-                } else {
-                    $effectiveEnd = $shiftEnd;
-                }
-            } catch (\Exception $e) {
-                $effectiveEnd = $checkIn->copy()->addHours(10);
-            }
-        } else {
-            $effectiveEnd = $checkIn->copy()->addHours(10);
+        $effectiveEnd = $this->resolveEffectiveEndTime($checkIn);
+        if (!$effectiveEnd) {
+            return null;
         }
 
-        if ($checkOut->lessThan($effectiveEnd)) {
-            $diffInMinutes = $checkOut->diffInMinutes($effectiveEnd);
+        // Muncul jika status pulang_awal, atau kepulangan lebih awal dari 30 menit sebelum jam pulang efektif
+        $isEarly = ($statusVal === 'pulang_awal') || ($checkOut->lessThan($effectiveEnd->copy()->subMinutes(30)) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha']));
+
+        if ($isEarly) {
+            $diffInMinutes = (int) round(abs($effectiveEnd->diffInMinutes($checkOut)));
+            if ($diffInMinutes <= 0 && $statusVal === 'pulang_awal') {
+                $diffInMinutes = 1;
+            }
+
             $hours   = (int) floor($diffInMinutes / 60);
-            $minutes = $diffInMinutes % 60;
+            $minutes = (int) ($diffInMinutes % 60);
             return [
                 'hours'   => $hours,
                 'minutes' => $minutes,
@@ -284,109 +349,22 @@ class Attendance extends Model
         return null;
     }
 
-    public function getTimeDetailsAttribute()
+    public function getTimeDetailsAttribute(): ?string
     {
-        $user = $this->user;
-        if (!$user) {
-            return null;
-        }
-
-        $statusVal = $this->status instanceof \App\Enums\AttendanceStatus 
-            ? $this->status->value 
-            : $this->status;
-
-        if (!in_array($statusVal, ['terlambat', 'pulang_awal', 'lembur'])) {
-            return null;
-        }
-
-        if (!$this->check_in) {
-            return null;
-        }
-
-        try {
-            $checkIn = Carbon::createFromFormat('H:i:s', $this->check_in);
-        } catch (\Exception $e) {
-            return null;
-        }
+        $statusVal = $this->status instanceof AttendanceStatus
+            ? $this->status->value
+            : (string) $this->status;
 
         if ($statusVal === 'terlambat') {
-            $activeShift = $user->activeShift($this->date);
-            $startStr = null;
-            if ($activeShift) {
-                $startStr = $activeShift->start_time;
-            } else {
-                $activeGeofence = \App\Models\Geofence::where('is_active', true)->whereNotNull('work_start_time')->first();
-                if ($activeGeofence) {
-                    $startStr = $activeGeofence->work_start_time;
-                }
-            }
-
-            if ($startStr) {
-                try {
-                    $shiftStart = Carbon::createFromFormat('H:i:s', $startStr);
-                    $lateTolerance = (int) \App\Models\Setting::get('late_tolerance_minutes', 0);
-                    $effectiveStart = $shiftStart->copy()->addMinutes($lateTolerance);
-
-                    if ($checkIn->greaterThan($effectiveStart)) {
-                        $diffInMinutes = $effectiveStart->diffInMinutes($checkIn);
-                        $hours = (int) floor($diffInMinutes / 60);
-                        $minutes = (int) ($diffInMinutes % 60);
-                        return ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m";
-                    }
-                } catch (\Exception $e) {
-                    return null;
-                }
-            }
+            return $this->late_details['text'] ?? null;
         }
 
-        if (in_array($statusVal, ['lembur', 'pulang_awal'])) {
-            if (!$this->check_out) {
-                return null;
-            }
+        if ($statusVal === 'lembur') {
+            return $this->overtime_details['text'] ?? null;
+        }
 
-            try {
-                $checkOut = Carbon::createFromFormat('H:i:s', $this->check_out);
-            } catch (\Exception $e) {
-                return null;
-            }
-
-            $activeShift = $user->activeShift($this->date);
-            if ($activeShift) {
-                try {
-                    $shiftStart = Carbon::createFromFormat('H:i:s', $activeShift->start_time);
-                    $shiftEnd = Carbon::createFromFormat('H:i:s', $activeShift->end_time);
-                    $minsEarly = $shiftStart->diffInMinutes($checkIn, false); // negative if earlier
-                    $earlyToleranceMinutes = (int) \App\Models\Setting::get('early_checkin_tolerance_minutes', 60);
-                    if ($minsEarly < 0 && abs($minsEarly) > $earlyToleranceMinutes) {
-                        $effectiveEnd = $checkIn->copy()->addHours(10);
-                    } else {
-                        $effectiveEnd = $shiftEnd;
-                    }
-                } catch (\Exception $e) {
-                    $effectiveEnd = $checkIn->copy()->addHours(10);
-                }
-            } else {
-                $effectiveEnd = $checkIn->copy()->addHours(10);
-            }
-
-            if ($statusVal === 'lembur') {
-                if ($checkOut->greaterThan($effectiveEnd)) {
-                    $diffInMinutes = $checkOut->diffInMinutes($effectiveEnd);
-                    $overtimeTolerance = (int) \App\Models\Setting::get('overtime_tolerance_minutes', 60);
-                    if ($diffInMinutes >= $overtimeTolerance) {
-                        $hours = floor($diffInMinutes / 60);
-                        $minutes = $diffInMinutes % 60;
-                        return ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m";
-                    }
-                }
-            } elseif ($statusVal === 'pulang_awal') {
-                if ($checkOut->lessThan($effectiveEnd)) {
-                    $diffInMinutes = $checkOut->diffInMinutes($effectiveEnd);
-                    $hours = floor($diffInMinutes / 60);
-                    $minutes = $diffInMinutes % 60;
-                    return ($hours > 0 ? "{$hours}j " : "") . "{$minutes}m";
-                }
-            }
+        if ($statusVal === 'pulang_awal') {
+            return $this->early_leave_details['text'] ?? null;
         }
 
         return null;
