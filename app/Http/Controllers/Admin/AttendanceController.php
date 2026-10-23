@@ -55,15 +55,32 @@ class AttendanceController extends Controller
 
         $attendances = Attendance::injectDayOffs($attendances, $startDate, $endDate, $request->user_id, $request->search);
 
+        $perPage = (int) $request->input('per_page', 25);
+        $page = (int) $request->input('page', 1);
+
+        $total = $attendances->count();
+        $items = $attendances->forPage($page, $perPage)->values();
+
+        $paginatedAttendances = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
         $users = \App\Models\User::where('role', 'LIKE', '%employee%')
             ->orWhere('role', 'LIKE', '%driver%')
             ->orderBy('name')
             ->get();
 
         return Inertia::render('Admin/Attendances/Index', [
-            'attendances' => $attendances,
+            'attendances' => $paginatedAttendances,
             'users' => $users,
-            'filters' => $request->only(['start_date', 'end_date', 'user_id', 'month', 'search'])
+            'filters' => $request->only(['start_date', 'end_date', 'user_id', 'month', 'search', 'per_page'])
         ]);
     }
 

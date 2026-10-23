@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import React, { useState } from 'react';
 import { EyeIcon, TrashIcon, ArrowUturnLeftIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import Pagination from '@/Components/Pagination';
 
 interface User {
     id: number;
@@ -34,12 +35,21 @@ interface Attendance {
     early_leave_details?: { hours: number; minutes: number; text: string } | null;
 }
 
-export default function AttendanceIndex({ auth, attendances, users, filters }: PageProps<{ attendances: Attendance[], users: User[], filters: { start_date?: string, end_date?: string, user_id?: string, month?: string, search?: string } }>) {
+interface PaginatedData<T> {
+    data: T[];
+    links: { url: string | null; label: string; active: boolean }[];
+    total: number;
+    from: number;
+    to: number;
+}
+
+export default function AttendanceIndex({ auth, attendances, users, filters }: PageProps<{ attendances: PaginatedData<Attendance> | Attendance[], users: User[], filters: { start_date?: string, end_date?: string, user_id?: string, month?: string, search?: string, per_page?: string } }>) {
     const [startDate, setStartDate] = useState(filters.start_date || '');
     const [endDate, setEndDate] = useState(filters.end_date || '');
     const [userId, setUserId] = useState(filters.user_id || '');
     const [month, setMonth] = useState(filters.month || '');
     const [search, setSearch] = useState(filters.search || '');
+    const [perPage, setPerPage] = useState(filters.per_page || '25');
     const [photoViewer, setPhotoViewer] = useState<{ 
         checkin: string | null, 
         checkout: string | null, 
@@ -103,13 +113,14 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
         return options;
     };
 
-    const applyFilter = (newUserId: string, newMonth: string, newStartDate: string, newEndDate: string, newSearch: string) => {
+    const applyFilter = (newUserId: string, newMonth: string, newStartDate: string, newEndDate: string, newSearch: string, newPerPage?: string) => {
         router.get(route('admin.attendances.index'), {
             start_date: newStartDate,
             end_date: newEndDate,
             user_id: newUserId,
             month: newMonth,
-            search: newSearch
+            search: newSearch,
+            per_page: newPerPage !== undefined ? newPerPage : perPage
         }, {
             preserveState: true,
             preserveScroll: true
@@ -119,7 +130,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
     const handleUserChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const val = e.target.value;
         setUserId(val);
-        applyFilter(val, month, startDate, endDate, search);
+        applyFilter(val, month, startDate, endDate, search, perPage);
     };
 
     const handleMonthSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -133,7 +144,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
             setStartDate('');
             setEndDate('');
         }
-        applyFilter(userId, val, nextStartDate, nextEndDate, search);
+        applyFilter(userId, val, nextStartDate, nextEndDate, search, perPage);
     };
 
     const handleCustomDateChange = (type: 'start' | 'end', val: string) => {
@@ -148,7 +159,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
     };
 
     const handleFilter = () => {
-        applyFilter(userId, month, startDate, endDate, search);
+        applyFilter(userId, month, startDate, endDate, search, perPage);
     };
 
     const handleExport = (type: 'excel' | 'pdf') => {
@@ -190,7 +201,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                     {/* Filters & Actions Card */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                         <div className="flex flex-col md:flex-row md:items-end gap-4">
-                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Cari Data</label>
                                     <input 
@@ -246,6 +257,23 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                         className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Baris</label>
+                                    <select 
+                                        value={perPage}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setPerPage(val);
+                                            applyFilter(userId, month, startDate, endDate, search, val);
+                                        }}
+                                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    >
+                                        <option value="15">15 / hal</option>
+                                        <option value="25">25 / hal</option>
+                                        <option value="50">50 / hal</option>
+                                        <option value="100">100 / hal</option>
+                                    </select>
+                                </div>
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 <button 
@@ -291,7 +319,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                    {attendances.map((record) => (
+                                    {(Array.isArray(attendances) ? attendances : (attendances?.data || [])).map((record) => (
                                         <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20">
                                             <td className="px-3 py-3 text-gray-600 dark:text-gray-300">{new Date(record.date).toLocaleDateString()}</td>
                                             <td className="px-3 py-3 text-gray-900 dark:text-white font-medium">{record.user.name}</td>
@@ -466,7 +494,7 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                             </td>
                                         </tr>
                                     ))}
-                                    {attendances.length === 0 && (
+                                    {(Array.isArray(attendances) ? attendances.length : (attendances?.data?.length || 0)) === 0 && (
                                         <tr>
                                             <td colSpan={10} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                                 No attendance records found.
@@ -476,6 +504,16 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination Bar */}
+                        {!Array.isArray(attendances) && attendances?.links && (
+                            <Pagination 
+                                links={attendances.links} 
+                                total={attendances.total} 
+                                from={attendances.from} 
+                                to={attendances.to} 
+                            />
+                        )}
                     </div>
                 </div>
             </div>
