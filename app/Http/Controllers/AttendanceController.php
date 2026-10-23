@@ -302,11 +302,19 @@ class AttendanceController extends Controller
         $user = Auth::user();
         $query = Attendance::where('user_id', $user->id);
 
-        if ($request->has(['start_date', 'end_date']) && $request->start_date && $request->end_date) {
-            $query->whereBetween('date', [$request->start_date, $request->end_date]);
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('date', [$startDate, $endDate]);
+        } else {
+            $startDate = Carbon::now()->startOfMonth()->toDateString();
+            $endDate = Carbon::now()->endOfMonth()->toDateString();
+            $query->whereBetween('date', [$startDate, $endDate]);
         }
 
         $attendances = $query->latest('date')->latest('check_in')->get();
+        $attendances = Attendance::injectDayOffs($attendances, $startDate, $endDate, $user->id);
 
         return \Inertia\Inertia::render('User/Attendances/History', [
             'attendances' => $attendances,

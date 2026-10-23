@@ -21,6 +21,10 @@
         .status-terlambat { background: #fef3c7; color: #92400e; }
         .status-pulang_awal { background: #ffedd5; color: #9a3412; }
         .status-lembur { background: #e0e7ff; color: #3730a3; }
+        .status-libur { background: #ffe4e6; color: #9f1239; }
+        .status-cuti { background: #ede9fe; color: #5b21b6; }
+        .status-izin { background: #e0f2fe; color: #0369a1; }
+        .status-sakit { background: #ccfbf1; color: #115e59; }
         .late-badge { background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 9px; font-weight: bold; padding: 2px 5px; display: inline-block; }
         .ot-badge { background: #e0e7ff; color: #3730a3; border-radius: 6px; font-size: 9px; font-weight: bold; padding: 2px 5px; display: inline-block; }
         .early-badge { background: #ffedd5; color: #9a3412; border-radius: 6px; font-size: 9px; font-weight: bold; padding: 2px 5px; display: inline-block; }

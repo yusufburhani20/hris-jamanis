@@ -25,11 +25,84 @@ class Attendance extends Model
     protected $appends = ['photo_url', 'checkout_photo_url', 'time_details', 'late_details', 'overtime_details', 'early_leave_details'];
 
 
-    public static function injectDayOffs($attendances, $startDate, $endDate, $userId = null)
+    public static function injectDayOffs($attendances, $startDate, $endDate, $userId = null, $search = null)
     {
         $start = \Carbon\Carbon::parse($startDate);
         $end = \Carbon\Carbon::parse($endDate);
 
+        $existing = [];
+        foreach ($attendances as $att) {
+            $dateStr = $att->date instanceof \Carbon\Carbon ? $att->date->toDateString() : (string) $att->date;
+            $existing[$att->user_id][$dateStr] = true;
+        }
+
+        $newAttendances = collect();
+
+        // 1. Injeksi Pengajuan Cuti & Izin yang Disetujui (Approved Leaves)
+        $leaveQuery = \App\Models\Leave::with('user')
+            ->where('status', 'approved')
+            ->where('start_date', '<=', $end->toDateString())
+            ->where('end_date', '>=', $start->toDateString());
+
+        if ($userId) {
+            $leaveQuery->where('user_id', $userId);
+        }
+
+        $approvedLeaves = $leaveQuery->get();
+
+        foreach ($approvedLeaves as $leave) {
+            $user = $leave->user;
+            if (!$user) continue;
+
+            $lStart = \Carbon\Carbon::parse($leave->start_date)->max($start);
+            $lEnd = \Carbon\Carbon::parse($leave->end_date)->min($end);
+
+            for ($d = $lStart->copy(); $d->lte($lEnd); $d->addDay()) {
+                $dateStr = $d->toDateString();
+                if (!isset($existing[$user->id][$dateStr])) {
+                    $status = match($leave->type) {
+                        'cuti' => \App\Enums\AttendanceStatus::cuti,
+                        'sakit' => \App\Enums\AttendanceStatus::sakit,
+                        'izin', 'izin_terlambat' => \App\Enums\AttendanceStatus::izin,
+                        default => \App\Enums\AttendanceStatus::izin,
+                    };
+
+                    $typeLabel = match($leave->type) {
+                        'cuti' => 'Cuti',
+                        'sakit' => 'Sakit',
+                        'izin' => 'Izin',
+                        'izin_terlambat' => 'Izin Terlambat',
+                        default => ucfirst($leave->type)
+                    };
+
+                    $notes = "Pengajuan {$typeLabel} Disetujui" . ($leave->reason ? ": {$leave->reason}" : "");
+
+                    if ($search) {
+                        $searchLower = strtolower($search);
+                        $matchesName = str_contains(strtolower($user->name ?? ''), $searchLower);
+                        $matchesNotes = str_contains(strtolower($notes), $searchLower);
+                        $matchesStatus = str_contains(strtolower($status->value), $searchLower) || str_contains(strtolower($status->label()), $searchLower);
+                        if (!$matchesName && !$matchesNotes && !$matchesStatus) {
+                            continue;
+                        }
+                    }
+
+                    $virtualAtt = new self();
+                    $virtualAtt->id = 0; // Virtual ID
+                    $virtualAtt->user_id = $user->id;
+                    $virtualAtt->date = $dateStr;
+                    $virtualAtt->status = $status;
+                    $virtualAtt->verification_status = \App\Enums\VerificationStatus::valid;
+                    $virtualAtt->system_notes = $notes;
+                    $virtualAtt->setRelation('user', $user);
+
+                    $newAttendances->push($virtualAtt);
+                    $existing[$user->id][$dateStr] = true;
+                }
+            }
+        }
+
+        // 2. Injeksi Jadwal Libur Resmi / Shift (Day Off Shifts)
         $q = \App\Models\UserShift::with('user', 'shift')
             ->whereHas('shift', function($query) {
                 $query->where('is_dayoff', true);
@@ -46,14 +119,6 @@ class Attendance extends Model
 
         $dayOffShifts = $q->get();
 
-        $existing = [];
-        foreach ($attendances as $att) {
-            $dateStr = $att->date instanceof \Carbon\Carbon ? $att->date->toDateString() : (string) $att->date;
-            $existing[$att->user_id][$dateStr] = true;
-        }
-
-        $newAttendances = collect();
-
         foreach ($dayOffShifts as $us) {
             $user = $us->user;
             if (!$user) continue;
@@ -64,12 +129,25 @@ class Attendance extends Model
             for ($d = $usStart->copy(); $d->lte($usEnd); $d->addDay()) {
                 $dateStr = $d->toDateString();
                 if (!isset($existing[$user->id][$dateStr])) {
+                    $notes = 'Jadwal Libur: ' . $us->shift->name;
+
+                    if ($search) {
+                        $searchLower = strtolower($search);
+                        $matchesName = str_contains(strtolower($user->name ?? ''), $searchLower);
+                        $matchesNotes = str_contains(strtolower($notes), $searchLower);
+                        $matchesStatus = str_contains(strtolower(\App\Enums\AttendanceStatus::libur->value), $searchLower) || str_contains(strtolower(\App\Enums\AttendanceStatus::libur->label()), $searchLower);
+                        if (!$matchesName && !$matchesNotes && !$matchesStatus) {
+                            continue;
+                        }
+                    }
+
                     $virtualAtt = new self();
                     $virtualAtt->id = 0; // Virtual ID
                     $virtualAtt->user_id = $user->id;
                     $virtualAtt->date = $dateStr;
                     $virtualAtt->status = \App\Enums\AttendanceStatus::libur;
-                    $virtualAtt->system_notes = 'Jadwal Libur: ' . $us->shift->name;
+                    $virtualAtt->verification_status = \App\Enums\VerificationStatus::valid;
+                    $virtualAtt->system_notes = $notes;
                     $virtualAtt->setRelation('user', $user);
                     
                     $newAttendances->push($virtualAtt);
@@ -79,6 +157,11 @@ class Attendance extends Model
         }
 
         return $attendances->concat($newAttendances)->sortByDesc('date')->values();
+    }
+
+    public static function injectDayOffsAndLeaves($attendances, $startDate, $endDate, $userId = null, $search = null)
+    {
+        return self::injectDayOffs($attendances, $startDate, $endDate, $userId, $search);
     }
 
     public function user()
@@ -226,7 +309,7 @@ class Attendance extends Model
         $effectiveStart = $shiftStart->copy()->addMinutes($lateTolerance);
 
         // Jika status terlambat, atau jam masuk melebihi toleransi keterlambatan
-        $isLate = ($statusVal === 'terlambat') || ($checkIn->greaterThan($effectiveStart) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha']));
+        $isLate = ($statusVal === 'terlambat') || ($checkIn->greaterThan($effectiveStart) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha', 'cuti']));
 
         if ($isLate) {
             if ($checkIn->greaterThan($shiftStart)) {
@@ -279,7 +362,7 @@ class Attendance extends Model
         $overtimeTolerance = (int) \App\Models\Setting::get('overtime_tolerance_minutes', 60);
 
         // Muncul jika status lembur, atau kepulangan melebihi batas lembur
-        $isOvertime = ($statusVal === 'lembur') || ($checkOut->greaterThan($effectiveEnd->copy()->addMinutes($overtimeTolerance)) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha']));
+        $isOvertime = ($statusVal === 'lembur') || ($checkOut->greaterThan($effectiveEnd->copy()->addMinutes($overtimeTolerance)) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha', 'cuti']));
 
         if ($isOvertime) {
             $diffInMinutes = (int) round(abs($checkOut->diffInMinutes($effectiveEnd)));
@@ -329,7 +412,7 @@ class Attendance extends Model
         }
 
         // Muncul jika status pulang_awal, atau kepulangan lebih awal dari 30 menit sebelum jam pulang efektif
-        $isEarly = ($statusVal === 'pulang_awal') || ($checkOut->lessThan($effectiveEnd->copy()->subMinutes(30)) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha']));
+        $isEarly = ($statusVal === 'pulang_awal') || ($checkOut->lessThan($effectiveEnd->copy()->subMinutes(30)) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha', 'cuti']));
 
         if ($isEarly) {
             $diffInMinutes = (int) round(abs($effectiveEnd->diffInMinutes($checkOut)));

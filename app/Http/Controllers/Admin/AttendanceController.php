@@ -53,7 +53,7 @@ class AttendanceController extends Controller
             $endDate = Carbon::now()->endOfMonth()->toDateString();
         }
 
-        $attendances = Attendance::injectDayOffs($attendances, $startDate, $endDate, $request->user_id);
+        $attendances = Attendance::injectDayOffs($attendances, $startDate, $endDate, $request->user_id, $request->search);
 
         $users = \App\Models\User::where('role', 'LIKE', '%employee%')
             ->orWhere('role', 'LIKE', '%driver%')
@@ -70,7 +70,7 @@ class AttendanceController extends Controller
     public function update(Request $request, Attendance $attendance)
     {
         $validated = $request->validate([
-            'status' => 'required|string|in:hadir,izin,sakit,alpha,terlambat,pulang_awal,lembur,libur',
+            'status' => 'required|string|in:hadir,izin,sakit,alpha,terlambat,pulang_awal,lembur,libur,cuti',
             'verification_status' => 'required|string|in:valid,pending,rejected,system_flagged',
             'check_in' => 'nullable|string',
             'check_out' => 'nullable|string',

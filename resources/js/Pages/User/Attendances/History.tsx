@@ -221,6 +221,10 @@ export default function History({ auth, attendances, filters }: PageProps<{ atte
                                                           record.status === 'terlambat' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30' : 
                                                           record.status === 'pulang_awal' ? 'bg-orange-50 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400 border border-orange-100 dark:border-orange-900/30' : 
                                                           record.status === 'lembur' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/20 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30' : 
+                                                          record.status === 'libur' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30' : 
+                                                          record.status === 'cuti' ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/20 dark:text-purple-400 border border-purple-100 dark:border-purple-900/30' : 
+                                                          record.status === 'izin' ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/20 dark:text-sky-400 border border-sky-100 dark:border-sky-900/30' : 
+                                                          record.status === 'sakit' ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/20 dark:text-teal-400 border border-teal-100 dark:border-teal-900/30' : 
                                                           'bg-gray-50 text-gray-700 border border-gray-100 dark:bg-gray-900/10 dark:text-gray-400 dark:border-gray-800'}`}>
                                                         {record.status.replace('_', ' ').toUpperCase()}
                                                     </span>
@@ -236,9 +240,16 @@ export default function History({ auth, attendances, filters }: PageProps<{ atte
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col space-y-1">
-                                                    <span className={`inline-flex text-[10px] uppercase font-black rounded-full px-2 py-0.5 w-max border ${record.verification_status === 'valid' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-800' : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800'}`}>
-                                                        {record.verification_status.replace('_', ' ')}
-                                                    </span>
+                                                    {record.status !== 'libur' && record.id !== 0 && (
+                                                        <span className={`inline-flex text-[10px] uppercase font-black rounded-full px-2 py-0.5 w-max border ${record.verification_status === 'valid' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-800' : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800'}`}>
+                                                            {record.verification_status.replace('_', ' ')}
+                                                        </span>
+                                                    )}
+                                                    {record.id === 0 && record.status !== 'libur' && (
+                                                        <span className="inline-flex text-[10px] uppercase font-black rounded-full px-2 py-0.5 w-max bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800">
+                                                            PENGAJUAN DISETUJUI
+                                                        </span>
+                                                    )}
                                                     {record.is_mocked && (
                                                         <span className="inline-flex items-center gap-1 text-[9px] uppercase font-black rounded-full px-2 py-0.5 w-max bg-rose-100 text-rose-800 border border-rose-250 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800 animate-pulse">
                                                             ⚠️ GPS PALSU
@@ -250,13 +261,17 @@ export default function History({ auth, attendances, filters }: PageProps<{ atte
                                                 {record.system_notes || '-'}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <button
-                                                    onClick={() => openPhotoViewer(record)}
-                                                    className="p-1.5 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors inline-flex items-center justify-center"
-                                                    title="Lihat Foto Selfie"
-                                                >
-                                                    <EyeIcon className="w-5 h-5" />
-                                                </button>
+                                                {(record.photo_url || record.checkout_photo_url) ? (
+                                                    <button
+                                                        onClick={() => openPhotoViewer(record)}
+                                                        className="p-1.5 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors inline-flex items-center justify-center"
+                                                        title="Lihat Foto Selfie"
+                                                    >
+                                                        <EyeIcon className="w-5 h-5" />
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
