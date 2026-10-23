@@ -334,15 +334,16 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                                           record.status === 'cuti' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300' : 
                                                           record.status === 'izin' ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300' : 
                                                           record.status === 'sakit' ? 'bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300' : 
+                                                          record.status === 'tidak_hadir' || record.status === 'alpha' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-250 dark:border-rose-800' : 
                                                           'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
-                                                        {record.status.replace('_', ' ').toUpperCase()}
+                                                        {record.status === 'alpha' || record.status === 'tidak_hadir' ? 'TIDAK HADIR' : record.status.replace('_', ' ').toUpperCase()}
                                                     </span>
-                                                    {record.status !== 'libur' && record.id !== 0 && (
+                                                    {record.status !== 'libur' && record.status !== 'tidak_hadir' && record.status !== 'alpha' && record.id !== 0 && (
                                                         <span className={`inline-flex text-[10px] uppercase font-black rounded-full px-2 py-0.5 w-max border ${record.verification_status === 'valid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                                                             {record.verification_status.replace('_', ' ')}
                                                         </span>
                                                     )}
-                                                    {record.id === 0 && record.status !== 'libur' && (
+                                                    {record.id === 0 && record.status !== 'libur' && record.status !== 'tidak_hadir' && record.status !== 'alpha' && (
                                                         <span className="inline-flex text-[10px] uppercase font-black rounded-full px-2 py-0.5 w-max bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800">
                                                             PENGAJUAN DISETUJUI
                                                         </span>
@@ -608,9 +609,10 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                     <option value="lembur">Lembur</option>
                                     <option value="izin">Izin</option>
                                     <option value="sakit">Sakit</option>
-                                    <option value="alpha">Alpha</option>
+                                    <option value="alpha">Tidak Hadir (Alpha)</option>
                                     <option value="libur">Libur</option>
                                     <option value="cuti">Cuti</option>
+                                    <option value="tidak_hadir">Tidak Hadir</option>
                                 </select>
                             </div>
 

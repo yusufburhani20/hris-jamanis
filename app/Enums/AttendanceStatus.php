@@ -13,6 +13,7 @@ enum AttendanceStatus: string
     case lembur = 'lembur';
     case libur = 'libur';
     case cuti = 'cuti';
+    case tidak_hadir = 'tidak_hadir';
 
     public function label(): string
     {
@@ -20,7 +21,8 @@ enum AttendanceStatus: string
             self::hadir => 'Hadir',
             self::izin => 'Izin',
             self::sakit => 'Sakit',
-            self::alpha => 'Alpha',
+            self::alpha => 'Tidak Hadir',
+            self::tidak_hadir => 'Tidak Hadir',
             self::terlambat => 'Terlambat',
             self::pulang_awal => 'Pulang Lebih Awal',
             self::lembur => 'Lembur',

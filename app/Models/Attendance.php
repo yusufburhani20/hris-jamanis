@@ -156,6 +156,66 @@ class Attendance extends Model
             }
         }
 
+        // 3. Injeksi Karyawan yang Tidak Absen (Tidak Hadir / Alpha)
+        $today = \Carbon\Carbon::today();
+        $cutoffDate = $end->min($today);
+
+        if ($start->lte($cutoffDate)) {
+            if ($userId) {
+                $targetUsers = \App\Models\User::where('id', $userId)->get();
+            } else {
+                $targetUsers = \App\Models\User::where(function($q) {
+                        $q->where('role', 'LIKE', '%employee%')
+                          ->orWhere('role', 'LIKE', '%driver%');
+                    })
+                    ->where(function($q) {
+                        $q->where('status', 'active')
+                          ->orWhereNull('status');
+                    })
+                    ->orderBy('name')
+                    ->get();
+            }
+
+            foreach ($targetUsers as $targetUser) {
+                $userCreatedAt = $targetUser->created_at ? \Carbon\Carbon::parse($targetUser->created_at)->startOfDay() : null;
+
+                for ($d = $start->copy(); $d->lte($cutoffDate); $d->addDay()) {
+                    // Jangan tandai Tidak Hadir untuk tanggal sebelum karyawan bergabung/didaftarkan
+                    if ($userCreatedAt && $d->lt($userCreatedAt)) {
+                        continue;
+                    }
+
+                    $dateStr = $d->toDateString();
+                    if (!isset($existing[$targetUser->id][$dateStr])) {
+                        $isToday = $d->equalTo($today);
+                        $notes = $isToday ? 'Tidak Hadir / Belum Absen Hari Ini' : 'Tidak Hadir (Tanpa Keterangan)';
+
+                        if ($search) {
+                            $searchLower = strtolower($search);
+                            $matchesName = str_contains(strtolower($targetUser->name ?? ''), $searchLower);
+                            $matchesNotes = str_contains(strtolower($notes), $searchLower);
+                            $matchesStatus = str_contains('tidak hadir', $searchLower) || str_contains('alpha', $searchLower);
+                            if (!$matchesName && !$matchesNotes && !$matchesStatus) {
+                                continue;
+                            }
+                        }
+
+                        $virtualAtt = new self();
+                        $virtualAtt->id = 0; // Virtual ID
+                        $virtualAtt->user_id = $targetUser->id;
+                        $virtualAtt->date = $dateStr;
+                        $virtualAtt->status = \App\Enums\AttendanceStatus::tidak_hadir;
+                        $virtualAtt->verification_status = \App\Enums\VerificationStatus::rejected;
+                        $virtualAtt->system_notes = $notes;
+                        $virtualAtt->setRelation('user', $targetUser);
+
+                        $newAttendances->push($virtualAtt);
+                        $existing[$targetUser->id][$dateStr] = true;
+                    }
+                }
+            }
+        }
+
         return $attendances->concat($newAttendances)->sortByDesc('date')->values();
     }
 
@@ -309,7 +369,7 @@ class Attendance extends Model
         $effectiveStart = $shiftStart->copy()->addMinutes($lateTolerance);
 
         // Jika status terlambat, atau jam masuk melebihi toleransi keterlambatan
-        $isLate = ($statusVal === 'terlambat') || ($checkIn->greaterThan($effectiveStart) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha', 'cuti']));
+        $isLate = ($statusVal === 'terlambat') || ($checkIn->greaterThan($effectiveStart) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha', 'cuti', 'tidak_hadir']));
 
         if ($isLate) {
             if ($checkIn->greaterThan($shiftStart)) {
@@ -362,7 +422,7 @@ class Attendance extends Model
         $overtimeTolerance = (int) \App\Models\Setting::get('overtime_tolerance_minutes', 60);
 
         // Muncul jika status lembur, atau kepulangan melebihi batas lembur
-        $isOvertime = ($statusVal === 'lembur') || ($checkOut->greaterThan($effectiveEnd->copy()->addMinutes($overtimeTolerance)) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha', 'cuti']));
+        $isOvertime = ($statusVal === 'lembur') || ($checkOut->greaterThan($effectiveEnd->copy()->addMinutes($overtimeTolerance)) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha', 'cuti', 'tidak_hadir']));
 
         if ($isOvertime) {
             $diffInMinutes = (int) round(abs($checkOut->diffInMinutes($effectiveEnd)));
@@ -412,7 +472,7 @@ class Attendance extends Model
         }
 
         // Muncul jika status pulang_awal, atau kepulangan lebih awal dari 30 menit sebelum jam pulang efektif
-        $isEarly = ($statusVal === 'pulang_awal') || ($checkOut->lessThan($effectiveEnd->copy()->subMinutes(30)) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha', 'cuti']));
+        $isEarly = ($statusVal === 'pulang_awal') || ($checkOut->lessThan($effectiveEnd->copy()->subMinutes(30)) && !in_array($statusVal, ['libur', 'izin', 'sakit', 'alpha', 'cuti', 'tidak_hadir']));
 
         if ($isEarly) {
             $diffInMinutes = (int) round(abs($effectiveEnd->diffInMinutes($checkOut)));

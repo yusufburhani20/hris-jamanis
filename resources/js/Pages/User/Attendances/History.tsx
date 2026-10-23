@@ -225,8 +225,9 @@ export default function History({ auth, attendances, filters }: PageProps<{ atte
                                                           record.status === 'cuti' ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/20 dark:text-purple-400 border border-purple-100 dark:border-purple-900/30' : 
                                                           record.status === 'izin' ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/20 dark:text-sky-400 border border-sky-100 dark:border-sky-900/30' : 
                                                           record.status === 'sakit' ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/20 dark:text-teal-400 border border-teal-100 dark:border-teal-900/30' : 
+                                                          record.status === 'tidak_hadir' || record.status === 'alpha' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400 border border-rose-200 dark:border-rose-800' : 
                                                           'bg-gray-50 text-gray-700 border border-gray-100 dark:bg-gray-900/10 dark:text-gray-400 dark:border-gray-800'}`}>
-                                                        {record.status.replace('_', ' ').toUpperCase()}
+                                                        {record.status === 'alpha' || record.status === 'tidak_hadir' ? 'TIDAK HADIR' : record.status.replace('_', ' ').toUpperCase()}
                                                     </span>
                                                     {record.time_details && (
                                                         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
@@ -240,12 +241,12 @@ export default function History({ auth, attendances, filters }: PageProps<{ atte
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col space-y-1">
-                                                    {record.status !== 'libur' && record.id !== 0 && (
+                                                    {record.status !== 'libur' && record.status !== 'tidak_hadir' && record.status !== 'alpha' && record.id !== 0 && (
                                                         <span className={`inline-flex text-[10px] uppercase font-black rounded-full px-2 py-0.5 w-max border ${record.verification_status === 'valid' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-800' : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800'}`}>
                                                             {record.verification_status.replace('_', ' ')}
                                                         </span>
                                                     )}
-                                                    {record.id === 0 && record.status !== 'libur' && (
+                                                    {record.id === 0 && record.status !== 'libur' && record.status !== 'tidak_hadir' && record.status !== 'alpha' && (
                                                         <span className="inline-flex text-[10px] uppercase font-black rounded-full px-2 py-0.5 w-max bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800">
                                                             PENGAJUAN DISETUJUI
                                                         </span>
