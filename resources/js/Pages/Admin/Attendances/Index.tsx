@@ -43,7 +43,7 @@ interface PaginatedData<T> {
     to: number;
 }
 
-export default function AttendanceIndex({ auth, attendances, users, filters }: PageProps<{ attendances: PaginatedData<Attendance> | Attendance[], users: User[], filters: { start_date?: string, end_date?: string, user_id?: string, month?: string, search?: string, per_page?: string } }>) {
+export default function AttendanceIndex({ auth, attendances, users, filters }: PageProps<{ attendances: PaginatedData<Attendance> | Attendance[], users: User[], filters: { start_date?: string, end_date?: string, user_id?: string, month?: string, search?: string, per_page?: string, period_label?: string } }>) {
     const [startDate, setStartDate] = useState(filters.start_date || '');
     const [endDate, setEndDate] = useState(filters.end_date || '');
     const [userId, setUserId] = useState(filters.user_id || '');
@@ -103,11 +103,12 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
     const getMonthOptions = () => {
         const options = [];
         const today = new Date();
-        // Generate last 12 months going backwards
+        // Generate last 12 periods cut-off 25 to 24 going backwards
         for (let i = 0; i < 12; i++) {
-            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-            const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+            const startD = new Date(today.getFullYear(), today.getMonth() - i, 25);
+            const endD = new Date(today.getFullYear(), today.getMonth() - i + 1, 24);
+            const value = `${startD.getFullYear()}-${String(startD.getMonth() + 1).padStart(2, '0')}`;
+            const label = `Periode 25 ${startD.toLocaleDateString('id-ID', { month: 'short' })} - 24 ${endD.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}`;
             options.push({ value, label });
         }
         return options;
@@ -192,7 +193,19 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
 
     return (
         <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Laporan & Tinjauan Absensi</h2>}
+            header={
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Laporan & Tinjauan Absensi</h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Rekapitulasi presensi karyawan per periode cut-off (tanggal 25 s.d. 24).</p>
+                    </div>
+                    {filters.period_label && (
+                        <span className="text-xs bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-800 w-fit">
+                            Periode: {filters.period_label}
+                        </span>
+                    )}
+                </div>
+            }
         >
             <Head title="Attendances" />
 
@@ -227,13 +240,13 @@ export default function AttendanceIndex({ auth, attendances, users, filters }: P
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Pilih Bulan</label>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Pilih Periode</label>
                                     <select 
                                         value={month}
                                         onChange={handleMonthSelectChange}
                                         className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                     >
-                                        <option value="">Pilih Bulan...</option>
+                                        <option value="">Pilih Periode Cut-Off...</option>
                                         {getMonthOptions().map(opt => (
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                         ))}

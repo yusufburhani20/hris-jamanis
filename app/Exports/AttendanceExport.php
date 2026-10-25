@@ -31,13 +31,20 @@ class AttendanceExport implements FromView, ShouldAutoSize
 
         if ($this->month) {
             $monthDate = \Carbon\Carbon::parse($this->month);
-            $query->whereYear('date', $monthDate->year)
-                  ->whereMonth('date', $monthDate->month);
-            $startDate = $monthDate->startOfMonth()->toDateString();
-            $endDate = $monthDate->endOfMonth()->toDateString();
+            $startDate = $monthDate->copy()->day(25)->toDateString();
+            $endDate   = $monthDate->copy()->addMonthNoOverflow()->day(24)->toDateString();
+            $query->whereBetween('date', [$startDate, $endDate]);
         } else {
-            $startDate = $this->startDate ?: \Carbon\Carbon::now()->startOfMonth()->toDateString();
-            $endDate = $this->endDate ?: \Carbon\Carbon::now()->endOfMonth()->toDateString();
+            $today = \Carbon\Carbon::today();
+            if ($today->day >= 25) {
+                $defaultStart = $today->copy()->day(25)->toDateString();
+                $defaultEnd   = $today->copy()->addMonthNoOverflow()->day(24)->toDateString();
+            } else {
+                $defaultStart = $today->copy()->subMonthNoOverflow()->day(25)->toDateString();
+                $defaultEnd   = $today->copy()->day(24)->toDateString();
+            }
+            $startDate = $this->startDate ?: $defaultStart;
+            $endDate = $this->endDate ?: $defaultEnd;
             $query->whereBetween('date', [$startDate, $endDate]);
         }
 

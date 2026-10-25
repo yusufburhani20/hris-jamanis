@@ -15,19 +15,16 @@ class AttendanceController extends Controller
 {
     public function index(Request $request)
     {
+        [$startDate, $endDate] = $this->resolvePeriodRange($request);
+
         $query = Attendance::with('user');
 
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
 
-        if ($request->filled('month')) {
-            $monthDate = Carbon::parse($request->month);
-            $query->whereYear('date', $monthDate->year)
-                  ->whereMonth('date', $monthDate->month);
-        } elseif ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('date', [$request->start_date, $request->end_date]);
-        }
+        $query->whereBetween('date', [$startDate, $endDate]);
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -40,18 +37,6 @@ class AttendanceController extends Controller
         }
 
         $attendances = $query->latest('date')->latest('check_in')->get();
-
-        $startDate = $request->start_date;
-        $endDate = $request->end_date;
-
-        if ($request->filled('month')) {
-            $monthDate = Carbon::parse($request->month);
-            $startDate = $monthDate->startOfMonth()->toDateString();
-            $endDate = $monthDate->endOfMonth()->toDateString();
-        } elseif (!$startDate || !$endDate) {
-            $startDate = Carbon::now()->startOfMonth()->toDateString();
-            $endDate = Carbon::now()->endOfMonth()->toDateString();
-        }
 
         $attendances = Attendance::injectDayOffs($attendances, $startDate, $endDate, $request->user_id, $request->search);
 
@@ -77,10 +62,16 @@ class AttendanceController extends Controller
             ->orderBy('name')
             ->get();
 
+        $periodLabel = '25 ' . Carbon::parse($startDate)->locale('id')->isoFormat('MMM') . ' - 24 ' . Carbon::parse($endDate)->locale('id')->isoFormat('MMM YYYY');
+
         return Inertia::render('Admin/Attendances/Index', [
             'attendances' => $paginatedAttendances,
             'users' => $users,
-            'filters' => $request->only(['start_date', 'end_date', 'user_id', 'month', 'search', 'per_page'])
+            'filters' => array_merge($request->only(['user_id', 'month', 'search', 'per_page']), [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'period_label' => $periodLabel,
+            ])
         ]);
     }
 
@@ -136,29 +127,18 @@ class AttendanceController extends Controller
 
     public function exportExcel(Request $request)
     {
-        $startDate = $request->query('start_date');
-        $endDate = $request->query('end_date');
+        [$startDate, $endDate] = $this->resolvePeriodRange($request);
         $userId = $request->query('user_id');
-        $month = $request->query('month');
 
-        $fileName = "Laporan_Absensi";
-        if ($month) {
-            $fileName .= "_" . Carbon::parse($month)->format('Y_m');
-        } elseif ($startDate && $endDate) {
-            $fileName .= "_{$startDate}_sd_{$endDate}";
-        } else {
-            $fileName .= "_" . Carbon::now()->format('Y_m');
-        }
+        $fileName = "Laporan_Absensi_{$startDate}_sd_{$endDate}";
 
-        return Excel::download(new AttendanceExport($startDate, $endDate, $userId, $month), "{$fileName}.xlsx");
+        return Excel::download(new AttendanceExport($startDate, $endDate, $userId, null), "{$fileName}.xlsx");
     }
 
     public function exportPdf(Request $request)
     {
-        $startDate = $request->query('start_date');
-        $endDate = $request->query('end_date');
+        [$startDate, $endDate] = $this->resolvePeriodRange($request);
         $userId = $request->query('user_id');
-        $month = $request->query('month');
 
         $query = Attendance::with('user');
 
@@ -166,21 +146,7 @@ class AttendanceController extends Controller
             $query->where('user_id', $userId);
         }
 
-        if ($month) {
-            $monthDate = Carbon::parse($month);
-            $query->whereYear('date', $monthDate->year)
-                  ->whereMonth('date', $monthDate->month);
-            $startDate = $monthDate->startOfMonth()->toDateString();
-            $endDate = $monthDate->endOfMonth()->toDateString();
-        } else {
-            if (!$startDate) {
-                $startDate = Carbon::now()->startOfMonth()->toDateString();
-            }
-            if (!$endDate) {
-                $endDate = Carbon::now()->endOfMonth()->toDateString();
-            }
-            $query->whereBetween('date', [$startDate, $endDate]);
-        }
+        $query->whereBetween('date', [$startDate, $endDate]);
 
         $attendances = $query->join('users', 'attendances.user_id', '=', 'users.id')
             ->orderBy('users.name', 'asc')
@@ -202,16 +168,41 @@ class AttendanceController extends Controller
             'groupedAttendances' => $groupedAttendances,
             'startDate' => $startDate,
             'endDate' => $endDate,
-            'month' => $month
+            'month' => $request->query('month')
         ]);
 
-        $fileName = "Laporan_Absensi";
-        if ($month) {
-            $fileName .= "_" . Carbon::parse($month)->format('Y_m');
-        } else {
-            $fileName .= "_{$startDate}_sd_{$endDate}";
-        }
+        $fileName = "Laporan_Absensi_{$startDate}_sd_{$endDate}";
 
         return $pdf->stream("{$fileName}.pdf");
+    }
+
+    /**
+     * Helper to resolve cut-off period date range (25 to 24).
+     */
+    private function resolvePeriodRange(Request $request): array
+    {
+        $today = Carbon::today();
+        if ($today->day >= 25) {
+            $defaultStart = $today->copy()->day(25)->toDateString();
+            $defaultEnd   = $today->copy()->addMonthNoOverflow()->day(24)->toDateString();
+        } else {
+            $defaultStart = $today->copy()->subMonthNoOverflow()->day(25)->toDateString();
+            $defaultEnd   = $today->copy()->day(24)->toDateString();
+        }
+
+        $startDate = $request->input('start_date');
+        $endDate   = $request->input('end_date');
+        $month     = $request->input('month');
+
+        if ($month) {
+            $monthDate = Carbon::parse($month);
+            $startDate = $monthDate->copy()->day(25)->toDateString();
+            $endDate   = $monthDate->copy()->addMonthNoOverflow()->day(24)->toDateString();
+        } elseif (!$startDate || !$endDate) {
+            $startDate = $defaultStart;
+            $endDate   = $defaultEnd;
+        }
+
+        return [$startDate, $endDate];
     }
 }
