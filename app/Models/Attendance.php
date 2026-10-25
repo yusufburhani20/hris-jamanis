@@ -29,6 +29,17 @@ class Attendance extends Model
     {
         $start = \Carbon\Carbon::parse($startDate);
         $end = \Carbon\Carbon::parse($endDate);
+        $today = \Carbon\Carbon::today();
+
+        // Rekap absensi adalah catatan historis presensi hingga hari ini.
+        // Batasi rentang tanggal injeksi agar tidak melebihi hari ini ($today).
+        $cutoffDate = $end->min($today);
+
+        // Jika rentang awal pencarian sudah berada di masa depan (> hari ini),
+        // tidak ada data absensi virtual (libur, cuti, izin, alpha) yang perlu diinjeksikan.
+        if ($start->gt($cutoffDate)) {
+            return $attendances;
+        }
 
         $existing = [];
         foreach ($attendances as $att) {
@@ -41,7 +52,7 @@ class Attendance extends Model
         // 1. Injeksi Pengajuan Cuti & Izin yang Disetujui (Approved Leaves)
         $leaveQuery = \App\Models\Leave::with('user')
             ->where('status', 'approved')
-            ->where('start_date', '<=', $end->toDateString())
+            ->where('start_date', '<=', $cutoffDate->toDateString())
             ->where('end_date', '>=', $start->toDateString());
 
         if ($userId) {
@@ -55,7 +66,7 @@ class Attendance extends Model
             if (!$user) continue;
 
             $lStart = \Carbon\Carbon::parse($leave->start_date)->max($start);
-            $lEnd = \Carbon\Carbon::parse($leave->end_date)->min($end);
+            $lEnd = \Carbon\Carbon::parse($leave->end_date)->min($cutoffDate);
 
             for ($d = $lStart->copy(); $d->lte($lEnd); $d->addDay()) {
                 $dateStr = $d->toDateString();
@@ -107,7 +118,7 @@ class Attendance extends Model
             ->whereHas('shift', function($query) {
                 $query->where('is_dayoff', true);
             })
-            ->where('start_date', '<=', $end->toDateString())
+            ->where('start_date', '<=', $cutoffDate->toDateString())
             ->where(function($query) use ($start) {
                 $query->whereNull('end_date')
                       ->orWhere('end_date', '>=', $start->toDateString());
@@ -124,7 +135,7 @@ class Attendance extends Model
             if (!$user) continue;
 
             $usStart = \Carbon\Carbon::parse($us->start_date)->max($start);
-            $usEnd = $us->end_date ? \Carbon\Carbon::parse($us->end_date)->min($end) : $end->copy();
+            $usEnd = $us->end_date ? \Carbon\Carbon::parse($us->end_date)->min($cutoffDate) : $cutoffDate->copy();
 
             for ($d = $usStart->copy(); $d->lte($usEnd); $d->addDay()) {
                 $dateStr = $d->toDateString();
@@ -157,9 +168,6 @@ class Attendance extends Model
         }
 
         // 3. Injeksi Karyawan yang Tidak Absen (Tidak Hadir / Alpha)
-        $today = \Carbon\Carbon::today();
-        $cutoffDate = $end->min($today);
-
         if ($start->lte($cutoffDate)) {
             if ($userId) {
                 $targetUsers = \App\Models\User::where('id', $userId)->get();

@@ -24,7 +24,7 @@ class ShiftController extends Controller
             ->with(['shifts' => function($q) {
                 $q->where(function($query) {
                     $query->whereNull('user_shifts.end_date')
-                          ->orWhere('user_shifts.end_date', '>=', today());
+                          ->orWhere('user_shifts.end_date', '>=', now()->startOfMonth());
                 })->orderBy('user_shifts.start_date', 'asc');
             }])
             ->get();
@@ -35,7 +35,9 @@ class ShiftController extends Controller
         $employees->each(function($emp) use ($startOfMonth, $endOfMonth) {
             $dayOffs = UserShift::where('user_id', $emp->id)
                 ->whereHas('shift', function($q) {
-                    $q->where('is_dayoff', true);
+                    $q->where('is_dayoff', true)
+                      ->orWhereRaw('LOWER(name) LIKE ?', ['%libur%'])
+                      ->orWhereRaw('LOWER(code) LIKE ?', ['%off%']);
                 })
                 ->where('start_date', '<=', $endOfMonth)
                 ->where(function($q) use ($startOfMonth) {
@@ -52,6 +54,33 @@ class ShiftController extends Controller
                     $dates[] = $d->toDateString();
                 }
             }
+
+            // Hitung juga pengajuan cuti/izin yang disetujui (Approved Leaves) di bulan ini (sinkron dengan Payroll)
+            $approvedLeaves = \App\Models\Leave::where('user_id', $emp->id)
+                ->where('status', 'approved')
+                ->where('start_date', '<=', $endOfMonth)
+                ->where('end_date', '>=', $startOfMonth)
+                ->get();
+
+            foreach ($approvedLeaves as $leave) {
+                if ($leave->type === 'izin_terlambat') continue;
+                $lStart = \Carbon\Carbon::parse($leave->start_date)->max(\Carbon\Carbon::parse($startOfMonth));
+                $lEnd   = \Carbon\Carbon::parse($leave->end_date)->min(\Carbon\Carbon::parse($endOfMonth));
+                for ($d = $lStart->copy(); $d->lte($lEnd); $d->addDay()) {
+                    $dates[] = $d->toDateString();
+                }
+            }
+
+            // Hitung juga data absensi riil dengan status 'libur' atau 'cuti' di bulan ini
+            $attendanceOffDates = \App\Models\Attendance::where('user_id', $emp->id)
+                ->whereBetween('date', [$startOfMonth, $endOfMonth])
+                ->whereIn('status', ['libur', 'cuti'])
+                ->pluck('date')
+                ->map(fn($d) => $d instanceof \Carbon\Carbon ? $d->toDateString() : (string)$d)
+                ->toArray();
+
+            $dates = array_merge($dates, $attendanceOffDates);
+
             $emp->monthly_days_off_count = count(array_unique($dates));
         });
 
