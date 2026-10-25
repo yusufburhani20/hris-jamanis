@@ -18,21 +18,41 @@ class ShiftController extends Controller
     {
         $shifts = Shift::latest()->get();
         
-        // Fetch employees with their assigned shifts
+        // Tentukan periode berjalan: cut-off tanggal 25 s.d. tanggal 24 bulan berikutnya
+        $today = now();
+        if ($today->day >= 25) {
+            $periodStart = $today->copy()->day(25)->startOfDay();
+            $periodEnd   = $today->copy()->addMonthNoOverflow()->day(24)->endOfDay();
+
+            $nextPeriodStart = $today->copy()->addMonthNoOverflow()->day(25)->startOfDay();
+            $nextPeriodEnd   = $today->copy()->addMonthsNoOverflow(2)->day(24)->endOfDay();
+        } else {
+            $periodStart = $today->copy()->subMonthNoOverflow()->day(25)->startOfDay();
+            $periodEnd   = $today->copy()->day(24)->endOfDay();
+
+            $nextPeriodStart = $today->copy()->day(25)->startOfDay();
+            $nextPeriodEnd   = $today->copy()->addMonthNoOverflow()->day(24)->endOfDay();
+        }
+
+        $periodStartDate = $periodStart->toDateString();
+        $periodEndDate   = $periodEnd->toDateString();
+
+        $nextPeriodStartDate = $nextPeriodStart->toDateString();
+        $nextPeriodEndDate   = $nextPeriodEnd->toDateString();
+
+        // Fetch employees with their assigned shifts: HANYA periode yang berjalan saja
+        // Jadwal yang lalu (end_date < periodStart) tidak dimunculkan karena sudah lewat
         $employees = User::where('role', 'LIKE', '%employee%')
             ->orWhere('role', 'LIKE', '%driver%')
-            ->with(['shifts' => function($q) {
-                $q->where(function($query) {
+            ->with(['shifts' => function($q) use ($periodStartDate, $periodEndDate) {
+                $q->where(function($query) use ($periodStartDate) {
                     $query->whereNull('user_shifts.end_date')
-                          ->orWhere('user_shifts.end_date', '>=', now()->startOfMonth());
-                })->orderBy('user_shifts.start_date', 'asc');
+                          ->orWhere('user_shifts.end_date', '>=', $periodStartDate);
+                })
+                ->where('user_shifts.start_date', '<=', $periodEndDate)
+                ->orderBy('user_shifts.start_date', 'asc');
             }])
             ->get();
-
-        $startOfMonth = now()->startOfMonth()->toDateString();
-        $endOfMonth = now()->endOfMonth()->toDateString();
-        $startOfNextMonth = now()->addMonth()->startOfMonth()->toDateString();
-        $endOfNextMonth = now()->addMonth()->endOfMonth()->toDateString();
 
         $calcDaysOff = function($userId, $startRange, $endRange) {
             $dayOffs = UserShift::where('user_id', $userId)
@@ -86,16 +106,30 @@ class ShiftController extends Controller
             return count(array_unique($dates));
         };
 
-        $employees->each(function($emp) use ($calcDaysOff, $startOfMonth, $endOfMonth, $startOfNextMonth, $endOfNextMonth) {
-            $emp->monthly_days_off_count = $calcDaysOff($emp->id, $startOfMonth, $endOfMonth);
-            $emp->next_month_days_off_count = $calcDaysOff($emp->id, $startOfNextMonth, $endOfNextMonth);
-            $emp->current_month_name = now()->locale('id')->isoFormat('MMMM');
-            $emp->next_month_name = now()->addMonth()->locale('id')->isoFormat('MMMM');
+        $periodLabel = '25 ' . $periodStart->locale('id')->isoFormat('MMM') . ' - 24 ' . $periodEnd->locale('id')->isoFormat('MMM');
+        $nextPeriodLabel = '25 ' . $nextPeriodStart->locale('id')->isoFormat('MMM') . ' - 24 ' . $nextPeriodEnd->locale('id')->isoFormat('MMM');
+
+        $employees->each(function($emp) use ($calcDaysOff, $periodStartDate, $periodEndDate, $nextPeriodStartDate, $nextPeriodEndDate, $periodLabel, $nextPeriodLabel) {
+            $emp->period_days_off_count = $calcDaysOff($emp->id, $periodStartDate, $periodEndDate);
+            $emp->next_period_days_off_count = $calcDaysOff($emp->id, $nextPeriodStartDate, $nextPeriodEndDate);
+            $emp->period_label = $periodLabel;
+            $emp->next_period_label = $nextPeriodLabel;
+
+            // Backward compatibility
+            $emp->monthly_days_off_count = $emp->period_days_off_count;
+            $emp->next_month_days_off_count = $emp->next_period_days_off_count;
+            $emp->current_month_name = $periodLabel;
+            $emp->next_month_name = $nextPeriodLabel;
         });
 
         return Inertia::render('Admin/Shifts/Index', [
             'shifts' => $shifts,
             'employees' => $employees,
+            'currentPeriod' => [
+                'start_date' => $periodStartDate,
+                'end_date' => $periodEndDate,
+                'label' => $periodLabel,
+            ],
         ]);
     }
 

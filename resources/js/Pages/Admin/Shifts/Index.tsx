@@ -21,6 +21,10 @@ interface Employee {
     next_month_days_off_count?: number;
     current_month_name?: string;
     next_month_name?: string;
+    period_days_off_count?: number;
+    next_period_days_off_count?: number;
+    period_label?: string;
+    next_period_label?: string;
     shifts?: (Shift & {
         pivot: {
             id: number;
@@ -33,9 +37,14 @@ interface Employee {
 interface IndexProps {
     shifts: Shift[];
     employees: Employee[];
+    currentPeriod?: {
+        start_date: string;
+        end_date: string;
+        label: string;
+    };
 }
 
-export default function ShiftsIndex({ shifts, employees }: IndexProps) {
+export default function ShiftsIndex({ shifts, employees, currentPeriod }: IndexProps) {
         const [showShiftModal, setShowShiftModal] = useState(false);
         const [editingShift, setEditingShift] = useState<Shift | null>(null);
         const [showAssignModal, setShowAssignModal] = useState(false);
@@ -345,8 +354,15 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-150 dark:border-slate-700/60 transition-colors">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                                 <div>
-                                    <h3 className="text-md font-bold text-slate-900 dark:text-white">Penugasan Shift Kerja Karyawan</h3>
-                                    <p className="text-xs text-slate-400">Atur shift jam kerja untuk setiap karyawan.</p>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="text-md font-bold text-slate-900 dark:text-white">Penugasan Shift Kerja Karyawan</h3>
+                                        {currentPeriod && (
+                                            <span className="text-[11px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
+                                                Periode: {currentPeriod.label}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-slate-400 mt-0.5">Menampilkan jadwal shift untuk periode berjalan (cut-off tanggal 25 s.d. 24).</p>
                                 </div>
                                 <div className="flex items-center gap-3 w-full sm:w-auto">
                                     <div className="relative w-full sm:w-64">
@@ -495,7 +511,7 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                 Karyawan {sortColumn === 'name' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
                                             </th>
                                             <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase cursor-pointer hover:text-indigo-600 transition-colors" colSpan={2} onClick={() => { setSortColumn('shift'); setSortDirection(sortColumn === 'shift' && sortDirection === 'asc' ? 'desc' : 'asc'); }}>
-                                                Jadwal Shift Kerja (Timeline) {sortColumn === 'shift' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                                Jadwal Shift Kerja (Periode Berjalan) {sortColumn === 'shift' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
                                             </th>
                                             <th className="px-4 py-3.5 text-xs font-bold text-slate-400 uppercase text-right">Aksi</th>
                                         </tr>
@@ -531,29 +547,29 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                             <div className="text-xs text-slate-400">{employee.email}</div>
                                                             <div className="mt-1 flex flex-wrap items-center gap-1.5">
                                                                 <span 
-                                                                    title={`Jadwal libur di bulan ${employee.current_month_name || 'ini'} (kuota: 3 hari)`}
+                                                                    title={`Jadwal libur di periode berjalan (${employee.period_label || employee.current_month_name}) (kuota: 3 hari)`}
                                                                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                                                                        (employee.monthly_days_off_count || 0) > 3
+                                                                        (employee.period_days_off_count ?? employee.monthly_days_off_count ?? 0) > 3
                                                                             ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
-                                                                            : (employee.monthly_days_off_count || 0) === 3
+                                                                            : (employee.period_days_off_count ?? employee.monthly_days_off_count ?? 0) === 3
                                                                                 ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
                                                                                 : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
                                                                     }`}
                                                                 >
-                                                                    🏖️ Libur {employee.current_month_name || 'Bulan Ini'}: {employee.monthly_days_off_count || 0} / 3
+                                                                    🏖️ Libur Periode ({employee.period_label || employee.current_month_name || '25 - 24'}): {employee.period_days_off_count ?? employee.monthly_days_off_count ?? 0} / 3
                                                                 </span>
-                                                                {(employee.next_month_days_off_count ?? 0) > 0 && (
+                                                                {((employee.next_period_days_off_count ?? employee.next_month_days_off_count) ?? 0) > 0 && (
                                                                     <span 
-                                                                        title={`Jadwal libur yang sudah di-set untuk bulan ${employee.next_month_name || 'depan'} (kuota: 3 hari)`}
+                                                                        title={`Jadwal libur yang sudah di-set untuk periode berikutnya (${employee.next_period_label || employee.next_month_name}) (kuota: 3 hari)`}
                                                                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                                                                            (employee.next_month_days_off_count || 0) > 3
+                                                                            (employee.next_period_days_off_count ?? employee.next_month_days_off_count ?? 0) > 3
                                                                                 ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
-                                                                                : (employee.next_month_days_off_count || 0) === 3
+                                                                                : (employee.next_period_days_off_count ?? employee.next_month_days_off_count ?? 0) === 3
                                                                                     ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
                                                                                     : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
                                                                         }`}
                                                                     >
-                                                                        🏖️ {employee.next_month_name || 'Bulan Depan'}: {employee.next_month_days_off_count} / 3
+                                                                        🏖️ Periode ({employee.next_period_label || employee.next_month_name}): {employee.next_period_days_off_count ?? employee.next_month_days_off_count} / 3
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -576,9 +592,11 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                                                     <span className={`text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full ${
                                                                                         status === 'active'
                                                                                         ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20'
-                                                                                        : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
+                                                                                        : status === 'past'
+                                                                                            ? 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                                                                            : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
                                                                                     }`}>
-                                                                                        {status === 'active' ? 'Aktif' : 'Mendatang'}
+                                                                                        {status === 'active' ? 'Aktif' : status === 'past' ? 'Selesai' : 'Mendatang'}
                                                                                     </span>
                                                                                     <div className="font-bold text-sm">
                                                                                         {sh.name} <span className="text-xs font-mono font-medium opacity-75">[{sh.code}]</span>
@@ -623,7 +641,7 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                                 </div>
                                                             ) : (
                                                                 <span className="text-xs text-rose-500 font-semibold bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded border border-rose-100 dark:border-rose-900/50">
-                                                                    Belum Ditugaskan
+                                                                    Belum Ditugaskan di Periode Ini
                                                                 </span>
                                                             )}
                                                         </td>
@@ -811,9 +829,15 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                     const selectedSh = shifts.find(s => String(s.id) === assignData.shift_id);
                                     if (!selectedSh?.is_dayoff || !selectedEmp) return null;
 
-                                    const isNextMonth = assignData.start_date && new Date(assignData.start_date).getMonth() !== new Date().getMonth();
-                                    const targetMonthName = isNextMonth ? (selectedEmp.next_month_name || 'bulan depan') : (selectedEmp.current_month_name || 'bulan ini');
-                                    const targetCount = isNextMonth ? (selectedEmp.next_month_days_off_count || 0) : (selectedEmp.monthly_days_off_count || 0);
+                                    const isNextPeriod = currentPeriod 
+                                        ? (assignData.start_date > currentPeriod.end_date)
+                                        : (assignData.start_date && new Date(assignData.start_date).getMonth() !== new Date().getMonth());
+                                    const targetPeriodName = isNextPeriod 
+                                        ? (selectedEmp.next_period_label || selectedEmp.next_month_name || 'periode depan') 
+                                        : (selectedEmp.period_label || selectedEmp.current_month_name || 'periode ini');
+                                    const targetCount = isNextPeriod 
+                                        ? (selectedEmp.next_period_days_off_count ?? selectedEmp.next_month_days_off_count ?? 0) 
+                                        : (selectedEmp.period_days_off_count ?? selectedEmp.monthly_days_off_count ?? 0);
 
                                     if (targetCount >= 3) {
                                         return (
@@ -822,7 +846,7 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                 <div>
                                                     <span className="font-bold">Peringatan Kuota Libur:</span>
                                                     <p className="mt-0.5 leading-relaxed">
-                                                        Karyawan ini sudah memiliki <strong>{targetCount} hari libur</strong> di bulan {targetMonthName} (kuota standar: 3 hari). Penugasan ini akan melebihi jatah standar bulanan.
+                                                        Karyawan ini sudah memiliki <strong>{targetCount} hari libur</strong> pada {targetPeriodName} (kuota standar: 3 hari). Penugasan ini akan melebihi jatah standar periode tersebut.
                                                     </p>
                                                 </div>
                                             </div>
