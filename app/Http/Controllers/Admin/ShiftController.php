@@ -140,9 +140,14 @@ class ShiftController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        if ($this->checkOverlap($request->user_id, $request->start_date, $request->end_date)) {
+        $shift = Shift::findOrFail($request->shift_id);
+        $isDayOff = (bool) $shift->is_dayoff;
+
+        if ($this->checkOverlap($request->user_id, $request->start_date, $request->end_date, null, $isDayOff)) {
             return redirect()->back()->withErrors([
-                'start_date' => 'Karyawan sudah memiliki penugasan shift pada rentang tanggal tersebut.',
+                'start_date' => $isDayOff
+                    ? 'Karyawan sudah memiliki jadwal Libur pada rentang tanggal tersebut.'
+                    : 'Karyawan sudah memiliki penugasan shift pada rentang tanggal tersebut.',
             ])->withInput();
         }
 
@@ -153,7 +158,7 @@ class ShiftController extends Controller
             'end_date' => $request->end_date,
         ]);
 
-        return redirect()->back()->with('success', 'Shift berhasil ditugaskan ke karyawan.');
+        return redirect()->back()->with('success', $isDayOff ? 'Jadwal Libur berhasil ditugaskan ke karyawan.' : 'Shift berhasil ditugaskan ke karyawan.');
     }
 
     /**
@@ -169,9 +174,12 @@ class ShiftController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
+        $shift = Shift::findOrFail($request->shift_id);
+        $isDayOff = (bool) $shift->is_dayoff;
+
         $conflictedNames = [];
         foreach ($request->user_ids as $userId) {
-            if ($this->checkOverlap($userId, $request->start_date, $request->end_date)) {
+            if ($this->checkOverlap($userId, $request->start_date, $request->end_date, null, $isDayOff)) {
                 $user = User::find($userId);
                 if ($user) {
                     $conflictedNames[] = $user->name;
@@ -181,7 +189,7 @@ class ShiftController extends Controller
 
         if (count($conflictedNames) > 0) {
             return redirect()->back()->withErrors([
-                'start_date' => 'Karyawan berikut memiliki bentrok jadwal pada tanggal tersebut: ' . implode(', ', $conflictedNames),
+                'start_date' => 'Karyawan berikut memiliki bentrok jadwal ' . ($isDayOff ? 'Libur' : 'shift') . ' pada tanggal tersebut: ' . implode(', ', $conflictedNames),
             ])->withInput();
         }
 
@@ -194,7 +202,7 @@ class ShiftController extends Controller
             ]);
         }
 
-        return redirect()->back()->with('success', 'Shift kerja berhasil ditugaskan ke karyawan terpilih secara massal.');
+        return redirect()->back()->with('success', $isDayOff ? 'Jadwal Libur berhasil ditugaskan ke karyawan terpilih secara massal.' : 'Shift kerja berhasil ditugaskan ke karyawan terpilih secara massal.');
     }
 
     /**
@@ -224,10 +232,14 @@ class ShiftController extends Controller
         ]);
 
         $userShift = UserShift::findOrFail($request->user_shift_id);
+        $shift = Shift::findOrFail($request->shift_id);
+        $isDayOff = (bool) $shift->is_dayoff;
 
-        if ($this->checkOverlap($userShift->user_id, $request->start_date, $request->end_date, $userShift->id)) {
+        if ($this->checkOverlap($userShift->user_id, $request->start_date, $request->end_date, $userShift->id, $isDayOff)) {
             return redirect()->back()->withErrors([
-                'start_date' => 'Jadwal shift bentrok dengan penugasan lain yang sudah terdaftar.',
+                'start_date' => $isDayOff
+                    ? 'Jadwal Libur bentrok dengan penugasan Libur lain yang sudah terdaftar.'
+                    : 'Jadwal shift bentrok dengan penugasan lain yang sudah terdaftar.',
             ])->withInput();
         }
 
@@ -243,7 +255,7 @@ class ShiftController extends Controller
     /**
      * Helper to verify if a target shift range overlaps with existing ones.
      */
-    private function checkOverlap($userId, $startDate, $endDate = null, $excludeUserShiftId = null)
+    private function checkOverlap($userId, $startDate, $endDate = null, $excludeUserShiftId = null, $isDayOff = false)
     {
         $S_n = \Carbon\Carbon::parse($startDate);
         $E_n = $endDate ? \Carbon\Carbon::parse($endDate) : \Carbon\Carbon::parse('9999-12-31');
@@ -263,6 +275,18 @@ class ShiftController extends Controller
 
         if ($excludeUserShiftId !== null) {
             $query->where('id', '!=', $excludeUserShiftId);
+        }
+
+        // Jika shift yang sedang ditugaskan adalah Libur, hanya bentrok jika sesama shift Libur
+        // Jika shift kerja biasa, hanya bentrok jika sesama shift kerja biasa
+        if ($isDayOff) {
+            $query->whereHas('shift', function($q) {
+                $q->where('is_dayoff', true);
+            });
+        } else {
+            $query->whereHas('shift', function($q) {
+                $q->where('is_dayoff', false);
+            });
         }
 
         return $query->exists();

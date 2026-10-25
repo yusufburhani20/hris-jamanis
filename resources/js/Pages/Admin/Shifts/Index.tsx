@@ -83,13 +83,16 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
             return 'past';
         };
 
-        const checkOverlap = (empShifts: any[], newStart: string, newEnd: string | null, excludeId?: string) => {
+        const checkOverlap = (empShifts: any[], newStart: string, newEnd: string | null, excludeId?: string, isDayOff?: boolean) => {
             if (!newStart) return false;
             const S_n = newStart;
             const E_n = newEnd || '9999-12-31';
 
             return empShifts.some(sh => {
                 if (excludeId && String(sh.pivot.id) === excludeId) return false;
+                // Jika jenis shift berbeda (Libur vs Shift Kerja), tidak bentrok (Libur menimpa jadwal kerja)
+                if (Boolean(isDayOff) !== Boolean(sh.is_dayoff)) return false;
+
                 const S_e = sh.pivot.start_date;
                 const E_e = sh.pivot.end_date || '9999-12-31';
 
@@ -421,28 +424,49 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                             disabled={
                                                 !bulkShiftId || 
                                                 !bulkStartDate || 
-                                                employees.some(emp => 
-                                                    selectedEmployeeIds.includes(emp.id) && 
-                                                    checkOverlap(emp.shifts || [], bulkStartDate, bulkEndDate)
-                                                )
+                                                (() => {
+                                                    const selectedBulkShiftObj = shifts.find(s => String(s.id) === String(bulkShiftId));
+                                                    return employees.some(emp => 
+                                                        selectedEmployeeIds.includes(emp.id) && 
+                                                        checkOverlap(emp.shifts || [], bulkStartDate, bulkEndDate, undefined, selectedBulkShiftObj?.is_dayoff)
+                                                    );
+                                                })()
                                             }
                                         >
                                             Tugaskan Masal
                                         </button>
                                     </div>
-                                    {employees.some(emp => 
-                                        selectedEmployeeIds.includes(emp.id) && 
-                                        checkOverlap(emp.shifts || [], bulkStartDate, bulkEndDate)
-                                    ) && (
-                                        <div className="text-xs text-rose-500 font-bold bg-rose-50 dark:bg-rose-950/20 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/50 w-full mt-2 animate-fade-in">
-                                            ⚠️ Karyawan berikut memiliki bentrok jadwal: {
-                                                employees
-                                                    .filter(emp => selectedEmployeeIds.includes(emp.id) && checkOverlap(emp.shifts || [], bulkStartDate, bulkEndDate))
-                                                    .map(e => e.name)
-                                                    .join(', ')
-                                            }
-                                        </div>
-                                    )}
+                                    {(() => {
+                                        const selectedBulkShiftObj = shifts.find(s => String(s.id) === String(bulkShiftId));
+                                        const isDayOff = selectedBulkShiftObj?.is_dayoff;
+                                        const hasConflict = employees.some(emp => 
+                                            selectedEmployeeIds.includes(emp.id) && 
+                                            checkOverlap(emp.shifts || [], bulkStartDate, bulkEndDate, undefined, isDayOff)
+                                        );
+
+                                        if (hasConflict) {
+                                            return (
+                                                <div className="text-xs text-rose-500 font-bold bg-rose-50 dark:bg-rose-950/20 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/50 w-full mt-2 animate-fade-in">
+                                                    ⚠️ Karyawan berikut memiliki bentrok jadwal {isDayOff ? 'Libur' : 'shift'}: {
+                                                        employees
+                                                            .filter(emp => selectedEmployeeIds.includes(emp.id) && checkOverlap(emp.shifts || [], bulkStartDate, bulkEndDate, undefined, isDayOff))
+                                                            .map(e => e.name)
+                                                            .join(', ')
+                                                    }
+                                                </div>
+                                            );
+                                        }
+
+                                        if (isDayOff && bulkStartDate && selectedEmployeeIds.length > 0) {
+                                            return (
+                                                <div className="text-xs text-indigo-600 dark:text-indigo-400 font-medium bg-indigo-50 dark:bg-indigo-950/30 p-2.5 rounded-xl border border-indigo-100 dark:border-indigo-900/40 w-full mt-2 animate-fade-in flex items-center gap-2">
+                                                    <span>ℹ️</span> Jadwal <strong>Libur</strong> akan otomatis menimpa (override) shift kerja reguler karyawan pada rentang tanggal tersebut.
+                                                </div>
+                                            );
+                                        }
+
+                                        return null;
+                                    })()}
                                 </div>
                             )}
 
@@ -807,7 +831,10 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
 
                              {(() => {
                                  const selectedEmployeeObj = employees.find(emp => String(emp.id) === assignData.user_id);
-                                 const hasAssignOverlap = selectedEmployeeObj && checkOverlap(selectedEmployeeObj.shifts || [], assignData.start_date, assignData.end_date);
+                                 const selectedShiftObj = shifts.find(s => String(s.id) === String(assignData.shift_id));
+                                 const isDayOff = selectedShiftObj?.is_dayoff;
+                                 const hasAssignOverlap = selectedEmployeeObj && checkOverlap(selectedEmployeeObj.shifts || [], assignData.start_date, assignData.end_date, undefined, isDayOff);
+                                 const hasWorkShiftOverlap = selectedEmployeeObj && isDayOff && checkOverlap(selectedEmployeeObj.shifts || [], assignData.start_date, assignData.end_date, undefined, false);
                                  return (
                                      <>
                                          {selectedEmployeeObj && selectedEmployeeObj.shifts && selectedEmployeeObj.shifts.length > 0 && (
@@ -831,7 +858,13 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
 
                                          {hasAssignOverlap && (
                                              <div className="text-xs text-rose-500 font-bold bg-rose-50 dark:bg-rose-950/20 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/50">
-                                                 ⚠️ Tanggal yang dipilih bentrok dengan jadwal yang sudah terdaftar!
+                                                 ⚠️ Tanggal yang dipilih bentrok dengan jadwal {isDayOff ? 'Libur' : 'shift'} yang sudah terdaftar!
+                                             </div>
+                                         )}
+
+                                         {!hasAssignOverlap && hasWorkShiftOverlap && (
+                                             <div className="text-xs text-indigo-600 dark:text-indigo-400 font-medium bg-indigo-50 dark:bg-indigo-950/30 p-2.5 rounded-xl border border-indigo-100 dark:border-indigo-900/40 flex items-center gap-2">
+                                                 <span>ℹ️</span> Jadwal <strong>Libur</strong> ini akan otomatis menimpa (override) shift kerja reguler karyawan pada tanggal yang dipilih.
                                              </div>
                                          )}
 
@@ -848,7 +881,7 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                                  disabled={processingAssign || !!hasAssignOverlap}
                                                  className="flex-1 justify-center py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/20"
                                              >
-                                                 Tugaskan Shift
+                                                 {isDayOff ? 'Tetapkan Jadwal Libur' : 'Tugaskan Shift'}
                                              </PrimaryButton>
                                          </div>
                                      </>
@@ -921,7 +954,9 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
                                  const otherShifts = editedEmployeeObj && editedEmployeeObj.shifts 
                                      ? editedEmployeeObj.shifts.filter(sh => String(sh.pivot.id) !== editAssignData.user_shift_id) 
                                      : [];
-                                 const hasEditOverlap = checkOverlap(otherShifts, editAssignData.start_date, editAssignData.end_date);
+                                 const selectedEditShiftObj = shifts.find(s => String(s.id) === String(editAssignData.shift_id));
+                                 const isDayOff = selectedEditShiftObj?.is_dayoff;
+                                 const hasEditOverlap = checkOverlap(otherShifts, editAssignData.start_date, editAssignData.end_date, editAssignData.user_shift_id, isDayOff);
                                  return (
                                      <>
                                          {editedEmployeeObj && otherShifts.length > 0 && (
@@ -945,7 +980,7 @@ export default function ShiftsIndex({ shifts, employees }: IndexProps) {
 
                                          {hasEditOverlap && (
                                              <div className="text-xs text-rose-500 font-bold bg-rose-50 dark:bg-rose-950/20 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/50">
-                                                 ⚠️ Tanggal yang dipilih bentrok dengan jadwal yang sudah terdaftar!
+                                                 ⚠️ Tanggal yang dipilih bentrok dengan jadwal {isDayOff ? 'Libur' : 'shift'} yang sudah terdaftar!
                                              </div>
                                          )}
 
