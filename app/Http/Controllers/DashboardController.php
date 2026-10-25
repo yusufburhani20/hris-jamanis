@@ -118,10 +118,14 @@ class DashboardController extends Controller
                 })
                 ->get()
                 ->map(function($us) {
+                    $avatar = $us->user->avatar ?? null;
+                    if ($avatar && !str_starts_with($avatar, 'http')) {
+                        $avatar = asset('storage/' . $avatar);
+                    }
                     return [
                         'user_id' => $us->user->id ?? 0,
                         'name' => $us->user->name ?? 'Unknown',
-                        'avatar' => $us->user->avatar ?? null,
+                        'avatar' => $avatar,
                         'shift_name' => $us->shift->name ?? '',
                     ];
                 });

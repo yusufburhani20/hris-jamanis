@@ -75,6 +75,12 @@ export default function Dashboard({
     const [syncError, setSyncError] = useState<string | null>(null);
     const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
     const [selectedPhoto, setSelectedPhoto] = useState<{ url: string, label: string } | null>(null);
+    const [brokenAvatars, setBrokenAvatars] = useState<Record<string, boolean>>({});
+
+    const getAvatarUrl = (path: string | null | undefined) => {
+        if (!path) return null;
+        return path.startsWith('http') ? path : (path.startsWith('/') ? path : `/storage/${path}`);
+    };
 
     const { auth } = usePage<PageProps>().props;
     const user = auth.user as any;
@@ -440,21 +446,30 @@ export default function Dashboard({
                                     Karyawan Libur Hari Ini
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    {stats.users_on_leave_today.map((u, i) => (
-                                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-750">
-                                            {u.avatar ? (
-                                                <img src={u.avatar} alt={u.name} className="w-10 h-10 rounded-full object-cover" />
-                                            ) : (
-                                                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold text-sm">
-                                                    {u.name.charAt(0)}
+                                    {stats.users_on_leave_today.map((u, i) => {
+                                        const avatarUrl = getAvatarUrl(u.avatar);
+                                        const isBroken = brokenAvatars[`leave_${u.user_id}_${i}`];
+                                        return (
+                                            <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-750">
+                                                {avatarUrl && !isBroken ? (
+                                                    <img 
+                                                        src={avatarUrl} 
+                                                        alt={u.name} 
+                                                        className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0"
+                                                        onError={() => setBrokenAvatars(prev => ({ ...prev, [`leave_${u.user_id}_${i}`]: true }))}
+                                                    />
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                                                        {u.name ? u.name.charAt(0).toUpperCase() : '?'}
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{u.name}</p>
+                                                    <p className="text-xs font-semibold text-rose-500">{u.shift_name}</p>
                                                 </div>
-                                            )}
-                                            <div>
-                                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{u.name}</p>
-                                                <p className="text-xs font-semibold text-rose-500">{u.shift_name}</p>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -600,8 +615,12 @@ export default function Dashboard({
                                                             <td className="py-3 px-3">
                                                                 <div className="flex items-center gap-2">
                                                                     <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-500 overflow-hidden">
-                                                                        {log.user?.avatar ? (
-                                                                            <img src={log.user.avatar.startsWith('http') ? log.user.avatar : `/storage/${log.user.avatar}`} className="w-full h-full object-cover" />
+                                                                        {log.user?.avatar && !brokenAvatars[`log_${log.id}`] ? (
+                                                                            <img 
+                                                                                src={log.user.avatar.startsWith('http') ? log.user.avatar : `/storage/${log.user.avatar}`} 
+                                                                                className="w-full h-full object-cover" 
+                                                                                onError={() => setBrokenAvatars(prev => ({ ...prev, [`log_${log.id}`]: true }))}
+                                                                            />
                                                                         ) : (
                                                                             log.user?.name?.charAt(0)
                                                                         )}
@@ -691,7 +710,15 @@ export default function Dashboard({
                                         {activeUsers && activeUsers.length > 0 ? activeUsers.map((user: any) => (
                                             <div key={user.id} className="flex items-center gap-3 px-3 py-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                                                 <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-slate-700 flex items-center justify-center font-bold text-indigo-600 text-xs shrink-0 overflow-hidden">
-                                                    {user.avatar ? <img src={user.avatar.startsWith('http') ? user.avatar : `/storage/${user.avatar}`} className="w-full h-full object-cover" /> : user.name.charAt(0)}
+                                                    {user.avatar && !brokenAvatars[`active_${user.id}`] ? (
+                                                        <img 
+                                                            src={user.avatar.startsWith('http') ? user.avatar : `/storage/${user.avatar}`} 
+                                                            className="w-full h-full object-cover" 
+                                                            onError={() => setBrokenAvatars(prev => ({ ...prev, [`active_${user.id}`]: true }))}
+                                                        />
+                                                    ) : (
+                                                        user.name.charAt(0)
+                                                    )}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{user.name}</p>
@@ -714,7 +741,15 @@ export default function Dashboard({
                                         {lastLogins && lastLogins.map((user: any) => (
                                             <div key={user.id} className="flex items-center gap-3 px-3 py-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                                                 <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-500 text-xs shrink-0 overflow-hidden">
-                                                    {user.avatar ? <img src={user.avatar.startsWith('http') ? user.avatar : `/storage/${user.avatar}`} className="w-full h-full object-cover" /> : user.name.charAt(0)}
+                                                    {user.avatar && !brokenAvatars[`last_${user.id}`] ? (
+                                                        <img 
+                                                            src={user.avatar.startsWith('http') ? user.avatar : `/storage/${user.avatar}`} 
+                                                            className="w-full h-full object-cover" 
+                                                            onError={() => setBrokenAvatars(prev => ({ ...prev, [`last_${user.id}`]: true }))}
+                                                        />
+                                                    ) : (
+                                                        user.name.charAt(0)
+                                                    )}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{user.name}</p>
