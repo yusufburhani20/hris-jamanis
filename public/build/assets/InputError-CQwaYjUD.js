@@ -1,0 +1,1 @@
+import{c as e}from"./index.esm-Dvte4h40.js";var t=e();function n({message:e,className:n=``,...r}){return e?(0,t.jsx)(`p`,{...r,className:`text-sm text-red-600 dark:text-red-400 `+n,children:e}):null}export{n as t};

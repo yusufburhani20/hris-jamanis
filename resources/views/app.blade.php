@@ -36,7 +36,7 @@
         <script>
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/sw.js?v=16')
+                    navigator.serviceWorker.register('/sw.js?v=17')
                         .then(reg => {
                             console.log('[PWA] Service Worker registered with scope:', reg.scope);
                             
