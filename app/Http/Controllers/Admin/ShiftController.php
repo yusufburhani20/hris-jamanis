@@ -31,49 +31,51 @@ class ShiftController extends Controller
 
         $startOfMonth = now()->startOfMonth()->toDateString();
         $endOfMonth = now()->endOfMonth()->toDateString();
+        $startOfNextMonth = now()->addMonth()->startOfMonth()->toDateString();
+        $endOfNextMonth = now()->addMonth()->endOfMonth()->toDateString();
 
-        $employees->each(function($emp) use ($startOfMonth, $endOfMonth) {
-            $dayOffs = UserShift::where('user_id', $emp->id)
+        $calcDaysOff = function($userId, $startRange, $endRange) {
+            $dayOffs = UserShift::where('user_id', $userId)
                 ->whereHas('shift', function($q) {
                     $q->where('is_dayoff', true)
                       ->orWhereRaw('LOWER(name) LIKE ?', ['%libur%'])
                       ->orWhereRaw('LOWER(code) LIKE ?', ['%off%']);
                 })
-                ->where('start_date', '<=', $endOfMonth)
-                ->where(function($q) use ($startOfMonth) {
+                ->where('start_date', '<=', $endRange)
+                ->where(function($q) use ($startRange) {
                     $q->whereNull('end_date')
-                      ->orWhere('end_date', '>=', $startOfMonth);
+                      ->orWhere('end_date', '>=', $startRange);
                 })
                 ->get();
 
             $dates = [];
             foreach ($dayOffs as $us) {
-                $usStart = \Carbon\Carbon::parse($us->start_date)->max(\Carbon\Carbon::parse($startOfMonth));
-                $usEnd   = $us->end_date ? \Carbon\Carbon::parse($us->end_date)->min(\Carbon\Carbon::parse($endOfMonth)) : \Carbon\Carbon::parse($endOfMonth);
+                $usStart = \Carbon\Carbon::parse($us->start_date)->max(\Carbon\Carbon::parse($startRange));
+                $usEnd   = $us->end_date ? \Carbon\Carbon::parse($us->end_date)->min(\Carbon\Carbon::parse($endRange)) : \Carbon\Carbon::parse($endRange);
                 for ($d = $usStart->copy(); $d->lte($usEnd); $d->addDay()) {
                     $dates[] = $d->toDateString();
                 }
             }
 
-            // Hitung juga pengajuan cuti/izin yang disetujui (Approved Leaves) di bulan ini (sinkron dengan Payroll)
-            $approvedLeaves = \App\Models\Leave::where('user_id', $emp->id)
+            // Hitung juga pengajuan cuti/izin yang disetujui (Approved Leaves) di rentang tanggal tersebut
+            $approvedLeaves = \App\Models\Leave::where('user_id', $userId)
                 ->where('status', 'approved')
-                ->where('start_date', '<=', $endOfMonth)
-                ->where('end_date', '>=', $startOfMonth)
+                ->where('start_date', '<=', $endRange)
+                ->where('end_date', '>=', $startRange)
                 ->get();
 
             foreach ($approvedLeaves as $leave) {
                 if ($leave->type === 'izin_terlambat') continue;
-                $lStart = \Carbon\Carbon::parse($leave->start_date)->max(\Carbon\Carbon::parse($startOfMonth));
-                $lEnd   = \Carbon\Carbon::parse($leave->end_date)->min(\Carbon\Carbon::parse($endOfMonth));
+                $lStart = \Carbon\Carbon::parse($leave->start_date)->max(\Carbon\Carbon::parse($startRange));
+                $lEnd   = \Carbon\Carbon::parse($leave->end_date)->min(\Carbon\Carbon::parse($endRange));
                 for ($d = $lStart->copy(); $d->lte($lEnd); $d->addDay()) {
                     $dates[] = $d->toDateString();
                 }
             }
 
-            // Hitung juga data absensi riil dengan status 'libur' atau 'cuti' di bulan ini
-            $attendanceOffDates = \App\Models\Attendance::where('user_id', $emp->id)
-                ->whereBetween('date', [$startOfMonth, $endOfMonth])
+            // Hitung juga data absensi riil dengan status 'libur' atau 'cuti' di rentang tanggal tersebut
+            $attendanceOffDates = \App\Models\Attendance::where('user_id', $userId)
+                ->whereBetween('date', [$startRange, $endRange])
                 ->whereIn('status', ['libur', 'cuti'])
                 ->pluck('date')
                 ->map(fn($d) => $d instanceof \Carbon\Carbon ? $d->toDateString() : (string)$d)
@@ -81,7 +83,14 @@ class ShiftController extends Controller
 
             $dates = array_merge($dates, $attendanceOffDates);
 
-            $emp->monthly_days_off_count = count(array_unique($dates));
+            return count(array_unique($dates));
+        };
+
+        $employees->each(function($emp) use ($calcDaysOff, $startOfMonth, $endOfMonth, $startOfNextMonth, $endOfNextMonth) {
+            $emp->monthly_days_off_count = $calcDaysOff($emp->id, $startOfMonth, $endOfMonth);
+            $emp->next_month_days_off_count = $calcDaysOff($emp->id, $startOfNextMonth, $endOfNextMonth);
+            $emp->current_month_name = now()->locale('id')->isoFormat('MMMM');
+            $emp->next_month_name = now()->addMonth()->locale('id')->isoFormat('MMMM');
         });
 
         return Inertia::render('Admin/Shifts/Index', [
