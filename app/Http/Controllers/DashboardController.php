@@ -107,7 +107,8 @@ class DashboardController extends Controller
                 ];
             }
 
-            $usersOnLeaveToday = \App\Models\UserShift::with(['user:id,name,avatar', 'shift:id,name,code,is_dayoff'])
+            // 1. Karyawan yang terjadwal Libur hari ini
+            $usersOnDayOff = \App\Models\UserShift::with(['user:id,name,avatar', 'shift:id,name,code,is_dayoff'])
                 ->where('start_date', '<=', $today->toDateString())
                 ->where(function($q) use ($today) {
                     $q->whereNull('end_date')
@@ -117,6 +118,11 @@ class DashboardController extends Controller
                     $q->where('is_dayoff', true);
                 })
                 ->get()
+                ->filter(function($us) use ($today) {
+                    if (!$us->user) return false;
+                    $active = $us->user->activeShift($today->toDateString());
+                    return $active && $active->is_dayoff;
+                })
                 ->map(function($us) {
                     $avatar = $us->user->avatar ?? null;
                     if ($avatar && !str_starts_with($avatar, 'http')) {
@@ -126,9 +132,46 @@ class DashboardController extends Controller
                         'user_id' => $us->user->id ?? 0,
                         'name' => $us->user->name ?? 'Unknown',
                         'avatar' => $avatar,
-                        'shift_name' => $us->shift->name ?? '',
+                        'shift_name' => $us->shift->name ?? 'Libur',
+                        'type' => 'libur',
+                        'status_label' => 'Libur',
+                        'reason' => 'Jadwal Libur Rutin',
                     ];
                 });
+
+            // 2. Karyawan yang mengajukan Cuti / Sakit / Izin dan telah disetujui untuk hari ini
+            $usersOnApprovedLeave = \App\Models\Leave::with('user:id,name,avatar')
+                ->where('status', 'approved')
+                ->whereIn('type', ['cuti', 'sakit', 'izin'])
+                ->whereDate('start_date', '<=', $today->toDateString())
+                ->whereDate('end_date', '>=', $today->toDateString())
+                ->get()
+                ->map(function($leave) {
+                    $avatar = $leave->user->avatar ?? null;
+                    if ($avatar && !str_starts_with($avatar, 'http')) {
+                        $avatar = asset('storage/' . $avatar);
+                    }
+                    $typeLabel = match($leave->type) {
+                        'cuti' => 'Cuti',
+                        'sakit' => 'Sakit',
+                        'izin' => 'Izin',
+                        default => ucfirst($leave->type),
+                    };
+                    return [
+                        'user_id' => $leave->user->id ?? 0,
+                        'name' => $leave->user->name ?? 'Unknown',
+                        'avatar' => $avatar,
+                        'shift_name' => $typeLabel,
+                        'type' => $leave->type,
+                        'status_label' => $typeLabel,
+                        'reason' => $leave->reason ?? $typeLabel,
+                    ];
+                });
+
+            // Gabungkan dan deduplikasi berdasarkan user_id (prioritaskan izin/cuti/sakit jika ada)
+            $usersNotPresentToday = $usersOnApprovedLeave->concat($usersOnDayOff)
+                ->unique('user_id')
+                ->values();
 
             return Inertia::render('Dashboard', [
                 'role' => 'admin',
@@ -138,7 +181,8 @@ class DashboardController extends Controller
                     'present_today' => $presentToday,
                     'late_today' => $lateToday,
                     'checkout_today' => $checkoutToday,
-                    'users_on_leave_today' => $usersOnLeaveToday,
+                    'users_not_present_today' => $usersNotPresentToday,
+                    'users_on_leave_today' => $usersNotPresentToday,
                 ],
                 'activeUsers' => $activeUsers,
                 'lastLogins' => $lastLogins,

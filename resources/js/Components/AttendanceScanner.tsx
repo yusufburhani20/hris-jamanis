@@ -454,6 +454,31 @@ export default function AttendanceScanner({
             </h3>
             
             <div className="flex-1 flex flex-col space-y-4">
+                {/* Active Shift Info Badge */}
+                {activeShift && !isDayOff && (
+                    <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-50/90 to-blue-50/80 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-150 dark:border-indigo-900/50 flex items-center justify-between gap-3 shadow-sm">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
+                                ⏱️
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Shift Hari Ini</span>
+                                    {activeShift.code && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-200/60 dark:bg-indigo-900/60 font-mono font-bold text-indigo-700 dark:text-indigo-300">[{activeShift.code}]</span>
+                                    )}
+                                </div>
+                                <p className="text-sm font-black text-slate-800 dark:text-slate-100 leading-tight mt-0.5">{activeShift.name}</p>
+                            </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                            <span className="inline-block px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-indigo-150 dark:border-indigo-800 text-xs font-black text-indigo-700 dark:text-indigo-300 shadow-sm">
+                                {activeShift.start_time ? activeShift.start_time.slice(0, 5) : '-'} - {activeShift.end_time ? activeShift.end_time.slice(0, 5) : '-'} WIB
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Geofence Status Badge */}
                 {location && nearestGeofence && (
                     <div className={`flex items-center justify-between p-3 rounded-lg border transition-all ${nearestGeofence.valid ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400 font-bold' : 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-900/40 dark:border-rose-800 dark:text-rose-400 animate-pulse'}`}>

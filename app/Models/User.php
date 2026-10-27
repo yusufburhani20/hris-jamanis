@@ -62,8 +62,7 @@ class User extends Authenticatable
                         $q->where('user_shifts.end_date', '>=', $targetDate)
                           ->orWhereNull('user_shifts.end_date');
                     })
-                    ->orderByDesc('shifts.is_dayoff')
-                    ->latest('user_shifts.start_date')
+                    ->orderByRaw('CASE WHEN user_shifts.start_date = user_shifts.end_date THEN 0 ELSE 1 END ASC')
                     ->latest('user_shifts.id')
                     ->first();
     }

@@ -42,7 +42,24 @@ interface DashboardProps {
         present_today: number;
         late_today: number;
         checkout_today: number;
-        users_on_leave_today: Array<{ user_id: number; name: string; avatar: string | null; shift_name: string }>;
+        users_on_leave_today?: Array<{ 
+            user_id: number; 
+            name: string; 
+            avatar: string | null; 
+            shift_name: string;
+            type?: string;
+            status_label?: string;
+            reason?: string;
+        }>;
+        users_not_present_today?: Array<{ 
+            user_id: number; 
+            name: string; 
+            avatar: string | null; 
+            shift_name: string;
+            type?: string;
+            status_label?: string;
+            reason?: string;
+        }>;
     };
     activeUsers?: any[];
     lastLogins?: any[];
@@ -431,24 +448,45 @@ export default function Dashboard({
                                 colorClass="bg-teal-100 text-teal-600 dark:bg-teal-500/20 dark:text-teal-400"
                             />
                             <StatCard 
-                                title="Sedang Libur" 
-                                value={stats?.users_on_leave_today?.length || 0} 
+                                title="Tidak Masuk" 
+                                value={(stats?.users_not_present_today || stats?.users_on_leave_today)?.length || 0} 
                                 icon={<CalendarIcon className="w-5 h-5" />}
                                 colorClass="bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400"
                             />
                         </div>
 
-                        {/* List Karyawan Libur Hari Ini */}
-                        {stats?.users_on_leave_today && stats.users_on_leave_today.length > 0 && (
+                        {/* List Karyawan Tidak Masuk Hari Ini */}
+                        {((stats?.users_not_present_today || stats?.users_on_leave_today) && (stats?.users_not_present_today || stats?.users_on_leave_today)!.length > 0) && (
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-150 dark:border-slate-700/60">
-                                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
-                                    <CalendarIcon className="w-5 h-5 text-rose-500" />
-                                    Karyawan Libur Hari Ini
-                                </h3>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                        <CalendarIcon className="w-5 h-5 text-rose-500" />
+                                        <span>Karyawan Tidak Masuk Hari Ini</span>
+                                    </h3>
+                                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40">
+                                        {(stats?.users_not_present_today || stats?.users_on_leave_today)!.length} Orang
+                                    </span>
+                                </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    {stats.users_on_leave_today.map((u, i) => {
+                                    {(stats?.users_not_present_today || stats?.users_on_leave_today)!.map((u, i) => {
                                         const avatarUrl = getAvatarUrl(u.avatar);
                                         const isBroken = brokenAvatars[`leave_${u.user_id}_${i}`];
+                                        const type = u.type || 'libur';
+
+                                        const badgeStyle = {
+                                            libur: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/50',
+                                            cuti: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900/50',
+                                            sakit: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-900/50',
+                                            izin: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50',
+                                        }[type] || 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-300';
+
+                                        const icon = {
+                                            libur: '🏖️',
+                                            cuti: '🌴',
+                                            sakit: '💊',
+                                            izin: '📋',
+                                        }[type] || '🏖️';
+
                                         return (
                                             <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-750">
                                                 {avatarUrl && !isBroken ? (
@@ -459,13 +497,18 @@ export default function Dashboard({
                                                         onError={() => setBrokenAvatars(prev => ({ ...prev, [`leave_${u.user_id}_${i}`]: true }))}
                                                     />
                                                 ) : (
-                                                    <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
                                                         {u.name ? u.name.charAt(0).toUpperCase() : '?'}
                                                     </div>
                                                 )}
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{u.name}</p>
-                                                    <p className="text-xs font-semibold text-rose-500">{u.shift_name}</p>
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgeStyle}`}>
+                                                            <span>{icon}</span>
+                                                            <span>{u.status_label || u.shift_name}</span>
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         );

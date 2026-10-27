@@ -345,7 +345,7 @@
     ]
   },
   "resources/js/Pages/Admin/Shifts/Index.tsx": {
-    "file": "assets/Index-BK9f-LsQ.js",
+    "file": "assets/Index-V_S_Ga0R.js",
     "name": "Index",
     "src": "resources/js/Pages/Admin/Shifts/Index.tsx",
     "isDynamicEntry": true,
@@ -522,7 +522,7 @@
     ]
   },
   "resources/js/Pages/Dashboard.tsx": {
-    "file": "assets/Dashboard-Cw4ZJHTu2.js",
+    "file": "assets/Dashboard-DWgnQLny2.js",
     "name": "Dashboard",
     "src": "resources/js/Pages/Dashboard.tsx",
     "isDynamicEntry": true,
@@ -697,7 +697,7 @@
     ]
   },
   "resources/js/Pages/User/Attendances/Scanner.tsx": {
-    "file": "assets/Scanner-DUetkypC.js",
+    "file": "assets/Scanner-BJolcktQ.js",
     "name": "Scanner",
     "src": "resources/js/Pages/User/Attendances/Scanner.tsx",
     "isDynamicEntry": true,
@@ -732,7 +732,7 @@
     ]
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-DyeXeKkQ.js",
+    "file": "assets/app-Cy1fdIj1.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -784,7 +784,7 @@
       "resources/js/Pages/Welcome.tsx"
     ],
     "css": [
-      "assets/app-BxxNB1NR.css"
+      "assets/app-D21fiNCG.css"
     ]
   }
 }

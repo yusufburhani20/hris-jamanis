@@ -155,6 +155,12 @@ class ShiftExchangeRequestController extends Controller
         $targetDate = $shiftExchange->target_date->toDateString();
 
         if ($shiftExchange->type === 'shift') {
+            // Clean up any existing single-day override for requester on this date
+            UserShift::where('user_id', $shiftExchange->user_id)
+                ->where('start_date', $targetDate)
+                ->where('end_date', $targetDate)
+                ->delete();
+
             // Apply single-day override for requester
             UserShift::create([
                 'user_id' => $shiftExchange->user_id,
@@ -164,6 +170,17 @@ class ShiftExchangeRequestController extends Controller
             ]);
         } else {
             // Cross assignment (swap shifts)
+            // Clean up existing single-day overrides on this date for both employees
+            UserShift::where('user_id', $shiftExchange->user_id)
+                ->where('start_date', $targetDate)
+                ->where('end_date', $targetDate)
+                ->delete();
+
+            UserShift::where('user_id', $shiftExchange->target_user_id)
+                ->where('start_date', $targetDate)
+                ->where('end_date', $targetDate)
+                ->delete();
+
             // 1. Assign requester to target colleague's shift
             UserShift::create([
                 'user_id' => $shiftExchange->user_id,

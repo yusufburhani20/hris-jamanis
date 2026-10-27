@@ -87,9 +87,13 @@ export default function ShiftsIndex({ shifts, employees, currentPeriod }: IndexP
         };
 
         const getShiftStatus = (startDateStr: string, endDateStr: string | null) => {
-            if (startDateStr <= todayStr && (!endDateStr || endDateStr >= todayStr)) {
+            const sDate = startDateStr ? new Date(startDateStr).toLocaleDateString('en-CA') : '';
+            const eDate = endDateStr ? new Date(endDateStr).toLocaleDateString('en-CA') : null;
+            const currentStr = new Date().toLocaleDateString('en-CA');
+
+            if (sDate <= currentStr && (!eDate || eDate >= currentStr)) {
                 return 'active';
-            } else if (startDateStr > todayStr) {
+            } else if (sDate > currentStr) {
                 return 'upcoming';
             }
             return 'past';
@@ -525,7 +529,16 @@ export default function ShiftsIndex({ shifts, employees, currentPeriod }: IndexP
                                             </tr>
                                         ) : (
                                             processedEmployees.map((employee) => {
-                                                const activeShift = employee.shifts && employee.shifts.length > 0 ? employee.shifts[0] : null;
+                                                const todayFormatted = new Date().toLocaleDateString('en-CA');
+                                                const activeShift = employee.shifts?.find(sh => {
+                                                    const sDate = sh.pivot.start_date ? new Date(sh.pivot.start_date).toLocaleDateString('en-CA') : '';
+                                                    const eDate = sh.pivot.end_date ? new Date(sh.pivot.end_date).toLocaleDateString('en-CA') : null;
+                                                    return sDate === eDate && sDate === todayFormatted;
+                                                }) || employee.shifts?.find(sh => {
+                                                    const sDate = sh.pivot.start_date ? new Date(sh.pivot.start_date).toLocaleDateString('en-CA') : '';
+                                                    const eDate = sh.pivot.end_date ? new Date(sh.pivot.end_date).toLocaleDateString('en-CA') : null;
+                                                    return sDate <= todayFormatted && (!eDate || eDate >= todayFormatted);
+                                                }) || (employee.shifts && employee.shifts.length > 0 ? employee.shifts[0] : null);
                                                 return (
                                                     <tr key={employee.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
                                                         <td className="px-4 py-4 text-center">
@@ -577,7 +590,24 @@ export default function ShiftsIndex({ shifts, employees, currentPeriod }: IndexP
                                                         <td className="px-4 py-4" colSpan={2}>
                                                             {employee.shifts && employee.shifts.length > 0 ? (
                                                                 <div className="space-y-2 max-w-lg">
-                                                                    {employee.shifts.map((sh) => {
+                                                                    {[...(employee.shifts || [])].sort((a, b) => {
+                                                                        const sA = a.pivot.start_date ? new Date(a.pivot.start_date).toLocaleDateString('en-CA') : '';
+                                                                        const eA = a.pivot.end_date ? new Date(a.pivot.end_date).toLocaleDateString('en-CA') : null;
+                                                                        const sB = b.pivot.start_date ? new Date(b.pivot.start_date).toLocaleDateString('en-CA') : '';
+                                                                        const eB = b.pivot.end_date ? new Date(b.pivot.end_date).toLocaleDateString('en-CA') : null;
+                                                                        const isSingleTodayA = sA === eA && sA === todayFormatted;
+                                                                        const isSingleTodayB = sB === eB && sB === todayFormatted;
+                                                                        if (isSingleTodayA && !isSingleTodayB) return -1;
+                                                                        if (!isSingleTodayA && isSingleTodayB) return 1;
+
+                                                                        const statusA = getShiftStatus(a.pivot.start_date, a.pivot.end_date);
+                                                                        const statusB = getShiftStatus(b.pivot.start_date, b.pivot.end_date);
+                                                                        const order: Record<string, number> = { active: 1, upcoming: 2, past: 3 };
+                                                                        if ((order[statusA] || 9) !== (order[statusB] || 9)) {
+                                                                            return (order[statusA] || 9) - (order[statusB] || 9);
+                                                                        }
+                                                                        return sA.localeCompare(sB);
+                                                                    }).map((sh) => {
                                                                         const status = getShiftStatus(sh.pivot.start_date, sh.pivot.end_date);
                                                                         return (
                                                                             <div 
