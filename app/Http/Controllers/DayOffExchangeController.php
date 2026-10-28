@@ -3,15 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\DayOffExchange;
+use App\Models\DayOffReschedule;
 use App\Models\Shift;
 use App\Models\User;
 use App\Models\UserShift;
+use App\Traits\ResolvesWorkShift;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class DayOffExchangeController extends Controller
 {
+    use ResolvesWorkShift;
+
     /**
      * Display a listing of day off exchange requests.
      */
@@ -25,12 +29,23 @@ class DayOffExchangeController extends Controller
                 'targetUser:id,name,email',
                 'approvedBy:id,name'
             ])->latest()->get();
+
+            $reschedules = DayOffReschedule::with([
+                'user:id,name,email,role',
+                'approvedBy:id,name'
+            ])->latest()->get();
         } else {
             $exchanges = DayOffExchange::where('requester_id', $user->id)
                 ->orWhere('target_user_id', $user->id)
                 ->with([
                     'requester:id,name,email,role',
                     'targetUser:id,name,email',
+                    'approvedBy:id,name'
+                ])->latest()->get();
+
+            $reschedules = DayOffReschedule::where('user_id', $user->id)
+                ->with([
+                    'user:id,name,email,role',
                     'approvedBy:id,name'
                 ])->latest()->get();
         }
@@ -45,10 +60,15 @@ class DayOffExchangeController extends Controller
         // List requester's upcoming scheduled day-offs
         $myDayOffs = $this->getUpcomingDayOffDates($user);
 
+        // List requester's upcoming scheduled work days (for self day-off reschedule)
+        $myWorkDays = $this->getUpcomingWorkDates($user);
+
         return Inertia::render('DayOffExchanges/Index', [
             'exchanges' => $exchanges,
+            'reschedules' => $reschedules,
             'employees' => $employees,
             'myDayOffs' => $myDayOffs,
+            'myWorkDays' => $myWorkDays,
             'role' => $user->isAdmin() ? 'admin' : 'employee',
         ]);
     }
@@ -194,60 +214,32 @@ class DayOffExchangeController extends Controller
     }
 
     /**
-     * Helper to resolve the most appropriate work shift for a user on a given date.
-     * Prioritizes:
-     * 1. The user's underlying base work shift covering that date.
-     * 2. The colleague's active work shift on that date (if replacing their duty).
-     * 3. The user's most recently assigned work shift.
-     * 4. The system default work shift.
+     * Helper to get upcoming scheduled work days for a user within the active cut-off period.
      */
-    private function resolveWorkShiftForUser(User $user, string $date, ?User $colleague = null): Shift
+    private function getUpcomingWorkDates(User $user): array
     {
-        // 1. Underlying base work shift (multi-day roster span) covering $date
-        $baseUserShift = UserShift::with('shift')
-            ->where('user_id', $user->id)
-            ->where('start_date', '<=', $date)
-            ->where(function ($q) use ($date) {
-                $q->whereNull('end_date')->orWhere('end_date', '>=', $date);
-            })
-            ->where(function ($q) {
-                // Ignore single-day override records to ensure we get the true base schedule
-                $q->whereNull('end_date')->orWhereColumn('start_date', '!=', 'end_date');
-            })
-            ->whereHas('shift', function ($q) {
-                $q->where('is_dayoff', false);
-            })
-            ->latest('id')
-            ->first();
-
-        if ($baseUserShift && $baseUserShift->shift) {
-            return $baseUserShift->shift;
+        $today = today();
+        if ($today->day >= 25) {
+            $periodEnd = $today->copy()->addMonthNoOverflow()->day(24)->endOfDay();
+        } else {
+            $periodEnd = $today->copy()->day(24)->endOfDay();
         }
 
-        // 2. Colleague's active work shift on $date (if replacing colleague's post)
-        if ($colleague) {
-            $colleagueShift = $colleague->activeShift($date);
-            if ($colleagueShift && !$colleagueShift->is_dayoff) {
-                return $colleagueShift;
+        $dates = [];
+        for ($d = $today->copy(); $d->lte($periodEnd); $d->addDay()) {
+            $dateStr = $d->toDateString();
+            $shift = $user->activeShift($dateStr);
+            if ($shift && !$shift->is_dayoff) {
+                $dates[] = [
+                    'date' => $dateStr,
+                    'formatted' => $d->locale('id')->isoFormat('dddd, D MMMM Y'),
+                    'short_formatted' => $d->locale('id')->isoFormat('D MMM Y'),
+                    'shift_name' => $shift->name,
+                ];
             }
         }
 
-        // 3. User's most recently assigned multi-day work shift anywhere
-        $recentShift = $user->shifts()
-            ->where('is_dayoff', false)
-            ->where(function ($q) {
-                $q->whereNull('user_shifts.end_date')->orWhereColumn('user_shifts.start_date', '!=', 'user_shifts.end_date');
-            })
-            ->latest('user_shifts.id')
-            ->first();
-
-        if ($recentShift) {
-            return $recentShift;
-        }
-
-        // 4. Default fallback
-        return Shift::where('is_dayoff', false)->first() 
-            ?? Shift::first();
+        return $dates;
     }
 
     /**

@@ -89,11 +89,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/shift-exchanges', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'store'])->name('shift-exchanges.store');
     Route::delete('/shift-exchanges/{shiftExchange}', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'destroy'])->name('shift-exchanges.destroy');
 
-    // --- DAY OFF EXCHANGES ROUTES (TUKAR LIBUR) ---
+    // --- DAY OFF EXCHANGES & RESCHEDULES ROUTES (PENGELOLAAN LIBUR) ---
     Route::get('/day-off-exchanges', [\App\Http\Controllers\DayOffExchangeController::class, 'index'])->name('day-off-exchanges.index');
     Route::post('/day-off-exchanges', [\App\Http\Controllers\DayOffExchangeController::class, 'store'])->name('day-off-exchanges.store');
     Route::get('/day-off-exchanges/colleague/{user}', [\App\Http\Controllers\DayOffExchangeController::class, 'getColleagueDayOffs'])->name('day-off-exchanges.colleague-dayoffs');
     Route::delete('/day-off-exchanges/{dayOffExchange}', [\App\Http\Controllers\DayOffExchangeController::class, 'destroy'])->name('day-off-exchanges.destroy');
+    // Pindah Libur Mandiri (Self-Service Reschedule)
+    Route::post('/day-off-reschedules', [\App\Http\Controllers\DayOffRescheduleController::class, 'store'])->name('day-off-reschedules.store');
+    Route::delete('/day-off-reschedules/{dayOffReschedule}', [\App\Http\Controllers\DayOffRescheduleController::class, 'destroy'])->name('day-off-reschedules.destroy');
 
     // --- OVERTIME REQUESTS ROUTES ---
     Route::get('/overtimes', [\App\Http\Controllers\OvertimeRequestController::class, 'index'])->name('overtimes.index');
@@ -159,10 +162,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/shift-exchanges/{shiftExchange}/approve', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'approve'])->name('shift-exchanges.approve');
         Route::post('/shift-exchanges/{shiftExchange}/reject', [\App\Http\Controllers\ShiftExchangeRequestController::class, 'reject'])->name('shift-exchanges.reject');
 
-        // Admin Day Off Exchanges Approval Desk (Persetujuan Tukar Libur)
+        // Admin Day Off Exchanges & Reschedules Approval Desk (Persetujuan Libur)
         Route::get('/day-off-exchanges', [\App\Http\Controllers\DayOffExchangeController::class, 'index'])->name('day-off-exchanges.index');
         Route::post('/day-off-exchanges/{dayOffExchange}/approve', [\App\Http\Controllers\DayOffExchangeController::class, 'approve'])->name('day-off-exchanges.approve');
         Route::post('/day-off-exchanges/{dayOffExchange}/reject', [\App\Http\Controllers\DayOffExchangeController::class, 'reject'])->name('day-off-exchanges.reject');
+        Route::post('/day-off-reschedules/{dayOffReschedule}/approve', [\App\Http\Controllers\DayOffRescheduleController::class, 'approve'])->name('day-off-reschedules.approve');
+        Route::post('/day-off-reschedules/{dayOffReschedule}/reject', [\App\Http\Controllers\DayOffRescheduleController::class, 'reject'])->name('day-off-reschedules.reject');
 
         // Admin Overtime Approval Desk
         Route::get('/overtimes', [\App\Http\Controllers\OvertimeRequestController::class, 'index'])->name('overtimes.index');

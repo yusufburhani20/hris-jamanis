@@ -48,7 +48,8 @@ class HandleInertiaRequests extends Middleware
                 'leaves' => \App\Models\Leave::where('status', 'pending')->count(),
                 'overtimes' => \App\Models\OvertimeRequest::where('status', 'pending')->count(),
                 'shift_exchanges' => \App\Models\ShiftExchangeRequest::where('status', 'pending')->count(),
-                'day_off_exchanges' => \Illuminate\Support\Facades\Schema::hasTable('day_off_exchanges') ? \App\Models\DayOffExchange::where('status', 'pending')->count() : 0,
+                'day_off_exchanges' => (\Illuminate\Support\Facades\Schema::hasTable('day_off_exchanges') ? \App\Models\DayOffExchange::where('status', 'pending')->count() : 0) +
+                                       (\Illuminate\Support\Facades\Schema::hasTable('day_off_reschedules') ? \App\Models\DayOffReschedule::where('status', 'pending')->count() : 0),
             ] : null,
             'employee_updates' => $user ? [
                 'leaves' => \App\Models\Leave::where('user_id', $user->id)
@@ -63,12 +64,18 @@ class HandleInertiaRequests extends Middleware
                     ->whereIn('status', ['approved', 'rejected'])
                     ->where('updated_at', '>=', now()->subDays(30))
                     ->pluck('updated_at'),
-                'day_off_exchanges' => \Illuminate\Support\Facades\Schema::hasTable('day_off_exchanges') ? \App\Models\DayOffExchange::where(function($q) use ($user) {
+                'day_off_exchanges' => array_merge(
+                    \Illuminate\Support\Facades\Schema::hasTable('day_off_exchanges') ? \App\Models\DayOffExchange::where(function($q) use ($user) {
                         $q->where('requester_id', $user->id)->orWhere('target_user_id', $user->id);
                     })
                     ->whereIn('status', ['approved', 'rejected'])
                     ->where('updated_at', '>=', now()->subDays(30))
-                    ->pluck('updated_at') : [],
+                    ->pluck('updated_at')->toArray() : [],
+                    \Illuminate\Support\Facades\Schema::hasTable('day_off_reschedules') ? \App\Models\DayOffReschedule::where('user_id', $user->id)
+                    ->whereIn('status', ['approved', 'rejected'])
+                    ->where('updated_at', '>=', now()->subDays(30))
+                    ->pluck('updated_at')->toArray() : []
+                ),
             ] : null,
             'flash' => [
                 'success' => $request->session()->get('success'),

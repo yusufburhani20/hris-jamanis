@@ -357,7 +357,7 @@ export default function Authenticated({
                     badge: isAdmin ? pendingApprovals?.shift_exchanges : newShiftsCount,
                 },
                 {
-                    label: isAdmin ? 'Persetujuan Tukar Libur' : 'Tukar Libur Saya',
+                    label: isAdmin ? 'Persetujuan Libur' : 'Pengajuan Libur',
                     href: route().has(isAdmin ? 'admin.day-off-exchanges.index' : 'day-off-exchanges.index')
                         ? route(isAdmin ? 'admin.day-off-exchanges.index' : 'day-off-exchanges.index')
                         : '#',
